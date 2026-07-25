@@ -1,3 +1,3 @@
 # BubbleShooter
 
-Das ist ein Minigame für bandenkick.de
+Das ist ein Minigame V2 für bandenkick.de
