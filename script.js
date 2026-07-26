@@ -568,14 +568,23 @@
     ],
 
     loadBallImages() {
-    this.palette.forEach((ball) => {
+      const activePalette = currentBallTheme === "world-cup-balls"
+      ? [
+          { id: "usa", color: "#fff", image: null },
+          { id: "germany", color: "#fff", image: null },
+          { id: "brazil", color: "#fff", image: null },
+          { id: "spain", color: "#fff", image: null },
+          { id: "australia", color: "#fff", image: null }
+        ]
+      : this.palette;
+        activePalette.forEach((ball) => {
         const image = new Image();
 
         image.src = `assets/balls/${currentBallTheme}/${ball.id}.png`;
 
         image.onload = () => {
             ball.image = image;
-            console.log("Ball geladen:", ball.id, image.src);
+            ball.loaded = true;
         };
 
         image.onerror = () => {
@@ -591,12 +600,35 @@
       this.levelFinished = false;
       this.particles = [];
       const stageNumber = getStageForLevel(levelNumber);
+      this.ballImageCache = {};
 
       currentBallTheme =
       stageNumber === 2
-        ? "world-cup-balls"
-        : "bk-arena-balls";
-      this.loadBallImages();
+      ? "world-cup-balls"
+      : "bk-arena-balls";
+      this.nextColor = null;
+
+
+      if (stageNumber === 2) {
+
+    this.palette = [
+        { id:"usa" },
+        { id:"germany" },
+        { id:"brazil" },
+        { id:"spain" },
+        { id:"australia" }
+    ];
+
+    } else {
+
+    this.palette = [
+        { id:"red" },
+        { id:"blue" },
+        { id:"green" },
+        { id:"yellow" },
+        { id:"purple" }
+    ];
+  }
       this.switchImage = new Image();
       this.switchImage.src = "assets/ui/ballswitch.png";
       this.bombImage = new Image();
@@ -627,13 +659,15 @@
       dom.gameResultOverlay.classList.add("hidden");
 
       ThemeManager.applyStageAssets(getStageForLevel(levelNumber));
+
       this.createBoard(levelNumber);
       this.createShooter();
+
       Navigation.show("play");
       this.bindCanvasEvents();
       this.startLoop();
-    },
 
+    },
     createBoard(levelNumber) {
       this.bubbles = [];
 
@@ -647,11 +681,13 @@
           const y = this.radius + row * this.rowHeight;
 
           if (x > this.width - this.radius) continue;
-
+          
+          const color = this.randomColor();
           this.bubbles.push({
             x,
             y,
-            color: this.randomColor()
+            color: color,
+            image: color.image
           });
         }
       }
@@ -749,17 +785,22 @@
 },
 
     createShooter() {
-      this.shooter = {
+
+    console.log("shooter start", currentBallTheme, this.palette);
+    const color = this.nextColor || this.randomColor();
+
+    this.shooter = {
         x: this.width / 2,
         y: this.height - 62,
         vx: 0,
         vy: 0,
         moving: false,
         isBomb: false,
-        color: this.nextColor || this.randomColor()
-      };
+        color: color,
+        image: color.image || null
+    };
 
-      this.nextColor = this.randomColor();
+    this.nextColor = this.randomColor();
     },
 
     swapShooterBall() {
@@ -794,8 +835,6 @@
           : state.settings.gameSpeed === "fast"
           ? 1.50
           : 1);
-
-      console.log("GameSpeed:", state.settings.gameSpeed, "Speed:", speed);
 
       Audio.playEffect("shoot");
 
@@ -869,7 +908,6 @@
 
     attachShooter() {
       if(this.shooter.isBomb) {
-        console.log("Bombenball getroffen");
         this.explodeBomb();
         this.createShooter();
         return;
@@ -1034,23 +1072,14 @@
     },
 
     drawBubble(bubble) {
-      if (bubble.isBomb && this.bombImage?.complete) {
-    const size = this.radius * 2;
-      this.ctx.drawImage(
-          this.bombImage,
-          bubble.x - this.radius,
-          bubble.y - this.radius,
-          size,
-          size
-      );
 
-      return;
-      }
-    if (bubble.color.image) {
+    // Bombenkugel
+    if (bubble.isBomb && this.bombImage?.complete) {
+
         const size = this.radius * 2;
 
         this.ctx.drawImage(
-            bubble.color.image,
+            this.bombImage,
             bubble.x - this.radius,
             bubble.y - this.radius,
             size,
@@ -1060,20 +1089,51 @@
         return;
     }
 
-    const gradient = this.ctx.createRadialGradient(
-        bubble.x - 7,
-        bubble.y - 8,
-        3,
-        bubble.x,
-        bubble.y,
-        this.radius
-    );
+    const size = this.radius * 2;
 
-    gradient.addColorStop(0, "#ffffff");
-    gradient.addColorStop(0.24, bubble.color.color);
-    gradient.addColorStop(1, "#111111");
+    // Bildpfad automatisch erzeugen
+    const imagePath = `assets/balls/${currentBallTheme}/${bubble.color.id}.png`;
 
+
+    // Bild aus Cache holen
+    if (!this.ballImageCache) {
+        this.ballImageCache = {};
+    }
+
+
+    if (!this.ballImageCache[imagePath]) {
+
+        const img = new Image();
+
+        img.src = imagePath;
+
+        this.ballImageCache[imagePath] = img;
+
+        return;
+    }
+
+
+    const img = this.ballImageCache[imagePath];
+
+
+    // nur zeichnen wenn geladen
+    if (img.complete && img.naturalWidth > 0) {
+
+        this.ctx.drawImage(
+            img,
+            bubble.x - this.radius,
+            bubble.y - this.radius,
+            size,
+            size
+        );
+
+        return;
+    }
+
+
+    // Fallback falls Bild noch lädt
     this.ctx.beginPath();
+
     this.ctx.arc(
         bubble.x,
         bubble.y,
@@ -1082,12 +1142,9 @@
         Math.PI * 2
     );
 
-    this.ctx.fillStyle = gradient;
-    this.ctx.fill();
+    this.ctx.fillStyle = "#ffffff";
 
-    this.ctx.strokeStyle = "rgba(255,255,255,.55)";
-    this.ctx.lineWidth = 2;
-    this.ctx.stroke();
+    this.ctx.fill();
     },
 
     drawAimGuide() {
@@ -1245,23 +1302,34 @@
       this.levelFinished = true;
       this.stop();
 
-      if (!won) {
-        dom.gameResultTitle.textContent = "Leider verloren";
-        dom.gameResultStars.textContent = "";
-        dom.gameResultText.textContent =
-          "Die Kugeln haben die untere Spielfeldgrenze erreicht.";
-        dom.gameResultOverlay.classList.remove("hidden");
-        return;
-      }
-    const level = state.selectedLevel;
-    const isStageComplete = level % 10 === 0;
+     if (!won) {
+    dom.gameResultTitle.textContent = "Leider verloren";
+    dom.gameResultStars.textContent = "";
+    dom.gameResultText.textContent =
+        "Die Kugeln haben die untere Spielfeldgrenze erreicht.";
+    dom.gameResultOverlay.classList.remove("hidden");
+    return;
+    }
 
-      if (isStageComplete) {
-          Audio.playEffect("stagePassed");
-      } else {
-          Audio.playEffect("levelPassed");
-      }
-      const stars = this.calculateStars();
+    dom.gameResultTitle.textContent = "Level geschafft!";
+    dom.gameResultStars.textContent = "⭐".repeat(this.calculateStars());
+    dom.gameResultText.textContent =
+        `${this.score.toLocaleString("de-DE")} Punkte mit ${this.shots} Schüssen.`;
+
+    dom.gameResultOverlay.classList.remove("hidden");
+
+    const level = state.selectedLevel;
+
+    const isStageComplete = 
+        level % GAME_CONFIG.levelsPerStage === 0;
+
+    if (isStageComplete) {
+        Audio.playEffect("stagePassed");
+    } else {
+        Audio.playEffect("levelPassed");
+    }
+
+    const stars = this.calculateStars();
       const oldResult = (state.progress.results || {})[level];
 
       if (
@@ -1307,34 +1375,47 @@
       }
 
       dom.gameResultTitle.textContent = "Level geschafft!";
+
+      const nextButton = document.querySelector("#nextLevelButton");
+      if (nextButton) {
+    
+        nextButton.onclick = () => {
+       dom.gameResultOverlay.classList.add("hidden");
+
+    setTimeout(() => {
+        this.start(level + 1);
+    }, 300);
+};
+        nextButton.style.display = "block";
+      }
+
       dom.gameResultStars.textContent = "★".repeat(stars);
       dom.gameResultText.textContent =
         `${this.score.toLocaleString("de-DE")} Punkte mit ` +
         `${this.shots} Schüssen.`;
 
-      dom.stageCompleteOverlay.classList.remove("hidden");
-
-      // Stage Abschluss prüfen
+          // Stage Abschluss prüfen
       const finishedStage = getStageForLevel(level);
 
       if (level % GAME_CONFIG.levelsPerStage === 0) {
 
-       setTimeout(() => {
-       
+          setTimeout(() => {
 
-        dom.stageCompleteOverlay.classList.remove("hidden");
+              dom.stageCompleteOverlay.classList.remove("hidden");
 
-        dom.stageCompleteName.textContent =
-            `Stage ${finishedStage} geschafft!`;
+              dom.stageCompleteName.textContent =
+                  `Stage ${finishedStage} geschafft!`;
 
-        dom.stageCompleteText.textContent =
-            "Du hast diese Themenwelt gemeistert!";
+              dom.stageCompleteText.textContent =
+                  "Du hast diese Themenwelt gemeistert!";
 
-        dom.stageCompleteStars.textContent =
-            "⭐".repeat(stars);
+              dom.stageCompleteStars.textContent =
+                  "⭐".repeat(stars);
 
-    }, 1200);
-    }
+          }, 1200);
+
+      }
+
     },
 
     getCanvasPosition(event) {
@@ -1379,26 +1460,18 @@
           { passive: false }
       );
 
-     this.canvas.addEventListener(
+          this.canvas.addEventListener(
       "touchend",
       (event) => {
+
           event.preventDefault();
 
           const position = this.getCanvasPosition(event);
 
-          if (
-              position.x >= switchLeft &&
-              position.x <= switchLeft + switchSize &&
-              position.y >= switchTop &&
-              position.y <= switchTop + switchSize
-          ) {
-              this.swapShooterBall();
-              return;
-          }
-
           this.shoot(position.x, position.y);
+
       },
-      { passive: false }
+      { passive:false }
       );
     }
   };
@@ -1513,7 +1586,7 @@
 
     if (!confirmed) return;
 
-    SaveManager.clearProgress();
+    localStorage.clear();
     state.progress = SaveManager.loadProgress();
     ThemeManager.apply(state.progress.activeTheme);
     showToast("Neuer Spielstand wurde angelegt.");
@@ -1666,17 +1739,19 @@
 
   dom.resetProgressButton.addEventListener("click", () => {
     const confirmed = confirm(
-      "Alle Level, Sterne und Freischaltungen löschen?"
+        "Alle Level, Sterne und Freischaltungen löschen?"
     );
 
     if (!confirmed) return;
 
-    SaveManager.clearProgress();
-    state.progress = SaveManager.loadProgress();
-    ThemeManager.apply(state.progress.activeTheme);
-    StageMap.render();
-    showToast("Spielstand wurde zurückgesetzt.");
-  });
+    console.log("RESET gestartet");
+
+    localStorage.clear();
+
+    console.log("LOCAL STORAGE gelöscht");
+
+    location.reload();
+});
 
   function init() {
     ThemeManager.apply(state.progress.activeTheme);
