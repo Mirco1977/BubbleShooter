@@ -164,10 +164,24 @@
     <button
         id="bombItemButton"
         class="item-bar-button bomb-item"
-        type="button"
-    >
+        type="button">
         <img src="assets/ui/bomb-ball.png" alt="Bombenball">
         <span class="item-count">3</span>
+    </button>
+
+    <button id="switchItemButton"
+    class="item-bar-button switch-item"
+    type="button">
+        <img src="assets/ui/ballswitch.png" alt="Ball Switch">
+        <span class="item-count">3</span>
+    </button>
+
+    <button id="thunderItemButton"
+    class="item-bar-button thunder-item"
+    type="button">
+    <img src="assets/ui/thunder-ball.png" alt="Ball Switch">
+    <span class="item-count">3</span>
+
     </button>
 
     <button class="item-bar-button locked-item" type="button" disabled>
@@ -180,12 +194,12 @@
 
 </div>
 
-        <div id="gameResultOverlay" class="game-result-overlay hidden">
+        <div id="winResultOverlay" class="game-result-overlay hidden">
           <div class="game-result-card">
             <span class="eyebrow">ERGEBNIS</span>
-            <h3 id="gameResultTitle">Level geschafft!</h3>
-            <div id="gameResultStars" class="result-stars">★★★</div>
-            <p id="gameResultText"></p>
+            <h3 id="winResultTitle">Level geschafft!</h3>
+            <div id="winResultStars" class="result-stars">★★★</div>
+            <p id="winResultText"></p>
 
             <div class="result-actions">
               <button id="retryLevelButton" class="secondary-button">
@@ -201,6 +215,53 @@
           </div>
         </div>
       </div>
+
+      <div id="loseShotsOverlay" class="game-result-overlay hidden">
+    <div class="game-result-card">
+        <span class="eyebrow">ERGEBNIS</span>
+        <h3 id="loseShotsTitle">Leider verloren!</h3>
+
+        <div id="loseShotsStars" class="result-stars"></div>
+
+        <p id="loseShotsText">
+            Zu viele Schüsse verbraucht.
+        </p>
+
+        <div class="result-actions">
+            <button id="retryShotsButton" class="secondary-button">
+                Wiederholen
+            </button>
+
+            <button id="shotsMapButton" class="primary-button">
+                Zur Karte
+            </button>
+        </div>
+    </div>
+</div>
+
+
+<div id="loseBoundaryOverlay" class="game-result-overlay hidden">
+    <div class="game-result-card">
+        <span class="eyebrow">ERGEBNIS</span>
+        <h3 id="loseBoundaryTitle">Leider verloren!</h3>
+
+        <div class="result-stars"></div>
+
+        <p id="loseBoundaryText">
+            Die Kugeln haben die untere Spielfeldgrenze erreicht.
+        </p>
+
+        <div class="result-actions">
+            <button id="retryBoundaryButton" class="secondary-button">
+                Wiederholen
+            </button>
+
+            <button id="boundaryMapButton" class="primary-button">
+                Zur Karte
+            </button>
+        </div>
+    </div>
+</div>
 
       <div id="stageCompleteOverlay" class="hidden">
 

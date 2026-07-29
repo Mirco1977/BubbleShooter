@@ -1007,3 +1007,39 @@ code {
     }
 
 }
+
+/* =========================================================
+   DESKTOP / LAPTOP – SPIELFELD AN BILDSCHIRMHÖHE ANPASSEN
+   Die mobile Ansicht bleibt unverändert.
+   ========================================================= */
+
+@media (min-width: 768px) {
+
+  #playScreen .game-container {
+    /*
+     * Verfügbare Höhe:
+     * 100vh minus Header, Toolbar, HUD, Itembar und Abstände.
+     *
+     * Canvas-Verhältnis:
+     * 480 / 700
+     */
+    width: min(
+      100%,
+      calc((100vh - 245px) * 480 / 700)
+    );
+
+    max-width: 530px;
+    margin-left: auto;
+    margin-right: auto;
+  }
+
+  #playScreen #gameCanvas {
+    display: block;
+    width: 100%;
+    height: auto;
+  }
+
+  #playScreen .item-bar {
+    width: 100%;
+  }
+}

@@ -1,6 +1,7 @@
   import { GAME_CONFIG } from "./js/config/gameConfig.js";
   import { AudioManager } from "./js/managers/AudioManager.js";
   import { StorageManager } from "./js/managers/StorageManager.js";
+  import { calculateStars, STAR_CONFIG } from "./js/config/starConfig.js";
 
   (() => {
   "use strict";
@@ -92,6 +93,7 @@
   const $ = (id) => document.getElementById(id);
 
   const dom = {
+
     screens: {
       home: $("homeScreen"),
       map: $("mapScreen"),
@@ -111,6 +113,7 @@
     openRankingButton: $("openRankingButton"),
     openSettingsButton: $("openSettingsButton"),
     bombItemButton: $("bombItemButton"),
+    switchItemButton: $("switchItemButton"),
     settingsItemButton: $("settingsItemButton"),
 
     stageTitle: $("stageTitle"),
@@ -141,10 +144,7 @@
     shotsDisplay: $("shotsDisplay"),
     colorsDisplay: $("colorsDisplay"),
     gameCanvas: $("gameCanvas"),
-    gameResultOverlay: $("gameResultOverlay"),
-    gameResultTitle: $("gameResultTitle"),
-    gameResultStars: $("gameResultStars"),
-    gameResultText: $("gameResultText"),
+  
     stageCompleteOverlay: $("stageCompleteOverlay"),
     stageCompleteName: document.getElementById("stageCompleteName"),
     stageCompleteText: document.getElementById("stageCompleteText"),
@@ -152,6 +152,26 @@
     stageCompleteButton: document.getElementById("stageCompleteButton"),
     retryLevelButton: $("retryLevelButton"),
     resultMapButton: $("resultMapButton"),
+
+    winPopup: $("winResultOverlay"),
+
+    winResultOverlay: $("winResultOverlay"),
+    winResultTitle: $("winResultTitle"),
+    winResultStars: $("winResultStars"),
+    winResultText: $("winResultText"),
+    nextLevelButton: $("nextLevelButton"),
+
+    loseBoundaryPopup: $("loseBoundaryOverlay"),
+    loseBoundaryTitle: $("loseBoundaryTitle"),
+    loseBoundaryText: $("loseBoundaryText"),
+
+    loseShotsPopup: $("loseShotsOverlay"),
+    loseShotsTitle: $("loseShotsTitle"),
+    loseShotsStars: $("loseShotsStars"),
+    loseShotsText: $("loseShotsText"),
+
+    retryShotsButton: $("retryShotsButton"),
+    shotsMapButton: $("shotsMapButton"),
 
     activeThemeLabel: $("activeThemeLabel"),
     themeList: $("themeList"),
@@ -165,6 +185,7 @@
 
     toast: $("toast")
   };
+
 
   const SaveManager = new StorageManager();
 
@@ -477,8 +498,9 @@
       state.selectedLevel = levelNumber;
 
       const stage = getStageForLevel(levelNumber);
-      const colors = Math.min(3 + Math.floor((levelNumber - 1) / 8), 5);
-      const target = 800 + levelNumber * 200;
+      const levelConfig = STAR_CONFIG[levelNumber];
+      const colors = levelConfig?.ballTypes ?? 3;
+      const target = levelConfig?.targetScore ?? 1000;
       const result = state.progress.results[levelNumber];
 
       ThemeManager.applyStageAssets(stage);
@@ -509,6 +531,7 @@
     explosions: [],
     hasSwitchItem: true,
     hasBombItem: true,
+    switchBallActive: false,
     screenShake: 0,
     shooter: null,
     nextColor: null,
@@ -642,13 +665,26 @@
       this.running = true;
       this.levelFinished = false;
 
-      const colorCount = Math.min(
-        3 + Math.floor((levelNumber - 1) / 8),
-        5
-      );
+    const levelConfig = STAR_CONFIG[levelNumber];
+    const colorCount = Math.min(
+    levelConfig?.ballTypes ?? 3,
+    this.palette.length
+    );
+
+    const shuffledColors = [...this.palette];
+
+    for (let i = shuffledColors.length - 1; i > 0; i--) {
+        const randomIndex = Math.floor(Math.random() * (i + 1));
+
+        [shuffledColors[i], shuffledColors[randomIndex]] =
+            [shuffledColors[randomIndex], shuffledColors[i]];
+    }
+
+    this.activeColors = shuffledColors.slice(0, colorCount);
 
       this.activeColors = this.palette.slice(0, colorCount);
-      this.targetScore = 800 + levelNumber * 200;
+      
+      this.targetScore = levelConfig?.targetScore ?? 1000;
 
       dom.playLevelTitle.textContent = `Level ${levelNumber}`;
       dom.playScore.textContent = "0 Punkte";
@@ -656,7 +692,9 @@
         this.targetScore.toLocaleString("de-DE");
       dom.shotsDisplay.textContent = "0";
       dom.colorsDisplay.textContent = String(colorCount);
-      dom.gameResultOverlay.classList.add("hidden");
+      dom.winPopup?.classList.add("hidden");
+      dom.loseShotsPopup?.classList.add("hidden");
+      dom.loseBoundaryPopup?.classList.add("hidden");
 
       ThemeManager.applyStageAssets(getStageForLevel(levelNumber));
 
@@ -670,9 +708,13 @@
     },
     createBoard(levelNumber) {
       this.bubbles = [];
+      this.topRowOffset = 0;
 
-      const rows = Math.min(5 + Math.floor((levelNumber - 1) / 5), 9);
+      const levelConfig = STAR_CONFIG[levelNumber];
+
+      const rows = levelConfig?.rows ?? 5;
       const columns = 12;
+
 
       for (let row = 0; row < rows; row++) {
         for (let col = 0; col < columns; col++) {
@@ -692,6 +734,75 @@
         }
       }
     },
+
+    addNewTopRow() {
+      console.log("NEUE REIHE AUFGERUFEN");
+    const levelConfig = STAR_CONFIG[state.selectedLevel];
+
+    // Funktion für dieses Level ausgeschaltet
+    if (levelConfig?.addRowAfterShot !== "y") {
+        return;
+    }
+
+    // Vorhandene Bälle eine Reihe nach unten verschieben
+    this.bubbles.forEach((bubble) => {
+        bubble.y += this.rowHeight;
+
+        // Bälle innerhalb des Spielfeldes halten
+        bubble.x = Math.max(
+            this.radius,
+            Math.min(
+                this.width - this.radius,
+                bubble.x
+            )
+        );
+    });
+
+    // Neue oberste Reihe erzeugen
+    const columns = 12;
+
+// Ausrichtung der bisherigen obersten Reihe erkennen
+    const previousTopRow = this.bubbles.filter(
+        (bubble) =>
+            Math.abs(bubble.y - (this.radius + this.rowHeight)) < 2
+    );
+
+    const previousTopWasOffset =
+        previousTopRow.length > 0 &&
+        previousTopRow[0].x > this.radius + 2;
+
+    // Neue Reihe bekommt die entgegengesetzte Ausrichtung
+        this.topRowOffset =
+        this.topRowOffset === 0
+            ? this.columnWidth / 2
+            : 0;
+
+    const newRowOffset = this.topRowOffset;
+
+    for (let col = 0; col < columns; col++) {
+        const x =
+            this.radius +
+            col * this.columnWidth +
+            newRowOffset;
+
+        if (x > this.width - this.radius) {
+            continue;
+        }
+
+        const color = this.randomColor();
+
+            this.bubbles.push({
+        x,
+        y: this.radius,
+        color,
+        image: color.image,
+
+        isNewRow: true,
+        rowFlashStart: performance.now(),
+        rowFlashDuration: 450
+    });
+        }
+    }, 
 
     randomColor() {
       return this.activeColors[
@@ -786,7 +897,6 @@
 
     createShooter() {
 
-    console.log("shooter start", currentBallTheme, this.palette);
     const color = this.nextColor || this.randomColor();
 
     this.shooter = {
@@ -843,6 +953,7 @@
       this.shooter.moving = true;
 
       this.shots++;
+
       dom.shotsDisplay.textContent = String(this.shots);
     },
 
@@ -902,9 +1013,17 @@
       );
 
       if (ceilingHit || bubbleHit) {
-        this.attachShooter();
-      }
-    },
+      this.attachShooter();
+
+        // Max Schüsse prüfen nach abgeschlossenem Schuss
+        const maxShots = STAR_CONFIG[state.selectedLevel].maxShots;
+
+        if (!this.levelFinished && this.shots >= maxShots) {
+        this.finish(false);
+        return;
+    }
+    }
+},
 
     attachShooter() {
       if(this.shooter.isBomb) {
@@ -918,7 +1037,14 @@
           Math.round((this.shooter.y - this.radius) / this.rowHeight)
       );
 
-      const offset = row % 2 ? this.columnWidth / 2 : 0;
+      const halfOffset = this.columnWidth / 2;
+
+      const offset =
+          row % 2 === 0
+              ? this.topRowOffset
+              : this.topRowOffset === 0
+                  ? halfOffset
+                  : 0;
 
       const column = Math.round(
           (this.shooter.x - this.radius - offset) / this.columnWidth
@@ -962,13 +1088,13 @@
       }
 
       if (
-        this.score >= this.targetScore ||
-        this.bubbles.length <= 5
+      this.score >= this.targetScore
       ) {
-        this.victoryAnimation = true;
-        return;
+      this.victoryAnimation = true;
+      return;
       }
 
+      this.addNewTopRow();
       if (this.bubbles.some(
         (bubble) => bubble.y > this.height - 145
       )) {
@@ -1127,6 +1253,8 @@
             size
         );
 
+        this.drawNewRowFlash(bubble);
+
         return;
     }
 
@@ -1145,7 +1273,54 @@
     this.ctx.fillStyle = "#ffffff";
 
     this.ctx.fill();
+
+    this.drawNewRowFlash(bubble);
     },
+
+    drawNewRowFlash(bubble) {
+    if (
+        !bubble.isNewRow ||
+        !bubble.rowFlashStart ||
+        !bubble.rowFlashDuration
+    ) {
+        return;
+    }
+
+    const elapsed = performance.now() - bubble.rowFlashStart;
+    const progress = elapsed / bubble.rowFlashDuration;
+
+    if (progress >= 1) {
+        bubble.isNewRow = false;
+        return;
+    }
+
+    const pulse = Math.abs(
+        Math.sin(progress * Math.PI * 2)
+    );
+
+    const alpha = (1 - progress) * pulse * 0.9;
+
+    this.ctx.save();
+
+    this.ctx.globalAlpha = alpha;
+    this.ctx.globalCompositeOperation = "lighter";
+
+    this.ctx.fillStyle = "#ffffff";
+    this.ctx.shadowColor = "#ffffff";
+    this.ctx.shadowBlur = 18;
+
+    this.ctx.beginPath();
+    this.ctx.arc(
+        bubble.x,
+        bubble.y,
+        this.radius + 2,
+        0,
+        Math.PI * 2
+    );
+    this.ctx.fill();
+
+    this.ctx.restore();
+},
 
     drawAimGuide() {
       if (!state.settings.aimGuide || this.shooter?.moving) return;
@@ -1198,24 +1373,34 @@
       this.ctx.fillStyle = "#ffffff";
       this.ctx.font = "bold 15px Arial";
       this.ctx.textAlign = "left";
-      this.ctx.fillText("Nächste Kugel:", 0, this.height - 28);
+      this.ctx.fillText("Nächste Kugel:", 18, this.height - 28);
+
+      this.ctx.textAlign = "right";
+
+      this.ctx.fillStyle = "rgba(255,255,255,0.75)";
+      this.ctx.font = "bold 12px Arial";
+      this.ctx.fillText(
+          "PUNKTESTAND | ZIEL",
+          this.width - 18,
+          this.height - 48
+      );
+
+      this.ctx.fillStyle = "#ffffff";
+      this.ctx.font = "bold 17px Arial";
+      this.ctx.fillText(
+          `${this.score.toLocaleString("de-DE")} | ${this.targetScore.toLocaleString("de-DE")}`,
+          this.width - 18,
+          this.height - 25
+      );
 
       if (this.nextColor) {
         this.drawBubble({
-          x: 138,
+          x: 160,
           y: this.height - 34,
           color: this.nextColor
         });
       }
-      if (this.switchImage?.complete) {
-      this.ctx.drawImage(
-        this.switchImage,
-        142,
-        this.height - 92,
-        90,
-        90
-       );
-      }
+      
     },
 
     updateVictoryAnimation(deltaTime) {
@@ -1256,7 +1441,7 @@
         });
         this.bubbles = this.bubbles.filter(b => !b.remove);
 
-        if (this.bubbles.length === 0) {
+        if (this.bubbles.length === 0 && this.score >= this.targetScore) {
             this.finish(true);
         }
 
@@ -1290,47 +1475,106 @@
       cancelAnimationFrame(this.animationFrame);
     },
 
-    calculateStars() {
-      if (this.score >= this.targetScore * 1.6) return 3;
-      if (this.score >= this.targetScore * 1.2) return 2;
-      return 1;
-    },
+showLoseShotsPopup(text) {
+
+    dom.loseShotsTitle.textContent = "Leider verloren";
+
+    dom.loseShotsStars.textContent = "";
+
+    dom.loseShotsText.textContent = text;
+
+    dom.nextLevelButton.classList.add("hidden");
+
+    dom.loseShotsPopup.classList.remove("hidden");
+
+    this.levelFinished = true;
+
+    dom.retryShotsButton.onclick = () => {
+    dom.loseShotsPopup.classList.add("hidden");
+    this.start(state.selectedLevel);
+};
+
+dom.shotsMapButton.onclick = () => {
+    dom.loseShotsPopup.classList.add("hidden");
+    Navigation.show("map");
+};
+},
+
 
     async finish(won) {
-      if (this.levelFinished) return;
 
-      this.levelFinished = true;
-      this.stop();
+    if (this.levelFinished) return;
 
-     if (!won) {
-    dom.gameResultTitle.textContent = "Leider verloren";
-    dom.gameResultStars.textContent = "";
-    dom.gameResultText.textContent =
-        "Die Kugeln haben die untere Spielfeldgrenze erreicht.";
-    dom.gameResultOverlay.classList.remove("hidden");
+    this.stop();
+
+    if (!won) {
+    this.showLoseShotsPopup(
+        "Level verloren!"
+    );
     return;
+}
+
+    const starsCheck = calculateStars(
+    state.selectedLevel,
+    {
+        shots: this.shots,
+        score: this.score
+    }
+);
+
+if (starsCheck === 0) {
+
+    this.showLoseShotsPopup(
+        "Zu viele Schüsse verbraucht."
+    );
+
+    return;
+}
+
+this.levelFinished = true;
+    this.score += 0;
+
+    dom.winResultTitle.textContent = "Level geschafft!";
+
+
+const level = state.selectedLevel;
+
+
+const stars = calculateStars(
+    level,
+    {
+        shots: this.shots,
+        score: this.score
+    }
+);
+
+
+    // 0 Sterne = verloren
+    if (stars === 0) {
+
+        dom.loseShotsTitle.textContent = "Leider verloren!";
+
+        dom.loseShotsStars.textContent = "";
+
+        dom.loseShotsText.textContent =
+            "Zu viele Schüsse verbraucht.";
+
+        dom.loseShotsPopup.classList.remove("hidden");
+
+        return false;
     }
 
-    dom.gameResultTitle.textContent = "Level geschafft!";
-    dom.gameResultStars.textContent = "⭐".repeat(this.calculateStars());
-    dom.gameResultText.textContent =
+
+    // Sterne anzeigen
+    dom.winResultStars.textContent = "⭐".repeat(stars);
+
+
+    dom.winResultText.textContent =
         `${this.score.toLocaleString("de-DE")} Punkte mit ${this.shots} Schüssen.`;
 
-    dom.gameResultOverlay.classList.remove("hidden");
-
-    const level = state.selectedLevel;
-
-    const isStageComplete = 
-        level % GAME_CONFIG.levelsPerStage === 0;
-
-    if (isStageComplete) {
-        Audio.playEffect("stagePassed");
-    } else {
-        Audio.playEffect("levelPassed");
-    }
-
-    const stars = this.calculateStars();
-      const oldResult = (state.progress.results || {})[level];
+    dom.winResultOverlay.classList.remove("hidden");
+    
+    const oldResult = (state.progress.results || {})[level];
 
       if (
         !oldResult ||
@@ -1354,11 +1598,18 @@
       }
       
       if (won) {
-        state.progress.unlockedLevel = Math.max(
-          state.progress.unlockedLevel,
-          level + 1
-        );
-      }
+
+    dom.nextLevelButton.classList.remove("hidden");
+
+    const currentUnlocked =
+        Number(state.progress.unlockedLevel) || 1;
+
+    state.progress.unlockedLevel = Math.max(
+        currentUnlocked,
+        level + 1
+    );
+
+    }
 
       SaveManager.saveProgress(state.progress);
 
@@ -1374,23 +1625,30 @@
         console.warn("API-Speicherung fehlgeschlagen:", error);
       }
 
-      dom.gameResultTitle.textContent = "Level geschafft!";
+      dom.winResultTitle.textContent = "Level geschafft!";
 
       const nextButton = document.querySelector("#nextLevelButton");
       if (nextButton) {
     
-        nextButton.onclick = () => {
-       dom.gameResultOverlay.classList.add("hidden");
+     nextButton.onclick = () => {
+      dom.winResultOverlay.classList.add("hidden");
 
-    setTimeout(() => {
-        this.start(level + 1);
-    }, 300);
-};
+      state.progress.unlockedLevel = Math.max(
+          state.progress.unlockedLevel,
+          level + 1
+      );
+
+      SaveManager.saveProgress(state.progress);
+
+      setTimeout(() => {
+          this.start(level + 1);
+      }, 300);
+    };
         nextButton.style.display = "block";
       }
 
-      dom.gameResultStars.textContent = "★".repeat(stars);
-      dom.gameResultText.textContent =
+      dom.winResultStars.textContent = "★".repeat(stars);
+      dom.winResultText.textContent =
         `${this.score.toLocaleString("de-DE")} Punkte mit ` +
         `${this.shots} Schüssen.`;
 
@@ -1601,6 +1859,10 @@
     BubbleGame.activateBombBall();
   });
 
+  dom.switchItemButton.addEventListener("click", () => {
+    BubbleGame.activateSwitchBall();
+  })
+
   dom.settingsItemButton.addEventListener("click", () => {
       Navigation.show("settings");
   });
@@ -1696,7 +1958,7 @@
   dom.resultMapButton.addEventListener("click", () => {
     BubbleGame.stop();
     state.progress.selectedStage =
-      getStageForLevel(state.progress.unlockedLevel);
+      getStageForLevel(state.selectedLevel);
     SaveManager.saveProgress(state.progress);
     Navigation.show("map");
   });
@@ -1744,11 +2006,7 @@
 
     if (!confirmed) return;
 
-    console.log("RESET gestartet");
-
     localStorage.clear();
-
-    console.log("LOCAL STORAGE gelöscht");
 
     location.reload();
 });
