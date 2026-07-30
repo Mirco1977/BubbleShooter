@@ -710,21 +710,36 @@
       this.bubbles = [];
       this.topRowOffset = 0;
 
-      const levelConfig = STAR_CONFIG[levelNumber];
+      // Horizontale Grundposition für ein zentriertes Raster
+      this.gridBaseX =
+      (this.width - 12 * this.columnWidth) / 2;
 
-      const rows = levelConfig?.rows ?? 5;
-      const columns = 12;
+    const levelConfig = STAR_CONFIG[levelNumber];
 
-
+    const rows = levelConfig?.rows ?? 5;
       for (let row = 0; row < rows; row++) {
-        for (let col = 0; col < columns; col++) {
-          const offset = row % 2 ? this.columnWidth / 2 : 0;
-          const x = this.radius + col * this.columnWidth + offset;
-          const y = this.radius + row * this.rowHeight;
+    const offset =
+        row % 2
+            ? this.columnWidth / 2
+            : 0;
+
+    // Volle Reihe: 13 Bälle
+    // Versetzte Reihe: 12 Bälle
+    const columns = offset === 0 ? 13 : 12;
+
+    for (let col = 0; col < columns; col++) {
+    const x =
+            this.gridBaseX +
+            col * this.columnWidth +
+            offset;
+
+    const y =
+            this.radius +
+            row * this.rowHeight;
 
           if (x > this.width - this.radius) continue;
           
-          const color = this.randomColor();
+    const color = this.randomColor();
           this.bubbles.push({
             x,
             y,
@@ -758,10 +773,9 @@
         );
     });
 
-    // Neue oberste Reihe erzeugen
-    const columns = 12;
+   
 
-// Ausrichtung der bisherigen obersten Reihe erkennen
+    // Ausrichtung der bisherigen obersten Reihe erkennen
     const previousTopRow = this.bubbles.filter(
         (bubble) =>
             Math.abs(bubble.y - (this.radius + this.rowHeight)) < 2
@@ -779,11 +793,16 @@
 
     const newRowOffset = this.topRowOffset;
 
+    const columns =
+    newRowOffset === 0
+        ? 13
+        : 12;
+
     for (let col = 0; col < columns; col++) {
         const x =
-            this.radius +
-            col * this.columnWidth +
-            newRowOffset;
+        this.gridBaseX +
+        col * this.columnWidth +
+        newRowOffset;
 
         if (x > this.width - this.radius) {
             continue;
@@ -1047,25 +1066,34 @@
                   : 0;
 
       const column = Math.round(
-          (this.shooter.x - this.radius - offset) / this.columnWidth
+      (
+        this.shooter.x -
+        this.gridBaseX -
+        offset
+      ) / this.columnWidth
       );
 
       const placed = {
-          x: Math.max(
-              this.radius,
-              Math.min(
-                  this.width - this.radius,
-                  this.radius + column * this.columnWidth + offset
-              )
-          ),
-          y: this.radius + row * this.rowHeight,
-          color: this.shooter.color
+      x: Math.max(
+          this.radius,
+          Math.min(
+              this.width - this.radius,
+              this.gridBaseX +
+                  column * this.columnWidth +
+                  offset
+          )
+      ),
+      y: this.radius + row * this.rowHeight,
+      color: this.shooter.color
       };
 
       this.bubbles.push(placed);
 
       const connected = this.findConnectedSameColor(placed);
-      if (connected.length >= 3) {
+
+      const removedBubbles = connected.length >= 3;
+
+      if (removedBubbles) {
         Audio.playEffect("hit");
 
         connected.forEach((bubble) => {
@@ -1094,7 +1122,10 @@
       return;
       }
 
+      if (!removedBubbles) {
       this.addNewTopRow();
+      }
+      
       if (this.bubbles.some(
         (bubble) => bubble.y > this.height - 145
       )) {
@@ -1346,6 +1377,8 @@
     draw() {
 
       if (!this.ctx) return;
+      // Zeichenfläche vor jedem Bild vollständig zurücksetzen
+      this.ctx.setTransform(1, 0, 0, 1, 0, 0);
 
       this.ctx.clearRect(0, 0, this.width, this.height);
       this.ctx.save();
@@ -1400,7 +1433,8 @@
           color: this.nextColor
         });
       }
-      
+    // Ganz wichtig
+    this.ctx.restore();
     },
 
     updateVictoryAnimation(deltaTime) {

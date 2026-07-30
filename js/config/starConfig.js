@@ -4,7 +4,7 @@ const STAR_CONFIG = {
     ballTypes: 3,
     addRowAfterShot: "n",
     rows: 3,
-    targetScore: 1000,
+    targetScore: 500,
     mode: "shots",
     maxShots: 8,
 
@@ -24,7 +24,7 @@ const STAR_CONFIG = {
     maxShots: 14,
 
     shots: {
-        threeStars: 5,
+        threeStars: 6,
         twoStars: 9,
         oneStar: 14
     }
@@ -54,8 +54,8 @@ const STAR_CONFIG = {
     maxShots: 16,
 
     shots: {
-        threeStars: 7,
-        twoStars: 10,
+        threeStars: 8,
+        twoStars: 12,
         oneStar: 13
     }
 },
@@ -68,7 +68,7 @@ const STAR_CONFIG = {
     maxShots: 18,
 
     shots: {
-        threeStars: 8,
+        threeStars: 10,
         twoStars: 14,
         oneStar: 18
     }
@@ -82,7 +82,7 @@ const STAR_CONFIG = {
     maxShots: 20,
 
     shots: {
-        threeStars: 9,
+        threeStars: 12,
         twoStars: 16,
         oneStar: 20
     }
@@ -96,7 +96,7 @@ const STAR_CONFIG = {
     maxShots: 23,
 
     shots: {
-        threeStars: 10,
+        threeStars: 14,
         twoStars: 18,
         oneStar: 23
     }
@@ -110,7 +110,7 @@ const STAR_CONFIG = {
     maxShots: 26,
 
     shots: {
-        threeStars: 11,
+        threeStars: 17,
         twoStars: 20,
         oneStar: 26
     }
@@ -124,8 +124,8 @@ const STAR_CONFIG = {
     maxShots: 28,
 
     shots: {
-        threeStars: 12,
-        twoStars: 20,
+        threeStars: 20,
+        twoStars: 24,
         oneStar: 28
     }
 },
@@ -138,8 +138,8 @@ const STAR_CONFIG = {
     maxShots: 30,
 
     shots: {
-        threeStars: 12,
-        twoStars: 22,
+        threeStars: 22,
+        twoStars: 25,
         oneStar: 30
     }
 },
