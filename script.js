@@ -576,7 +576,7 @@
       if (!this.shooter || this.shooter.moving) return;
 
     this.aimItemAktive = true;
-    console.log("Aim item aktiviert:", this.aimItemAktive);
+   
     },
 
     testBombBall() {
@@ -782,7 +782,7 @@
     },
 
     addNewTopRow() {
-      console.log("NEUE REIHE AUFGERUFEN");
+     
     const levelConfig = STAR_CONFIG[state.selectedLevel];
 
     // Funktion für dieses Level ausgeschaltet
@@ -1242,7 +1242,7 @@ createShooter() {
 
         if (target) {
 
-    console.log("Thunder trifft Kugel", thunder.currentTarget);
+   
 
     this.explosions.push({
         x: target.x,
@@ -1425,15 +1425,15 @@ createShooter() {
         this.finish(false);
         return;
       }
-      console.log("attach shooter - aim status vor reset:", this.aimItemAktive);
+  
     
       this.createShooter();
 
-      console.log("nach neuem shooter:", this.activateAimItem);
+   
 
         if (this.aimItemAktive) {
           this.aimItemAktive = false;
-          console.log("Aim Item verbraucht");
+    
       }
       
   },
@@ -1495,7 +1495,7 @@ explodeThunder() {
         currentTarget: 0,
         hitTimer: 0
     });
-    console.log(this.thunders[this.thunders.length - 1].targets
+   
     );
 },
 findThunderTargets(startX, startY) {
