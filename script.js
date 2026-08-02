@@ -115,6 +115,7 @@
     bombItemButton: $("bombItemButton"),
     thunderItemButton: $("thunderItemButton"),
     switchItemButton: $("switchItemButton"),
+    aimItemButton: $("aimItemButton"),
     settingsItemButton: $("settingsItemButton"),
 
     stageTitle: $("stageTitle"),
@@ -532,9 +533,14 @@
     explosions: [],
     thunders: [],
     explosions: [],
+
     hasSwitchItem: true,
     hasBombItem: true,
+    hasAimItem: true,
+
     switchBallActive: false,
+    aimItemAktive: false,
+
     screenShake: 0,
     shooter: null,
     nextColor: null,
@@ -564,6 +570,13 @@
     if (!this.shooter || this.shooter.moving) return;
 
     this.swapShooterBall();
+    },
+
+    activateAimItem() {
+      if (!this.shooter || this.shooter.moving) return;
+
+    this.aimItemAktive = true;
+    console.log("Aim item aktiviert:", this.aimItemAktive);
     },
 
     testBombBall() {
@@ -670,6 +683,9 @@
       
       this.thunderImage = new Image();
       this.thunderImage.src = "assets/ui/thunder-ball.png";
+
+      this.aimImage = new Image();
+      this.aimImage.src = "assets/ui/lupe.png";
 
       this.canvas = dom.gameCanvas;
       this.ctx = this.canvas.getContext("2d");
@@ -1123,6 +1139,7 @@ createShooter() {
         moving: false,
         isBomb: false,
         isThunder: false,
+        isAim: false,
         color: color,
         image: color.image || null
     };
@@ -1170,6 +1187,10 @@ createShooter() {
       this.shots++;
 
       dom.shotsDisplay.textContent = String(this.shots);
+
+      /*if (this.aimItemActive) {
+        this.aimItemActive = false;
+      }*/
     },
 
     update(deltaTime = 1) {
@@ -1404,8 +1425,17 @@ createShooter() {
         this.finish(false);
         return;
       }
-
+      console.log("attach shooter - aim status vor reset:", this.aimItemAktive);
+    
       this.createShooter();
+
+      console.log("nach neuem shooter:", this.activateAimItem);
+
+        if (this.aimItemAktive) {
+          this.aimItemAktive = false;
+          console.log("Aim Item verbraucht");
+      }
+      
   },
 
 explodeBomb() {
@@ -1588,8 +1618,8 @@ findConnectedSameColor(origin) {
       }
     },
 
-    drawBubble(bubble) {
-
+drawBubble(bubble) {
+    
     // Bombenkugel
     if (bubble.isBomb && this.bombImage?.complete) {
 
@@ -1636,13 +1666,13 @@ findConnectedSameColor(origin) {
 
     if (!this.ballImageCache[imagePath]) {
 
-        const img = new Image();
+      const img = new Image();
 
-        img.src = imagePath;
+      img.src = imagePath;
 
-        this.ballImageCache[imagePath] = img;
+      this.ballImageCache[imagePath] = img;
 
-        return;
+      return;
     }
 
 
@@ -1729,27 +1759,82 @@ findConnectedSameColor(origin) {
     this.ctx.restore();
 },
 
-    drawAimGuide() {
-      if (!state.settings.aimGuide || this.shooter?.moving) return;
+drawAimGuide() {
 
-      const dx = this.aimX - this.shooter.x;
-      const dy = Math.min(this.aimY - this.shooter.y, -40);
-      const length = Math.hypot(dx, dy) || 1;
+  if (
+    (!state.settings.aimGuide && !this.aimItemAktive) ||
+    this.shooter?.moving
+  ) return;
 
-      this.ctx.save();
-      this.ctx.setLineDash([7, 9]);
-      this.ctx.strokeStyle = "rgba(255,255,255,.72)";
-      this.ctx.lineWidth = 2;
-      this.ctx.beginPath();
-      this.ctx.moveTo(this.shooter.x, this.shooter.y);
-      this.ctx.lineTo(
-        this.shooter.x + dx / length * 220,
-        this.shooter.y + dy / length * 220
+
+  const dx = this.aimX - this.shooter.x;
+  const dy = Math.min(this.aimY - this.shooter.y, -40);
+  const length = Math.hypot(dx, dy) || 1;
+
+
+  this.ctx.save();
+
+  this.ctx.setLineDash([7, 9]);
+  this.ctx.strokeStyle = "rgba(255,255,255,.72)";
+  this.ctx.lineWidth = 2;
+
+
+  this.ctx.beginPath();
+
+
+  const guideLength = this.aimItemAktive ? 600 : 220;
+
+
+  let x = this.shooter.x;
+  let y = this.shooter.y;
+
+
+  let vx = dx / length;
+  let vy = dy / length;
+
+
+  this.ctx.moveTo(x, y);
+
+
+  for (let i = 0; i < guideLength; i += 5) {
+
+    x += vx * 5;
+    y += vy * 5;
+
+
+    // Wand-Abpraller links/rechts
+    if (
+      x <= this.radius ||
+      x >= this.width - this.radius
+    ) {
+
+      vx *= -1;
+
+      x = Math.max(
+        this.radius,
+        Math.min(
+          this.width - this.radius,
+          x
+        )
       );
-      this.ctx.stroke();
-      this.ctx.restore();
-    },
+    }
 
+
+    this.ctx.lineTo(x, y);
+
+
+    // Decke erreicht
+    if (y <= this.radius) {
+      break;
+    }
+  }
+
+
+  this.ctx.stroke();
+
+
+  this.ctx.restore();
+},
     draw() {
 
       if (!this.ctx) return;
@@ -2276,6 +2361,10 @@ const stars = calculateStars(
 
   dom.thunderItemButton.addEventListener("click", () => {
     BubbleGame.activateThunderBall();
+  });
+
+  dom.aimItemButton.addEventListener("click", () => {
+    BubbleGame.activateAimItem();
   });
 
   dom.settingsItemButton.addEventListener("click", () => {
