@@ -1496,7 +1496,6 @@ explodeThunder() {
         hitTimer: 0
     });
    
-    );
 },
 findThunderTargets(startX, startY) {
 
