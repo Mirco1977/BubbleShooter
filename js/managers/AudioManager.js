@@ -34,7 +34,11 @@ export class AudioManager {
             ),
             bomb: new Audio(
                 "assets/audio/bomb.mp3"
-            )
+            ),
+            thunder: new Audio(
+                "assets/audio/thunder.mp3"
+            ),
+
         };
 
         this.backgroundStarted = false;
@@ -62,6 +66,7 @@ export class AudioManager {
         this.audio.levelStart.load();
         this.audio.shoot.load();
         this.audio.stagePassed.load();
+        this.audio.thunder.load();
     }
 
     getCurrentSettings() {

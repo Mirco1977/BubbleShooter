@@ -113,6 +113,7 @@
     openRankingButton: $("openRankingButton"),
     openSettingsButton: $("openSettingsButton"),
     bombItemButton: $("bombItemButton"),
+    thunderItemButton: $("thunderItemButton"),
     switchItemButton: $("switchItemButton"),
     settingsItemButton: $("settingsItemButton"),
 
@@ -529,6 +530,8 @@
     bubbles: [],
     particles: [],
     explosions: [],
+    thunders: [],
+    explosions: [],
     hasSwitchItem: true,
     hasBombItem: true,
     switchBallActive: false,
@@ -549,6 +552,12 @@
     if (!this.shooter || this.shooter.moving) return;
 
     this.shooter.isBomb = true;
+    },
+
+    activateThunderBall() {
+      if (!this.shooter || this.shooter.moving) return;
+
+      this.shooter.isThunder = true;
     },
 
     activateSwitchBall() {
@@ -622,6 +631,7 @@
       this.victoryAnimation = false;
       this.levelFinished = false;
       this.particles = [];
+      this.lightningHits = [];
       const stageNumber = getStageForLevel(levelNumber);
       this.ballImageCache = {};
 
@@ -654,8 +664,13 @@
   }
       this.switchImage = new Image();
       this.switchImage.src = "assets/ui/ballswitch.png";
+
       this.bombImage = new Image();
       this.bombImage.src = "assets/ui/bomb-ball.png";
+      
+      this.thunderImage = new Image();
+      this.thunderImage.src = "assets/ui/thunder-ball.png";
+
       this.canvas = dom.gameCanvas;
       this.ctx = this.canvas.getContext("2d");
       this.width = this.canvas.width;
@@ -830,18 +845,32 @@
     },
 
     createPopEffect(x, y, color) {
-      for (let i = 0; i < 10; i++) {
+
+    // kurzer heller Glow beim Zerplatzen
+    this.explosions.push({
+        x,
+        y,
+        radius: 5,
+        alpha: 0.7,
+        popGlow: true
+    });
+
+
+    // bestehende Partikel
+    for (let i = 0; i < 10; i++) {
+
         this.particles.push({
-          x,
-          y,
-          color,
-          vx: (Math.random() - 0.5) * 5,
-          vy: (Math.random() - 0.5) * 5,
-          size: 5 + Math.random() * 4,
-          life: 25
+            x,
+            y,
+            color,
+            vx: (Math.random() - 0.5) * 5,
+            vy: (Math.random() - 0.5) * 5,
+            size: 5 + Math.random() * 4,
+            life: 25
         });
-      }
-    },
+
+    }
+},
 
     updateParticles(deltaTime = 1) {
     this.particles.forEach((particle) => {
@@ -877,6 +906,8 @@
         this.ctx.fill();
         this.ctx.restore();
     });
+    
+
         this.explosions.forEach((explosion) => {
         this.ctx.save();
 
@@ -912,9 +943,175 @@
 
         this.ctx.restore();
     });
-},
 
-    createShooter() {
+    
+    this.thunders.forEach((thunder) => {
+
+    this.ctx.save();
+
+    const gradient = this.ctx.createLinearGradient(
+    thunder.x,
+    thunder.y - 50,
+    thunder.x,
+    thunder.y + 50
+);
+
+gradient.addColorStop(0, "#ffffff");
+gradient.addColorStop(0.4, "#9fffff");
+gradient.addColorStop(0.7, "#00bfff");
+gradient.addColorStop(1, "#0066ff");
+
+this.ctx.strokeStyle = gradient;
+
+this.ctx.lineWidth = 3;
+
+this.ctx.shadowColor = "#00aaff";
+this.ctx.shadowBlur = 25;
+
+    this.ctx.beginPath();
+
+    this.ctx.moveTo(
+        thunder.x,
+        thunder.y
+    );
+
+    let currentX = thunder.x;
+    let currentY = thunder.y;
+
+    while (currentY > 50) {
+
+        currentX += (Math.random() - 0.5) * 40;
+        currentY -= 40;
+
+        this.ctx.lineTo(
+            currentX,
+            currentY
+        );
+    }
+
+    this.ctx.stroke();
+
+    this.ctx.restore();
+
+    });
+},
+drawThunders() {
+
+    this.thunders.forEach((thunder) => {
+
+        this.ctx.save();
+
+        const alpha = thunder.alpha ?? 1;
+
+        this.ctx.globalAlpha = alpha;
+
+        /*
+         * Dünner Energie-Strahl
+         * kein Blitz, nur dezenter Lichtfaden
+         */
+
+        this.ctx.beginPath();
+
+        this.ctx.moveTo(
+            thunder.x,
+            thunder.y
+        );
+
+        this.ctx.lineTo(
+            thunder.x,
+            thunder.y - 160
+        );
+
+        this.ctx.strokeStyle = "#ffffff";
+        this.ctx.lineWidth = 1.5;
+
+        this.ctx.shadowColor = "#8eeaff";
+        this.ctx.shadowBlur = 12;
+
+        this.ctx.stroke();
+
+
+        /*
+         * Einschlag Glow
+         */
+
+        const pulse =
+            Math.sin(performance.now() * 0.04) * 0.15 + 0.85;
+
+
+        this.ctx.globalAlpha =
+            alpha * pulse;
+
+
+        const glow =
+            this.ctx.createRadialGradient(
+                thunder.x,
+                thunder.y,
+                0,
+                thunder.x,
+                thunder.y,
+                35
+            );
+
+
+        glow.addColorStop(
+            0,
+            "rgba(255,255,255,0.9)"
+        );
+
+        glow.addColorStop(
+            0.3,
+            "rgba(180,240,255,0.5)"
+        );
+
+        glow.addColorStop(
+            1,
+            "rgba(0,180,255,0)"
+        );
+
+
+        this.ctx.fillStyle = glow;
+
+        this.ctx.beginPath();
+
+        this.ctx.arc(
+            thunder.x,
+            thunder.y,
+            35,
+            0,
+            Math.PI * 2
+        );
+
+        this.ctx.fill();
+
+
+        /*
+         * kleiner weißer Kern
+         */
+
+        this.ctx.fillStyle = "#ffffff";
+
+        this.ctx.shadowBlur = 8;
+
+        this.ctx.beginPath();
+
+        this.ctx.arc(
+            thunder.x,
+            thunder.y,
+            6,
+            0,
+            Math.PI * 2
+        );
+
+        this.ctx.fill();
+
+
+        this.ctx.restore();
+
+    });
+
+},
+createShooter() {
 
     const color = this.nextColor || this.randomColor();
 
@@ -925,6 +1122,7 @@
         vy: 0,
         moving: false,
         isBomb: false,
+        isThunder: false,
         color: color,
         image: color.image || null
     };
@@ -964,8 +1162,6 @@
           : state.settings.gameSpeed === "fast"
           ? 1.50
           : 1);
-
-      Audio.playEffect("shoot");
 
       this.shooter.vx = dx / length * speed;
       this.shooter.vy = dy / length * speed;
@@ -1007,6 +1203,74 @@
       }
     }
 
+    this.thunders = this.thunders.filter((thunder) => {
+
+    thunder.life--;
+
+    thunder.alpha -= 0.03;
+
+    return thunder.life > 0;
+
+    });
+
+    this.thunders.forEach((thunder) => {
+
+    if (thunder.targets.length > 0 && thunder.hitTimer <= 0) {
+
+        const target = thunder.targets[thunder.currentTarget];
+
+        if (target) {
+
+    console.log("Thunder trifft Kugel", thunder.currentTarget);
+
+    this.explosions.push({
+        x: target.x,
+        y: target.y,
+        radius: 0,
+        alpha: 1
+    });
+
+    this.lightningHits.push({
+        x: target.x,
+        y: target.y,
+        life: 15
+    });
+
+    this.particles.push({
+        x: target.x,
+        y: target.y,
+        size: 22,
+        life: 30,
+        color: "#ffffff"
+    });
+
+    const removedByThunder = thunder.targets.length;
+
+    this.bubbles = this.bubbles.filter(
+        (bubble) => !thunder.targets.includes(bubble) || bubble === target
+    );
+
+    this.score += removedByThunder * 100;
+
+    dom.playScore.textContent = `${this.score.toLocaleString("de-DE")} Punkte`;
+
+    this.removeFloatingBubbles();
+
+    this.bubbles = this.bubbles.filter(
+        (bubble) => !thunder.targets.includes(bubble) || bubble === target
+    );
+
+    this.removeFloatingBubbles();
+
+    thunder.currentTarget++;
+    thunder.hitTimer = 25;
+}
+    }
+
+    thunder.hitTimer--;
+
+    });
+
     if (!this.running || !this.shooter?.moving) return;
 
       this.shooter.x += this.shooter.vx * deltaTime * speedMultiplier;
@@ -1047,6 +1311,13 @@
     attachShooter() {
       if(this.shooter.isBomb) {
         this.explodeBomb();
+        this.createShooter();
+        return;
+      }
+
+      if (this.shooter.isThunder) {
+        Audio.playEffect("thunder");
+        this.explodeThunder();
         this.createShooter();
         return;
       }
@@ -1158,9 +1429,79 @@
         return distance > explosionRadius;
       });
       this.removeFloatingBubbles();
-    },
+ },
+explodeThunder() {
 
-    findConnectedSameColor(origin) {
+    /*Audio.playEffect("thunder");*/
+
+    this.thunders.push({
+        x: this.shooter.x,
+        y: this.shooter.y,
+        alpha: 1,
+        life: 8,
+        targets: this.findThunderTargets(
+          this.shooter.x,
+          this.shooter.y
+        ),
+        currentTarget: 0,
+        hitTimer: 0
+    });
+    console.log(this.thunders[this.thunders.length - 1].targets
+    );
+},
+findThunderTargets(startX, startY) {
+
+  const targets = [];
+
+  let x = startX;
+  let y = startY;
+
+  const steps = 20;
+  const stepHeight = 25;
+
+  for (let i = 0; i < steps; i++) {
+
+    x += 0;
+    y -= stepHeight;
+
+    this.bubbles.forEach((bubble) => {
+
+        const distance = Math.hypot(
+            bubble.x - x,
+            bubble.y - y
+        );
+
+        if (distance < this.radius * 1.3) {
+
+            if (!targets.includes(bubble)) {
+                targets.push(bubble);
+            }
+
+        }
+
+    });
+}
+
+
+// mindestens eine Kugel pro Reihe treffen
+const rows = {};
+
+targets.forEach((bubble) => {
+
+    const row = Math.round(bubble.y / (this.radius * 1,7));
+
+    if (!rows[row]) {
+        rows[row] = bubble;
+    }
+
+});
+
+
+return targets;
+
+},
+
+findConnectedSameColor(origin) {
       const result = [];
       const visited = new Set();
       const queue = [origin];
@@ -1244,6 +1585,22 @@
         );
 
         return;
+    }
+
+    // Thunderkugel
+    if (bubble.isThunder && this.thunderImage?.complete) {
+
+    const size = this.radius * 2;
+
+    this.ctx.drawImage(
+        this.thunderImage,
+        bubble.x - this.radius,
+        bubble.y - this.radius,
+        size,
+        size
+    );
+
+    return;
     }
 
     const size = this.radius * 2;
@@ -1394,6 +1751,7 @@
 
       this.bubbles.forEach((bubble) => this.drawBubble(bubble));
       this.drawParticles();
+      this.drawThunders();
       this.drawAimGuide();
 
       if (this.shooter && !this.victoryAnimation) {
@@ -1896,6 +2254,10 @@ const stars = calculateStars(
   dom.switchItemButton.addEventListener("click", () => {
     BubbleGame.activateSwitchBall();
   })
+
+  dom.thunderItemButton.addEventListener("click", () => {
+    BubbleGame.activateThunderBall();
+  });
 
   dom.settingsItemButton.addEventListener("click", () => {
       Navigation.show("settings");
