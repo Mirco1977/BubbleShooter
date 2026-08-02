@@ -1310,13 +1310,14 @@ createShooter() {
 
     attachShooter() {
       if(this.shooter.isBomb) {
+        
         this.explodeBomb();
         this.createShooter();
         return;
       }
 
       if (this.shooter.isThunder) {
-        Audio.playEffect("thunder");
+        
         this.explodeThunder();
         this.createShooter();
         return;
@@ -1405,34 +1406,52 @@ createShooter() {
       }
 
       this.createShooter();
-    },
+  },
 
-    explodeBomb() {
-      Audio.playEffect("bomb");
+explodeBomb() {
+  Audio.playEffect("bomb");
 
-      this.explosions.push({
-        x: this.shooter.x,
-        y: this.shooter.y,
-        radius: 0,
-        alpha: 1
-      });
+  this.explosions.push({
+    x: this.shooter.x,
+    y: this.shooter.y,
+    radius: 0,
+    alpha: 1
+  });
 
-      this.screenShake = 12;
+  this.screenShake = 12;
 
-      const explosionRadius = this.radius * 2.5;
+  const explosionRadius = this.radius * 2.5;
 
-      this.bubbles = this.bubbles.filter((bubble) => {
-        const distance = Math.hypot(
-          bubble.x - this.shooter.x,
-          bubble.y - this.shooter.y
-        );
-        return distance > explosionRadius;
-      });
-      this.removeFloatingBubbles();
- },
+  const removedByBomb = this.bubbles.filter((bubble) => {
+    const distance = Math.hypot(
+      bubble.x - this.shooter.x,
+      bubble.y - this.shooter.y
+    );
+
+    return distance <= explosionRadius;
+  });
+
+  // Score: jede zerstörte Kugel = 100 Punkte
+  this.score += removedByBomb.length * 100;
+
+  dom.playScore.textContent =
+    `${this.score.toLocaleString("de-DE")} Punkte`;
+
+  this.bubbles = this.bubbles.filter((bubble) => {
+    const distance = Math.hypot(
+      bubble.x - this.shooter.x,
+      bubble.y - this.shooter.y
+    );
+
+    return distance > explosionRadius;
+  });
+
+  this.removeFloatingBubbles();
+},
+
 explodeThunder() {
 
-    /*Audio.playEffect("thunder");*/
+    Audio.playEffect("thunder");
 
     this.thunders.push({
         x: this.shooter.x,
