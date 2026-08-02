@@ -1273,7 +1273,12 @@ createShooter() {
 
     this.score += removedByThunder * 100;
 
-    dom.playScore.textContent = `${this.score.toLocaleString("de-DE")} Punkte`;
+    dom.playScore.textContent =
+        `${this.score.toLocaleString("de-DE")} Punkte`;
+
+setTimeout(() => {
+  this.checkScoreWin();
+}, 900);
 
     this.removeFloatingBubbles();
 
@@ -1438,6 +1443,12 @@ createShooter() {
       
   },
 
+checkScoreWin() {
+  if (this.score >= this.targetScore) {
+      this.victoryAnimation = true;
+  }
+},
+
 explodeBomb() {
   Audio.playEffect("bomb");
 
@@ -1464,8 +1475,10 @@ explodeBomb() {
   // Score: jede zerstörte Kugel = 100 Punkte
   this.score += removedByBomb.length * 100;
 
-  dom.playScore.textContent =
+dom.playScore.textContent =
     `${this.score.toLocaleString("de-DE")} Punkte`;
+
+this.checkScoreWin();
 
   this.bubbles = this.bubbles.filter((bubble) => {
     const distance = Math.hypot(
@@ -1899,6 +1912,9 @@ drawAimGuide() {
     },
 
     updateVictoryAnimation(deltaTime) {
+      // Victory Animation startet sauber ohne alte Effekte
+      this.explosions = [];
+      this.particles = [];
 
       this.bubbles.forEach((bubble) => {
 
@@ -1997,6 +2013,9 @@ dom.shotsMapButton.onclick = () => {
 
 
     async finish(won) {
+     
+    this.explosions = [];
+    this.particles = [];
 
     if (this.levelFinished) return;
 
