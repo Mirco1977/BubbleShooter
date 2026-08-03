@@ -21,64 +21,239 @@
   
 
   const THEMES = {
-    arena: {
-      id: "arena",
-      name: "Bandenkick Arena",
-      description: "Dein Start in eine neue Welt",
-      logo: "assets/logos/LigaLogoBordered.png",
 
-      colors: {
-        brand: "#860000",
-        brandDark: "#530000",
-        page: "#161921"
-      },
-      previews: {
-        card: "linear-gradient(135deg, #860000, #1b1f2b)"
-      }
-    },
-      worldCup: {
-      id: "worldCup",
-      name: "World Cup",
-      description: "Fußballweltmeisterschaft 2026",
-      logo: "assets/logos/WM-Pokal.png",
+  arena: {
+    id: "arena",
+    name: "Bandenkick Arena",
+    description: "Dein Start in eine neue Welt",
+    logo: "assets/logos/LigaLogoBordered.png",
 
-      colors: {
-        brand: "#c9972b",
-        brandDark: "#75151b",
-        page: "#071b26"
-     },
-      previews: {
-        card: "linear-gradient(135deg, #75151b, #c9972b, #087e79)"
-      }
+    colors: {
+      brand: "#860000",
+      brandDark: "#530000",
+      page: "#161921"
     },
-      wasser: {
-      id: "wasser",
-      name: "Tropical Paradise",
-      description: "Heiße Tage - Wasserspaß",
-      logo: "assets/logos/Wasser-surfer.png",
-      colors: {
-        brand: "#245b91",
-        brandDark: "#12314f",
-        page: "#17202b"
-      },
-      previews: {
-        card: "linear-gradient(135deg, #2c6ca9, #c4e9ff)"
-      }
+
+    previews: {
+      card: "linear-gradient(135deg, #860000, #1b1f2b)"
     }
-  };
+  },
+
+
+  worldCup: {
+    id: "worldCup",
+    name: "World Cup",
+    description: "Fußballweltmeisterschaft",
+    logo: "assets/logos/WM-Pokal.png",
+
+    colors: {
+      brand: "#c9972b",
+      brandDark: "#75151b",
+      page: "#071b26"
+    },
+
+    previews: {
+      card: "linear-gradient(135deg, #75151b, #c9972b)"
+    }
+  },
+
+
+  wasser: {
+    id: "wasser",
+    name: "Tropical Paradise",
+    description: "Heiße Tage - Wasserspaß",
+    logo: "assets/logos/Wasser-surfer.png",
+
+    colors: {
+      brand: "#245b91",
+      brandDark: "#12314f",
+      page: "#17202b"
+    },
+
+    previews: {
+      card: "linear-gradient(135deg, #2c6ca9, #c4e9ff)"
+    }
+  },
+
+
+  volcano: {
+    id: "volcano",
+    name: "Volcano Stadium",
+    description: "Feuer, Lava und Vulkane",
+    logo: "assets/logos/volcano.png",
+
+    colors: {
+      brand: "#c0392b",
+      brandDark: "#541000",
+      page: "#21100d"
+    },
+
+    previews: {
+      card: "linear-gradient(135deg, #541000, #c0392b)"
+    }
+  },
+
+
+  pirate: {
+    id: "pirate",
+    name: "Pirate Island",
+    description: "Schätze, Inseln und Abenteuer",
+    logo: "assets/logos/pirate.png",
+
+    colors: {
+      brand: "#8b6b32",
+      brandDark: "#3b2a12",
+      page: "#17231c"
+    },
+
+    previews: {
+      card: "linear-gradient(135deg, #3b2a12, #8b6b32)"
+    }
+  },
+
+
+  jungle: {
+    id: "jungle",
+    name: "Jungle Arena",
+    description: "Dschungel und wilde Natur",
+    logo: "assets/logos/dragon.png",
+
+    colors: {
+      brand: "#2e8b57",
+      brandDark: "#12351f",
+      page: "#101d14"
+    },
+
+    previews: {
+      card: "linear-gradient(135deg, #12351f, #2e8b57)"
+    }
+  },
+
+
+  kingdom: {
+    id: "kingdom",
+    name: "Royal Kingdom",
+    description: "Ritter, Könige und Burgen",
+    logo: "assets/logos/kingdom.png",
+
+    colors: {
+      brand: "#d4af37",
+      brandDark: "#5b4210",
+      page: "#18140a"
+    },
+
+    previews: {
+      card: "linear-gradient(135deg, #5b4210, #d4af37)"
+    }
+  },
+
+
+  dragon: {
+    id: "dragon",
+    name: "Dragon Fantasy",
+    description: "Drachen und Fantasywelten",
+    logo: "assets/logos/dragon.png",
+
+    colors: {
+      brand: "#8b0000",
+      brandDark: "#250000",
+      page: "#180d14"
+    },
+
+    previews: {
+      card: "linear-gradient(135deg, #250000, #8b0000)"
+    }
+  },
+
+
+  crystal: {
+    id: "crystal",
+    name: "Crystal Cave",
+    description: "Kristalle und geheimnisvolle Höhlen",
+    logo: "assets/logos/crystal.png",
+
+    colors: {
+      brand: "#4b7bec",
+      brandDark: "#172554",
+      page: "#10182b"
+    },
+
+    previews: {
+      card: "linear-gradient(135deg, #172554, #4b7bec)"
+    }
+  },
+
+
+  monster: {
+    id: "monster",
+    name: "Monster Stadium",
+    description: "Monster, Kreaturen und Herausforderungen",
+    logo: "assets/logos/monster.png",
+
+    colors: {
+      brand: "#6b8e23",
+      brandDark: "#182400",
+      page: "#10140a"
+    },
+
+    previews: {
+      card: "linear-gradient(135deg, #182400, #6b8e23)"
+    }
+  }
+
+};
 
   const STAGES = [
-    { number: 1, name: "Bandenkick Arena", 
-      mapBackground: "assets/backgrounds/Bandenkick-Arena.png"
+    {
+        number: 1,
+        name: "Bandenkick Arena",
+        mapBackground: "assets/backgrounds/Bandenkick-Arena.png"
     },
-    { number: 2, name: "World Cup",
-      mapBackground: "assets/backgrounds/World-Cup.png"
+    {
+        number: 2,
+        name: "World Cup",
+        mapBackground: "assets/backgrounds/World-Cup.png"
     },
-    { number: 3, name: "Tropical Paradise",
-      mapBackground: "assets/backgrounds/Tropical Paradise.png"
-     },
-    { number: 4, name: "Vulkan-Cup" },
-    { number: 5, name: "Champions Space" }
+    {
+        number: 3,
+        name: "Tropical Paradise",
+        mapBackground: "assets/backgrounds/Tropical Paradise.png"
+    },
+    {
+        number: 4,
+        name: "Volcano Stadium",
+        mapBackground: "assets/backgrounds/volcano-stadium.png"
+    },
+    {
+        number: 5,
+        name: "Pirate Island",
+        mapBackground: "assets/backgrounds/pirate-island.png"
+    },
+    {
+        number: 6,
+        name: "Jungle Arena",
+        mapBackground: "assets/backgrounds/jungle-arena.png"
+    },
+    {
+        number: 7,
+        name: "Royal Kingdom",
+        mapBackground: "assets/backgrounds/royal-kingdom.png"
+    },
+    {
+        number: 8,
+        name: "Dragon Fantasy",
+        mapBackground: "assets/backgrounds/dragon-fantasy.png"
+    },
+    {
+        number: 9,
+        name: "Crystal Cave",
+        mapBackground: "assets/backgrounds/crystal-cave.png"
+    },
+    {
+        number: 10,
+        name: "Monster Stadium",
+        mapBackground: "assets/backgrounds/monster-stadium.png"
+    }
   ];
 
   const DEMO_RANKING = [
