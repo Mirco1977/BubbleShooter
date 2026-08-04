@@ -406,30 +406,39 @@ button:disabled {
 }
 
 .preview-bubbles {
-  display: grid;
-  grid-template-columns: repeat(3, 48px);
-  gap: 8px;
+
+  display:flex;
+
+  justify-content:center;
+
+  align-items:center;
+
+  gap:4px;
+
+  position:absolute;
+
+  top:365px;
+
+  left:50%;
+
+  transform:translateX(-50%);
+
+  width:100%;
+
+  z-index: 5;
+
 }
 
-.preview-bubbles span,
-.placeholder-row i {
-  display: block;
-  border-radius: 50%;
-  background: radial-gradient(circle at 30% 25%, #fff, #dc2d2d 25%, #710000 76%);
-  box-shadow: inset -5px -7px 10px rgba(0, 0, 0, 0.3);
-}
+.preview-bubbles img {
 
-.preview-bubbles span {
-  width: 48px;
-  height: 48px;
-}
+  width:32px;
 
-.preview-bubbles span:nth-child(2n) {
-  background: radial-gradient(circle at 30% 25%, #fff, #3389ff 25%, #143f86 76%);
-}
+  height:32px;
+  
+  object-fit:contain;
+  
+  display:block;
 
-.preview-bubbles span:nth-child(3n) {
-  background: radial-gradient(circle at 30% 25%, #fff, #46dc7b 25%, #176537 76%);
 }
 
 .level-data {

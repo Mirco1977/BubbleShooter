@@ -783,6 +783,77 @@ const THEME_PATH = [
     }
   };
 
+  function renderPreviewBalls(levelNumber) {
+
+  const container = document.getElementById("previewBubbles");
+
+  if (!container) return;
+
+  container.innerHTML = "";
+
+  const stageNumber = getStageForLevel(levelNumber);
+
+  // Regel:
+  // Stage 2 = World Cup
+  // alles andere = BK Arena
+  const previewTheme =
+    stageNumber === 2
+      ? "world-cup-balls"
+      : "bk-arena-balls";
+
+
+  const balls =
+    previewTheme === "world-cup-balls"
+      ? [
+          "usa",
+          "germany",
+          "brazil",
+          "spain",
+          "australia"
+        ]
+      : [
+          "red",
+          "blue",
+          "green",
+          "yellow",
+          "purple"
+        ];
+
+
+  // Anzahl passend zur Levelkonfiguration
+  const levelConfig = STAR_CONFIG[levelNumber];
+
+  const amount = Math.min(
+    levelConfig?.ballTypes ?? 3, 5,
+    balls.length
+  );
+
+
+  balls
+    .slice(0, amount)
+    .forEach(ball => {
+
+      const img = document.createElement("img");
+
+      img.src =
+        `assets/balls/${previewTheme}/${ball}.png`;
+
+      img.alt = ball;
+
+      img.onerror = () => {
+        console.warn(
+          "Vorschauball fehlt:",
+          img.src
+        );
+      };
+
+
+      container.appendChild(img);
+
+    });
+
+}
+
   const LevelPreview = {
     open(levelNumber) {
       state.selectedLevel = levelNumber;
@@ -803,7 +874,8 @@ const THEME_PATH = [
       dom.levelColors.textContent = String(colors);
       dom.levelTarget.textContent = target.toLocaleString("de-DE");
       dom.levelBest.textContent = result ? `${result.stars} ⭐` : "–";
-
+    
+      renderPreviewBalls(levelNumber);
       Navigation.show("level");
     }
   };
