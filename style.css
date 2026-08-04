@@ -514,24 +514,19 @@ button:disabled {
 }
 
 .theme-list {
-  display: grid;
-  gap: 12px;
-}
 
-.theme-card {
-  min-height: 120px;
-  display: flex;
-  align-items: flex-end;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 18px;
-  overflow: hidden;
-  border: 3px solid transparent;
-  border-radius: 20px;
-  color: #fff;
-  text-align: left;
-  background-size: cover;
-  background-position: center;
+  position: relative;
+
+  display:grid;
+
+  grid-template-columns:120px 90px 120px;
+
+  justify-content:center;
+
+  grid-auto-rows:150px;
+
+  padding:30px 25px 80px;
+
 }
 
 .theme-card.active {
@@ -753,24 +748,49 @@ code {
 }
 
 .theme-card {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) 100px auto;
-  align-items: center;
-  gap: 18px;
+
+  width: 105px;
+  height: 105px;
+
+  padding: 10px;
+
+  display:flex;
+  justify-content:center;
+  align-items:center;
+
+  position:relative;
+
+  border:3px solid transparent;
+  border-radius:18px;
+
+  overflow:visible;
+
 }
 
 .theme-card-text {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  text-align: left;
+
+  position:absolute;
+
+  top:125px;
+
+  width:150px;
+
+  display:flex;
+  flex-direction:column;
+
+  align-items:center;
+
+  text-align:center;
+
 }
 
 .theme-card-logo {
-  width: 120px;
-  height: 120px;
-  object-fit: contain;
-  justify-self: center;
+
+  width:75px;
+  height:75px;
+
+  object-fit:contain;
+
 }
 
 .theme-card-status {
@@ -1081,4 +1101,49 @@ code {
   #playScreen .item-bar {
     width: 100%;
   }
+}
+
+.theme-active-mark {
+
+position:absolute;
+
+top:-10px;
+right:-10px;
+
+width:30px;
+height:30px;
+
+display:flex;
+align-items:center;
+justify-content:center;
+
+border-radius:50%;
+
+background:var(--gold);
+color:#111;
+
+font-weight:900;
+
+}
+
+.theme-path-arrow {
+
+    display:flex;
+    align-items:center;
+    justify-content:center;
+
+    font-size:22px;
+
+    color:var(--gold);
+
+    pointer-events:none;
+
+    z-index:10;
+
+}
+
+.preview-ball-image {
+    width:48px;
+    height:48px;
+    object-fit:contain;
 }

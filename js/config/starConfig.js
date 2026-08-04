@@ -17,9 +17,9 @@ const STAR_CONFIG = {
 
 2: {
     ballTypes: 3,
-    addRowAfterShot: "y",
+    addRowAfterShot: "n",
     rows: 4,
-    targetScore: 1800,
+    targetScore: 1000,
     mode: "shots",
     maxShots: 14,
 
@@ -31,10 +31,10 @@ const STAR_CONFIG = {
 },
 
 3: {
-    ballTypes: 4,
+    ballTypes: 3,
     addRowAfterShot: "n",
     rows: 5,
-    targetScore: 2500,
+    targetScore: 1500,
     mode: "shots",
     maxShots: 16,
 
@@ -47,9 +47,9 @@ const STAR_CONFIG = {
 
 4: {
     ballTypes: 4,
-    addRowAfterShot: "y",
+    addRowAfterShot: "n",
     rows: 5,
-    targetScore: 3500,
+    targetScore: 2000,
     mode: "shots",
     maxShots: 16,
 
@@ -61,7 +61,7 @@ const STAR_CONFIG = {
 },
 
 5: {
-    ballTypes: 5,
+    ballTypes: 4,
     addRowAfterShot: "n",
     rows: 5,
     targetScore: 4000,
@@ -75,10 +75,10 @@ const STAR_CONFIG = {
     }
 },
 6: {
-    ballTypes: 5,
-    addRowAfterShot: "y",
+    ballTypes: 4,
+    addRowAfterShot: "n",
     rows: 5,
-    targetScore: 4500,
+    targetScore: 5000,
     mode: "shots",
     maxShots: 20,
 
@@ -90,10 +90,10 @@ const STAR_CONFIG = {
 },
 
 7: {
-    ballTypes: 5,
-    addRowAfterShot: "y",
+    ballTypes: 4,
+    addRowAfterShot: "n",
     rows: 5,
-    targetScore: 5500,
+    targetScore: 6000,
     mode: "shots",
     maxShots: 23,
 
@@ -105,10 +105,10 @@ const STAR_CONFIG = {
 },
 
 8: {
-    ballTypes: 5,
-    addRowAfterShot: "y",
+    ballTypes: 4,
+    addRowAfterShot: "n",
     rows: 6,
-    targetScore: 6500,
+    targetScore: 6000,
     mode: "shots",
     maxShots: 26,
 
@@ -121,9 +121,9 @@ const STAR_CONFIG = {
 
 9: {
     ballTypes: 5,
-    addRowAfterShot: "y",
+    addRowAfterShot: "n",
     rows: 6,
-    targetScore: 7000,
+    targetScore: 5000,
     mode: "shots",
     maxShots: 28,
 
@@ -138,7 +138,7 @@ const STAR_CONFIG = {
     ballTypes: 5,
     addRowAfterShot: "y",
     rows: 8,
-    targetScore: 8000,
+    targetScore: 6000,
     mode: "shots",
     maxShots: 30,
 
@@ -165,10 +165,10 @@ const STAR_CONFIG = {
 },
 
 12: {
-    ballTypes: 3,
-    addRowAfterShot: "y",
+    ballTypes: 4,
+    addRowAfterShot: "n",
     rows: 4,
-    targetScore: 1800,
+    targetScore: 1000,
     mode: "shots",
     maxShots: 14,
 
@@ -183,7 +183,7 @@ const STAR_CONFIG = {
     ballTypes: 4,
     addRowAfterShot: "n",
     rows: 5,
-    targetScore: 2500,
+    targetScore: 2000,
     mode: "shots",
     maxShots: 16,
 
@@ -196,8 +196,8 @@ const STAR_CONFIG = {
 
 14: {
     ballTypes: 4,
-    addRowAfterShot: "y",
-    rows: 5,
+    addRowAfterShot: "n",
+    rows: 6,
     targetScore: 3500,
     mode: "shots",
     maxShots: 16,
@@ -212,7 +212,7 @@ const STAR_CONFIG = {
 15: {
     ballTypes: 5,
     addRowAfterShot: "n",
-    rows: 5,
+    rows: 7,
     targetScore: 4000,
     mode: "shots",
     maxShots: 18,
@@ -225,6 +225,152 @@ const STAR_CONFIG = {
 },
 
 16: {
+    ballTypes: 5,
+    addRowAfterShot: "n",
+    rows: 8,
+    targetScore: 4500,
+    mode: "shots",
+    maxShots: 20,
+
+    shots: {
+        threeStars: 12,
+        twoStars: 16,
+        oneStar: 20
+    }
+},
+
+17: {
+    ballTypes: 5,
+    addRowAfterShot: "n",
+    rows: 9,
+    targetScore: 5500,
+    mode: "shots",
+    maxShots: 23,
+
+    shots: {
+        threeStars: 14,
+        twoStars: 18,
+        oneStar: 23
+    }
+},
+
+18: {
+    ballTypes: 5,
+    addRowAfterShot: "n",
+    rows: 10,
+    targetScore: 6500,
+    mode: "shots",
+    maxShots: 26,
+
+    shots: {
+        threeStars: 17,
+        twoStars: 20,
+        oneStar: 26
+    }
+},
+19: {
+    ballTypes: 5,
+    addRowAfterShot: "y",
+    rows: 5,
+    targetScore: 7000,
+    mode: "shots",
+    maxShots: 28,
+
+    shots: {
+        threeStars: 20,
+        twoStars: 24,
+        oneStar: 28
+    }
+},
+20: {
+    ballTypes: 5,
+    addRowAfterShot: "y",
+    rows: 8,
+    targetScore: 8000,
+    mode: "shots",
+    maxShots: 30,
+
+    shots: {
+        threeStars: 22,
+        twoStars: 25,
+        oneStar: 30
+    }
+},
+21: {
+    ballTypes: 3,
+    addRowAfterShot: "n",
+    rows: 3,
+    targetScore: 500,
+    mode: "shots",
+    maxShots: 8,
+
+    shots: {
+        threeStars: 2,
+        twoStars: 4,
+        oneStar: 7
+    }
+},
+
+22: {
+    ballTypes: 3,
+    addRowAfterShot: "y",
+    rows: 4,
+    targetScore: 1800,
+    mode: "shots",
+    maxShots: 14,
+
+    shots: {
+        threeStars: 6,
+        twoStars: 9,
+        oneStar: 14
+    }
+},
+
+23: {
+    ballTypes: 4,
+    addRowAfterShot: "n",
+    rows: 5,
+    targetScore: 2500,
+    mode: "shots",
+    maxShots: 16,
+
+    shots: {
+        threeStars: 6,
+        twoStars: 11,
+        oneStar: 16
+    }
+},
+
+24: {
+    ballTypes: 4,
+    addRowAfterShot: "y",
+    rows: 5,
+    targetScore: 3500,
+    mode: "shots",
+    maxShots: 16,
+
+    shots: {
+        threeStars: 8,
+        twoStars: 12,
+        oneStar: 13
+    }
+},
+
+25: {
+    ballTypes: 5,
+    addRowAfterShot: "n",
+    rows: 5,
+    targetScore: 4000,
+    mode: "shots",
+    maxShots: 18,
+
+    shots: {
+        threeStars: 10,
+        twoStars: 14,
+        oneStar: 18
+    }
+},
+26: {
     ballTypes: 5,
     addRowAfterShot: "y",
     rows: 5,
@@ -239,7 +385,7 @@ const STAR_CONFIG = {
     }
 },
 
-17: {
+27: {
     ballTypes: 5,
     addRowAfterShot: "y",
     rows: 5,
@@ -254,7 +400,7 @@ const STAR_CONFIG = {
     }
 },
 
-18: {
+28: {
     ballTypes: 5,
     addRowAfterShot: "y",
     rows: 6,
@@ -268,7 +414,8 @@ const STAR_CONFIG = {
         oneStar: 26
     }
 },
-19: {
+
+29: {
     ballTypes: 5,
     addRowAfterShot: "y",
     rows: 6,
@@ -282,7 +429,156 @@ const STAR_CONFIG = {
         oneStar: 28
     }
 },
-20: {
+
+30: {
+    ballTypes: 5,
+    addRowAfterShot: "y",
+    rows: 8,
+    targetScore: 8000,
+    mode: "shots",
+    maxShots: 30,
+
+    shots: {
+        threeStars: 22,
+        twoStars: 25,
+        oneStar: 30
+    }
+},
+
+31: {
+    ballTypes: 3,
+    addRowAfterShot: "n",
+    rows: 3,
+    targetScore: 500,
+    mode: "shots",
+    maxShots: 8,
+
+    shots: {
+        threeStars: 2,
+        twoStars: 4,
+        oneStar: 7
+    }
+},
+
+32: {
+    ballTypes: 3,
+    addRowAfterShot: "y",
+    rows: 4,
+    targetScore: 1800,
+    mode: "shots",
+    maxShots: 14,
+
+    shots: {
+        threeStars: 6,
+        twoStars: 9,
+        oneStar: 14
+    }
+},
+
+33: {
+    ballTypes: 4,
+    addRowAfterShot: "n",
+    rows: 5,
+    targetScore: 2500,
+    mode: "shots",
+    maxShots: 16,
+
+    shots: {
+        threeStars: 6,
+        twoStars: 11,
+        oneStar: 16
+    }
+},
+
+34: {
+    ballTypes: 4,
+    addRowAfterShot: "y",
+    rows: 5,
+    targetScore: 3500,
+    mode: "shots",
+    maxShots: 16,
+
+    shots: {
+        threeStars: 8,
+        twoStars: 12,
+        oneStar: 13
+    }
+},
+
+35: {
+    ballTypes: 5,
+    addRowAfterShot: "n",
+    rows: 5,
+    targetScore: 4000,
+    mode: "shots",
+    maxShots: 18,
+
+    shots: {
+        threeStars: 10,
+        twoStars: 14,
+        oneStar: 18
+    }
+},
+
+36: {
+    ballTypes: 5,
+    addRowAfterShot: "y",
+    rows: 5,
+    targetScore: 4500,
+    mode: "shots",
+    maxShots: 20,
+
+    shots: {
+        threeStars: 12,
+        twoStars: 16,
+        oneStar: 20
+    }
+},
+
+37: {
+    ballTypes: 5,
+    addRowAfterShot: "y",
+    rows: 5,
+    targetScore: 5500,
+    mode: "shots",
+    maxShots: 23,
+
+    shots: {
+        threeStars: 14,
+        twoStars: 18,
+        oneStar: 23
+    }
+},
+
+38: {
+    ballTypes: 5,
+    addRowAfterShot: "y",
+    rows: 6,
+    targetScore: 6500,
+    mode: "shots",
+    maxShots: 26,
+
+    shots: {
+        threeStars: 17,
+        twoStars: 20,
+        oneStar: 26
+    }
+},
+39: {
+    ballTypes: 5,
+    addRowAfterShot: "y",
+    rows: 6,
+    targetScore: 7000,
+    mode: "shots",
+    maxShots: 28,
+
+    shots: {
+        threeStars: 20,
+        twoStars: 24,
+        oneStar: 28
+    }
+},
+40: {
     ballTypes: 5,
     addRowAfterShot: "y",
     rows: 8,

@@ -203,6 +203,23 @@
 
 };
 
+const THEME_PATH = [
+  { stage: 1, row: 1, col: 1, arrow:"right" },
+  { stage: 2, row: 1, col: 2, arrow:"down" },
+
+  { stage: 3, row: 2, col: 2, arrow:"left" },
+  { stage: 4, row: 2, col: 1, arrow:"down" },
+
+  { stage: 5, row: 3, col: 1, arrow:"right" },
+  { stage: 6, row: 3, col: 2, arrow:"down" },
+
+  { stage: 7, row: 4, col: 2, arrow:"left" },
+  { stage: 8, row: 4, col: 1, arrow:"down" },
+
+  { stage: 9, row: 5, col: 1, arrow:"right" },
+  { stage: 10, row: 5, col: 2 }
+];
+
   const STAGES = [
     {
         number: 1,
@@ -519,36 +536,132 @@
 
     renderList() {
       dom.themeList.innerHTML = "";
+      const path = THEME_PATH;
 
-      Object.values(THEMES).forEach((theme) => {
-        const button = document.createElement("button");
-        button.className = "theme-card";
+      const arrows = [
+      {
+        symbol:"→",
+        row:1,
+        col:1
+      },
+      {
+        symbol:"↓",
+        row:2,
+        col:2
+      },
+      {
+        symbol:"←",
+        row:2,
+        col:1
+      },
+      {
+        symbol:"↓",
+        row:3,
+        col:1
+      },
+      {
+        symbol:"→",
+        row:3,
+        col:1
+      }
+    ];
+
+      Object.values(THEMES).forEach((theme, index) => {
+
+      const currentPath = path[index];
+
+      const nextPath = path[index + 1];
+
+      if (nextPath && currentPath.arrow) {
+
+      const arrow = document.createElement("div");
+
+      arrow.className = "theme-path-arrow";
+
+      arrow.textContent =
+          currentPath.arrow === "right" ? "→" :
+          currentPath.arrow === "left" ? "←" :
+          "↓";
+
+
+            arrow.style.position = "absolute";
+
+      if (currentPath.arrow === "right") {
+          arrow.style.left = "calc(50% + 0)";
+          arrow.style.top = `${(currentPath.row - 1) * 150 + 65}px`;
+      }
+
+      if (currentPath.arrow === "left") {
+          arrow.style.left = "calc(50% + 0px)";
+          arrow.style.top = `${(currentPath.row - 1) * 150 + 65}px`;
+      }
+
+      if (currentPath.arrow === "down") {
+          arrow.style.left = currentPath.col === 1 ? "25%" : "75%";
+          arrow.style.transform = "translateX(-50%)";
+      }
+
+
+      dom.themeList.appendChild(arrow);
+
+      }
+
+      const button = document.createElement("button");
+
+      const stageNumber = index + 1;
+
+      const position = THEME_PATH[index];
+
+      button.className = `theme-card stage-${stageNumber}`;
+
+      button.style.gridColumn = position.col;
+
+      button.style.gridRow = position.row;
 
         if (state.progress.activeTheme === theme.id) {
           button.classList.add("active");
         }
 
         button.style.background = theme.previews.card;
+      
         button.innerHTML = `
-        <div class="theme-card-text">
-        <strong>${escapeHtml(theme.name)}</strong>
-        <span>${escapeHtml(theme.description)}</span>
-        </div>
 
-  ${
-    theme.logo
-      ? `<img
-          src="${escapeHtml(theme.logo)}"
-          class="theme-card-logo"
-          alt="${escapeHtml(theme.name)} Logo"
-        >`
-      : ""
-  }
+      ${
+      theme.logo
+      ?
+      `
+      <img
+      src="${escapeHtml(theme.logo)}"
+      class="theme-card-logo"
+      alt="${escapeHtml(theme.name)} Logo">
+      `
+      :
+      ""
+      }
 
-  <b class="theme-card-status">
-    ${state.progress.activeTheme === theme.id ? "Aktiv" : "Auswählen"}
-  </b>
-`;
+
+      <div class="theme-card-text">
+
+      <strong>
+      ${escapeHtml(theme.name)}
+      </strong>
+
+      </div>
+
+
+      ${
+      state.progress.activeTheme === theme.id
+      ?
+      `
+      <div class="theme-active-mark">
+      ✓
+      </div>
+      `
+      :
+      ""
+      }
+
+      `;
 
         button.addEventListener("click", () => {
           this.apply(theme.id);
