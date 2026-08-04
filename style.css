@@ -407,33 +407,25 @@ button:disabled {
 
 .preview-bubbles {
 
-  display:flex;
+display:flex;
 
-  justify-content:center;
+justify-content:center;
 
-  align-items:center;
+align-items:center;
 
-  gap:4px;
+gap:6px;
 
-  position:absolute;
+width:100%;
 
-  top:365px;
-
-  left:50%;
-
-  transform:translateX(-50%);
-
-  width:100%;
-
-  z-index: 5;
+margin:10px 0;
 
 }
 
 .preview-bubbles img {
 
-  width:32px;
+  width:clamp(24px, 7vw, 32px);
 
-  height:32px;
+  height:clamp(24px, 7vw, 32px);
   
   object-fit:contain;
   
@@ -442,27 +434,81 @@ button:disabled {
 }
 
 .level-data {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 9px;
-  margin: 18px 0;
+
+    display:grid;
+
+    grid-template-columns:repeat(3, 1fr);
+
+    gap:6px;
+
+    width:100%;
+
+    margin-top:12px;
+
+}
+
+.level-stat {
+
+    display:flex;
+
+    flex-direction:column;
+
+    align-items:center;
+
+    justify-content:center;
+
+    min-width:0;
+
+}
+
+
+.level-stat span {
+
+    white-space:nowrap;
+
+    font-size:12px;
+
+}
+
+
+.level-stat strong {
+
+    white-space:nowrap;
+
+    font-size:18px;
+
 }
 
 .level-data div {
-  padding: 13px 7px;
-  border-radius: 13px;
-  background: rgba(255, 255, 255, 0.07);
+
+  display:flex;
+
+  justify-content:center;
+
+  align-items:center;
+
+  gap:6px;
+
+  min-width:0;
+
+  white-space:nowrap;
+
 }
 
-.level-data span,
 .level-data strong {
-  display: block;
+
+  white-space:nowrap;
+
+  font-size:18px;
+
 }
 
 .level-data span {
-  margin-bottom: 6px;
-  color: var(--muted);
-  font-size: 12px;
+
+  white-space:nowrap;
+
+  font-size:14px;
+
 }
 
 .info-note {
