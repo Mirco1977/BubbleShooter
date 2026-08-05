@@ -2902,4 +2902,74 @@ const stars = calculateStars(
   }
 
   init();
+
+const ITEM_INFO = {
+
+    bomb: {
+        title: "Bomb Ball",
+        text: "Der Bomb Ball zerstört mehrere Kugeln in einem Bereich und hilft dir bei schwierigen Spielsituationen."
+    },
+
+
+    ballswitch: {
+        title: "Ball Switch",
+        text: "Tausche deine aktuelle Kugel mit der nächsten Kugel und finde bessere Treffer-Möglichkeiten."
+    },
+
+
+    thunder: {
+        title: "Thunder Ball",
+        text: "Der Thunder Ball entfernt eine komplette Reihe und schafft dir neue Möglichkeiten."
+    },
+
+
+    aim: {
+        title: "Zielhilfe",
+        text: "Die Zielhilfe zeigt dir die Flugbahn deiner Kugel und unterstützt dich bei präzisen Treffern."
+    }
+
+};
+
+
+// ITEM INFO POPUP
+
+const itemInfoButtons = document.querySelectorAll(".item-info-button");
+
+const itemInfoPopup = document.getElementById("itemInfoPopup");
+
+
+itemInfoButtons.forEach(button => {
+
+    button.addEventListener("click", (event) => {
+
+        event.stopPropagation();
+
+
+        const item = button.dataset.item;
+
+
+        const info = ITEM_INFO[item];
+
+
+        document.getElementById("itemInfoTitle").textContent =
+        info.title;
+
+
+        document.getElementById("itemInfoText").textContent =
+        info.text;
+
+
+        itemInfoPopup.classList.remove("hidden");
+
+    });
+
+});
+
+
+closeItemInfo.addEventListener("click", () => {
+
+    itemInfoPopup.classList.add("hidden");
+
+});
+
 })();
