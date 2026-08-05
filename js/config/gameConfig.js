@@ -9,11 +9,11 @@ export const GAME_CONFIG = Object.freeze({
         heroBackground: "",
 
         stageBackgrounds: {
-            1: "",
-            2: "",
-            3: "",
-            4: "",
-            5: ""
+            1: "assets/backgrounds/Bandenkick-Arena.png",
+            2: "assets/backgrounds/World-Cup.png",
+            3: "assets/backgrounds/Tropical Paradise.png",
+            4: "assets/backgrounds/volcano-stadium.png",
+            5: "assets/backgrounds/pirate-island.png"
         },
 
         mapBackgrounds: {
