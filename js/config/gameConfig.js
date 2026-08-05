@@ -20,24 +20,24 @@ export const GAME_CONFIG = Object.freeze({
             1: "assets/backgrounds/Bandenkick-Arena.png",
             2: "assets/backgrounds/World-Cup.png",
             3: "assets/backgrounds/Tropical Paradise.png",
-            4: "",
-            5: ""
+            4: "assets/backgrounds/volcano-stadium.png",
+            5: "assets/backgrounds/pirate-island.png"
         },
 
         gameBackgrounds: {
             1: "assets/backgrounds/Bandenkick-Arena.png",
             2: "assets/backgrounds/World-Cup.png",
             3: "assets/backgrounds/Tropical Paradise.png",
-            4: "",
-            5: ""
+            4: "assets/backgrounds/volcano-stadium.png",
+            5: "assets/backgrounds/pirate-island.png"
         },
 
         levelBackgrounds: {
             1: "assets/backgrounds/Bandenkick-Arena.png",
             2: "assets/backgrounds/World-Cup.png",
             3: "assets/backgrounds/Tropical Paradise.png",
-            4: "",
-            5: ""
+            4: "assets/backgrounds/volcano-stadium.png",
+            5: "assets/backgrounds/pirate-island.png"
         },
 
         bubbleImages: {
