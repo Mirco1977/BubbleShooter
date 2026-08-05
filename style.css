@@ -300,48 +300,48 @@ button:disabled {
 /* Positionen der zehn Level auf der Map */
 
 .level-row:nth-child(1) {
-  left: 24%;
+  left: 20%;
   top: 7%;
 }
 
 .level-row:nth-child(2) {
-  left: 38%;
-  top: 17%;
+  left: 37%;
+  top: 19%;
 }
 
 .level-row:nth-child(3) {
-  left: 63%;
-  top: 24%;
+  left: 60%;
+  top: 22%;
 }
 
 .level-row:nth-child(4) {
-  left: 70%;
+  left: 72%;
   top: 35%;
 }
 
 .level-row:nth-child(5) {
-  left: 56%;
+  left: 50%;
   top: 45%;
 }
 
 .level-row:nth-child(6) {
-  left: 25%;
+  left: 30%;
   top: 53%;
 }
 
 .level-row:nth-child(7) {
-  left: 16%;
-  top: 65%;
+  left: 20%;
+  top: 68%;
 }
 
 .level-row:nth-child(8) {
-  left: 63%;
+  left: 47%;
   top: 73%;
 }
 
 .level-row:nth-child(9) {
-  left: 30%;
-  top: 84%;
+  left: 70%;
+  top: 82%;
 }
 
 .level-row:nth-child(10) {
@@ -778,7 +778,7 @@ code {
 
 .game-result-card h3 {
   margin: 8px 0;
-  font-size: 28px;
+  font-size: 20px;
 }
 
 .result-stars {
@@ -791,7 +791,7 @@ code {
 .result-actions {
   display: flex;
   justify-content: center;
-  gap: 10px;
+  gap: 3px;
   margin-top: 18px;
 }
 
