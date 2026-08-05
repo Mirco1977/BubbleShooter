@@ -569,19 +569,21 @@ margin:10px 0;
 }
 
 .theme-list {
-
   position: relative;
 
-  display:grid;
+  display: grid;
 
-  grid-template-columns:120px 90px 120px;
+  grid-template-columns: repeat(2, 1fr);
 
-  justify-content:center;
+  width: 60%;
 
-  grid-auto-rows:150px;
+  margin: 0 auto;
 
-  padding:30px 25px 80px;
+  grid-auto-rows: 150px;
 
+  gap: 0;
+
+  padding: 30px 0 80px;
 }
 
 .theme-card.active {
