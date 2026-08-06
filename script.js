@@ -869,8 +869,23 @@ const THEME_PATH = [
 
       dom.selectedLevelTitle.textContent = `Level ${levelNumber}`;
       dom.selectedStageBadge.textContent = `Stage ${stage}`;
-      dom.levelGoalText.textContent =
-        `Erreiche mindestens ${target.toLocaleString("de-DE")} Punkte.`;
+      
+      if (levelConfig.mode === "colors") {
+
+        const colorNames = {
+          red: "rote",
+          green: "grüne",
+          yellow: "gelbe",
+          purple: "lila",
+          blue: "blaue"
+        };
+        dom.levelGoalText.textContent =
+        `Sammle ${levelConfig.need} ${colorNames[levelConfig.only_color]} Bälle`;
+      } else {
+          dom.levelGoalText.textContent =
+          `Erreiche mindestens ${target.toLocaleString("de-DE")} Punkte`;
+      }
+
       dom.levelColors.textContent = String(colors);
       dom.levelTarget.textContent = target.toLocaleString("de-DE");
       dom.levelBest.textContent = result ? `${result.stars} ⭐` : "–";
@@ -893,6 +908,7 @@ const THEME_PATH = [
     explosions: [],
     thunders: [],
     explosions: [],
+    collectedColors: {},
 
     hasSwitchItem: true,
     hasBombItem: true,
@@ -1326,11 +1342,11 @@ const THEME_PATH = [
     this.ctx.save();
 
     const gradient = this.ctx.createLinearGradient(
-    thunder.x,
-    thunder.y - 50,
-    thunder.x,
-    thunder.y + 50
-);
+        thunder.x,
+        thunder.y - 50,
+        thunder.x,
+        thunder.y + 50
+    );
 
 gradient.addColorStop(0, "#ffffff");
 gradient.addColorStop(0.4, "#9fffff");
@@ -1767,17 +1783,37 @@ setTimeout(() => {
           (bubble) => !removalSet.has(bubble)
         );
 
+        connected.forEach((bubble) => {
+
+    const colorId = bubble.color.id;
+
+
+    if (!this.collectedColors[colorId]) {
+        this.collectedColors[colorId] = 0;
+    }
+
+
+    this.collectedColors[colorId]++;
+    console.log("Gesammelt:", bubble.color, this.collectedColors);
+
+});
+
         this.score += connected.length * 100;
         this.removeFloatingBubbles();
 
         dom.playScore.textContent = `${this.score.toLocaleString("de-DE")} Punkte`;
+        this.checkObjektiveWin();
       }
 
-      if (
-      this.score >= this.targetScore
-      ) {
-      this.victoryAnimation = true;
-      return;
+      const levelConfig = STAR_CONFIG[state.selectedLevel];
+
+      if (!levelConfig || levelConfig.mode !== "colors") {
+
+          if (this.score >= this.targetScore) {
+              this.victoryAnimation = true;
+              return;
+          }
+
       }
 
       if (!removedBubbles) {
@@ -1794,8 +1830,6 @@ setTimeout(() => {
     
       this.createShooter();
 
-   
-
         if (this.aimItemAktive) {
           this.aimItemAktive = false;
     
@@ -1803,10 +1837,30 @@ setTimeout(() => {
       
   },
 
-checkScoreWin() {
+checkObjektiveWin() {
+
+  const levelConfig = STAR_CONFIG[state.selectedLevel];
+
+
+  // Spezialmodus: Farben sammeln
+  if (levelConfig?.mode === "colors") {
+
+      const collected = this.collectedColors?.[levelConfig.only_color] || 0;
+
+
+      if (collected >= levelConfig.need) {
+          this.victoryAnimation = true;
+      }
+
+      return;
+  }
+
+
+  // Standardmodus Punkte
   if (this.score >= this.targetScore) {
       this.victoryAnimation = true;
   }
+
 },
 
 explodeBomb() {
@@ -1870,7 +1924,134 @@ explodeThunder() {
     });
    
 },
+
 findThunderTargets(startX, startY) {
+
+    const targets = [];
+
+    const visited = new Set();
+
+
+    // nächste Kugel am Einschlagspunkt finden
+    let startBubble = null;
+    let minDistance = Infinity;
+
+
+    this.bubbles.forEach(bubble => {
+
+        const distance = Math.hypot(
+            bubble.x - startX,
+            bubble.y - startY
+        );
+
+
+        if (distance < minDistance) {
+
+            minDistance = distance;
+            startBubble = bubble;
+
+        }
+
+    });
+
+
+    if (!startBubble) {
+        return targets;
+    }
+
+
+
+    // rekursive Suche nach oben
+    const searchUp = (currentBubble) => {
+
+
+        if (!currentBubble) {
+            return;
+        }
+
+
+        // Schutz gegen Endlosschleifen
+        if (visited.has(currentBubble)) {
+            return;
+        }
+
+
+        visited.add(currentBubble);
+
+
+        // aktuelle Kugel speichern
+        targets.push(currentBubble);
+
+
+
+        // alle Kugeln finden, die darüber andocken
+        const upperBubbles = this.bubbles.filter(bubble => {
+
+
+            if (visited.has(bubble)) {
+                return false;
+            }
+
+
+            const dx = bubble.x - currentBubble.x;
+            const dy = bubble.y - currentBubble.y;
+
+
+            const distance = Math.hypot(dx, dy);
+
+
+
+            // ungefähr Nachbarabstand
+            return (
+                distance < this.radius * 2.2 &&
+                bubble.y < currentBubble.y
+            );
+
+
+        });
+
+
+
+        if (upperBubbles.length === 0) {
+            return;
+        }
+
+
+
+        // zufällige Kugel aus oberer Reihe wählen
+        const nextBubble =
+            upperBubbles[
+                Math.floor(
+                    Math.random() * upperBubbles.length
+                )
+            ];
+
+
+
+        // rekursiv weiter nach oben
+        searchUp(nextBubble);
+
+    };
+
+
+
+    searchUp(startBubble);
+
+
+
+    return targets;
+
+},
+
+
+
+
+
+
+
+
+
+/*findThunderTargets(startX, startY) {
 
   const targets = [];
 
@@ -1920,7 +2101,7 @@ targets.forEach((bubble) => {
 
 return targets;
 
-},
+},*/
 
 findConnectedSameColor(origin) {
       const result = [];
