@@ -1021,6 +1021,7 @@ const THEME_PATH = [
       this.levelFinished = false;
       this.particles = [];
       this.lightningHits = [];
+      this.collectedColors = {};
       const stageNumber = getStageForLevel(levelNumber);
       this.ballImageCache = {};
 
@@ -1095,8 +1096,14 @@ const THEME_PATH = [
 
       dom.playLevelTitle.textContent = `Level ${levelNumber}`;
       dom.playScore.textContent = "0 Punkte";
-      dom.targetScoreDisplay.textContent =
-        this.targetScore.toLocaleString("de-DE");
+      if (levelConfig?.mode === "colors") {
+          const current = this.collectedColors?.[levelConfig.only_color] ?? 0;
+          dom.targetScoreDisplay.textContent =
+          `${current}/${levelConfig.need}`;
+      } else {
+          dom.targetScoreDisplay.textContent =
+          this.targetScore.toLocaleString("de-DE");
+      }
       dom.shotsDisplay.textContent = "0";
       dom.colorsDisplay.textContent = String(colorCount);
       dom.winPopup?.classList.add("hidden");
@@ -1109,6 +1116,16 @@ const THEME_PATH = [
       this.createShooter();
 
       Navigation.show("play");
+
+      Navigation.show("play");
+
+      /*setTimeout(() => {
+          window.scrollTo({
+              top: document.body.scrollHeight,
+              behavior: "smooth"
+          });
+      }, 300);*/
+
       this.bindCanvasEvents();
       this.startLoop();
 
@@ -1652,9 +1669,6 @@ createShooter() {
     dom.playScore.textContent =
         `${this.score.toLocaleString("de-DE")} Punkte`;
 
-setTimeout(() => {
-  this.checkScoreWin();
-}, 900);
 
     this.removeFloatingBubbles();
 
@@ -1802,7 +1816,19 @@ setTimeout(() => {
         this.removeFloatingBubbles();
 
         dom.playScore.textContent = `${this.score.toLocaleString("de-DE")} Punkte`;
-        this.checkObjektiveWin();
+
+const levelConfig = STAR_CONFIG[state.selectedLevel];
+
+if (levelConfig?.mode === "colors") {
+
+    const current = this.collectedColors[levelConfig.only_color] ?? 0;
+
+    dom.targetScoreDisplay.textContent =
+    `${current}/${levelConfig.need}`;
+
+}
+
+        this.checkObjectiveWin();
       }
 
       const levelConfig = STAR_CONFIG[state.selectedLevel];
@@ -1837,7 +1863,7 @@ setTimeout(() => {
       
   },
 
-checkObjektiveWin() {
+checkObjectiveWin() {
 
   const levelConfig = STAR_CONFIG[state.selectedLevel];
 
@@ -1849,8 +1875,14 @@ checkObjektiveWin() {
 
 
       if (collected >= levelConfig.need) {
-          this.victoryAnimation = true;
-      }
+
+    this.victoryAnimation = true;
+
+    setTimeout(() => {
+        this.finish(true);
+    }, 1200);
+
+}
 
       return;
   }
@@ -2160,16 +2192,37 @@ findConnectedSameColor(origin) {
       }
 
       const floating = this.bubbles.filter(
-        (bubble) => !connectedToTop.has(bubble)
-      );
+    (bubble) => !connectedToTop.has(bubble)
+);
 
-      if (floating.length) {
-        this.score += floating.length * 150;
-        this.bubbles = this.bubbles.filter(
-          (bubble) => connectedToTop.has(bubble)
-        );
-      }
-    },
+if (floating.length > 0) {
+
+    const levelConfig = STAR_CONFIG[state.selectedLevel];
+
+    if (levelConfig?.mode === "colors") {
+
+        floating.forEach((bubble) => {
+
+            const colorId = bubble.color.id;
+
+            if (!this.collectedColors[colorId]) {
+                this.collectedColors[colorId] = 0;
+            }
+
+            this.collectedColors[colorId]++;
+
+        });
+
+    }
+
+    this.score += floating.length * 150;
+
+    this.bubbles = this.bubbles.filter(
+        (bubble) => connectedToTop.has(bubble)
+    );
+}
+
+},
 
 drawBubble(bubble) {
     

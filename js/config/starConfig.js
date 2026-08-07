@@ -297,17 +297,19 @@ const STAR_CONFIG = {
     }
 },
 21: {
-    ballTypes: 3,
+    ballTypes: 4,
     addRowAfterShot: "n",
-    rows: 3,
-    targetScore: 500,
-    mode: "shots",
-    maxShots: 8,
+    rows: 5,
+    targetScore: 4000,
+    mode: "colors",
+    only_color: "red",
+    need: 7,
+    maxShots: 18,
 
     shots: {
-        threeStars: 2,
-        twoStars: 4,
-        oneStar: 7
+        threeStars: 10,
+        twoStars: 14,
+        oneStar: 18
     }
 },
 
@@ -357,7 +359,7 @@ const STAR_CONFIG = {
 },
 
 25: {
-    ballTypes: 3,
+    ballTypes: 5,
     addRowAfterShot: "n",
     rows: 5,
     targetScore: 4000,
