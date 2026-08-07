@@ -13,7 +13,11 @@ export const GAME_CONFIG = Object.freeze({
             2: "assets/backgrounds/World-Cup.png",
             3: "assets/backgrounds/Tropical Paradise.png",
             4: "assets/backgrounds/volcano-stadium.png",
-            5: "assets/backgrounds/pirate-island.png"
+            5: "assets/backgrounds/pirate-island.png",
+            6: "assets/backgrounds/jungle-arena.png",
+            7: "assets/backgrounds/dragon-fantasy.png",
+            8: "assets/backgrounds/royal-kingdom.png",
+            9: "assets/backgrounds/monster-stadium.png"
         },
 
         mapBackgrounds: {
@@ -21,7 +25,11 @@ export const GAME_CONFIG = Object.freeze({
             2: "assets/backgrounds/World-Cup.png",
             3: "assets/backgrounds/Tropical Paradise.png",
             4: "assets/backgrounds/volcano-stadium.png",
-            5: "assets/backgrounds/pirate-island.png"
+            5: "assets/backgrounds/pirate-island.png",
+            6: "assets/backgrounds/jungle-arena.png",
+            7: "assets/backgrounds/dragon-fantasy.png",
+            8: "assets/backgrounds/royal-kingdom.png",
+            9: "assets/backgrounds/monster-stadium.png"
         },
 
         gameBackgrounds: {
@@ -29,7 +37,11 @@ export const GAME_CONFIG = Object.freeze({
             2: "assets/backgrounds/World-Cup.png",
             3: "assets/backgrounds/Tropical Paradise.png",
             4: "assets/backgrounds/volcano-stadium.png",
-            5: "assets/backgrounds/pirate-island.png"
+            5: "assets/backgrounds/pirate-island.png",
+            6: "assets/backgrounds/jungle-arena.png",
+            7: "assets/backgrounds/dragon-fantasy.png",
+            8: "assets/backgrounds/royal-kingdom.png",
+            9: "assets/backgrounds/monster-stadium.png"
         },
 
         levelBackgrounds: {
@@ -37,7 +49,11 @@ export const GAME_CONFIG = Object.freeze({
             2: "assets/backgrounds/World-Cup.png",
             3: "assets/backgrounds/Tropical Paradise.png",
             4: "assets/backgrounds/volcano-stadium.png",
-            5: "assets/backgrounds/pirate-island.png"
+            5: "assets/backgrounds/pirate-island.png",
+            6: "assets/backgrounds/jungle-arena.png",
+            7: "assets/backgrounds/dragon-fantasy.png",
+            8: "assets/backgrounds/royal-kingdom.png",
+            9: "assets/backgrounds/monster-stadium.png"
         },
 
         bubbleImages: {
