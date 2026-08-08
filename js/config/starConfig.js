@@ -297,16 +297,18 @@ const STAR_CONFIG = {
     }
 },
 21: {
-    ballTypes: 4,
-    addRowAfterShot: "n",
-    rows: 5,
+    ballTypes: 3,
+    addRowAfterShot: "y",
+    rows: 4,
     targetScore: 4000,
     mode: "colors",
     only_color: "red",
     need: 7,
     maxShots: 18,
     chainedBalls: [
-        { row: 4, col: 4 }, { row: 4, col: 5 }, { row: 4, col: 6 }, { row: 4, col: 7 },
+        { row: 3, col: 4 }, { row: 3, col: 5 }, { row: 3, col: 6 }, { row: 3, col: 7 }, { row: 3, col: 8 }, { row: 3, col: 9 }, { row: 3, col: 10 },
+        { row: 4, col: 4 }, { row: 4, col: 5 }, { row: 4, col: 6 }, { row: 4, col: 7 }, { row: 4, col: 8 }, { row: 4, col: 9 },
+        
     ],
 
     shots: {
