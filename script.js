@@ -905,6 +905,7 @@ const THEME_PATH = [
     columnWidth: 36,
     bubbles: [],
     particles: [],
+    chainBreaks: [],
     explosions: [],
     thunders: [],
     explosions: [],
@@ -1064,6 +1065,9 @@ const THEME_PATH = [
       this.aimImage = new Image();
       this.aimImage.src = "assets/ui/lupe.png";
 
+      this.chainLockImage = new Image();
+      this.chainLockImage.src = "assets/ui/chain-lock-overlay.png";
+
       this.canvas = dom.gameCanvas;
       this.ctx = this.canvas.getContext("2d");
       this.width = this.canvas.width;
@@ -1165,10 +1169,16 @@ const THEME_PATH = [
           
     const color = this.randomColor();
           this.bubbles.push({
-            x,
-            y,
-            color: color,
-            image: color.image
+          x,
+          y,
+          color: color,
+          image: color.image,
+
+          isChained: levelConfig?.chainedBalls?.some(
+              (position) =>
+                  position.row === row + 1 &&
+                  position.col === col + 1
+          ) ?? false
           });
         }
       }
@@ -1279,6 +1289,99 @@ const THEME_PATH = [
         });
 
     }
+},
+
+createChainBreakEffect(x, y) {
+    const r = this.radius;
+
+    const fragments = [
+        { part: 0, ox: -r / 2, oy: -r / 2, vx: -2.8, vy: -3.0 },
+        { part: 1, ox:  r / 2, oy: -r / 2, vx:  2.8, vy: -3.0 },
+        { part: 2, ox: -r / 2, oy:  r / 2, vx: -2.8, vy:  2.0 },
+        { part: 3, ox:  r / 2, oy:  r / 2, vx:  2.8, vy:  2.0 }
+    ];
+
+    fragments.forEach((fragment) => {
+        this.chainBreaks.push({
+            x: x + fragment.ox,
+            y: y + fragment.oy,
+            vx: fragment.vx,
+            vy: fragment.vy,
+            part: fragment.part,
+            rotation: 0,
+            spin: (Math.random() - 0.5) * 0.35,
+            life: 26
+        });
+    });
+},
+
+updateChainBreaks(deltaTime = 1) {
+    this.chainBreaks.forEach((piece) => {
+        piece.x += piece.vx * deltaTime;
+        piece.y += piece.vy * deltaTime;
+
+        // leichte Schwerkraft
+        piece.vy += 0.10 * deltaTime;
+
+        // Kettenstücke drehen sich beim Wegfliegen
+        piece.rotation += piece.spin * deltaTime;
+
+        // Lebensdauer
+        piece.life -= deltaTime;
+    });
+
+    // fertige Kettenstücke entfernen
+    this.chainBreaks = this.chainBreaks.filter(
+        (piece) => piece.life > 0
+    );
+},
+
+drawChainBreaks() {
+    const img = this.chainLockImage;
+
+    if (
+        !img?.complete ||
+        img.naturalWidth === 0
+    ) {
+        return;
+    }
+
+    const sourceWidth = img.naturalWidth / 2;
+    const sourceHeight = img.naturalHeight / 2;
+
+    this.chainBreaks.forEach((piece) => {
+        const column = piece.part % 2;
+        const row = Math.floor(piece.part / 2);
+
+        this.ctx.save();
+
+        this.ctx.translate(piece.x, piece.y);
+        this.ctx.rotate(piece.rotation);
+
+        // Am Ende langsam ausblenden
+        this.ctx.globalAlpha = Math.min(
+            1,
+            piece.life / 10
+        );
+
+        this.ctx.drawImage(
+            img,
+
+            // Bereich aus der Originalgrafik
+            column * sourceWidth,
+            row * sourceHeight,
+            sourceWidth,
+            sourceHeight,
+
+            // Position des einzelnen Stücks
+            -this.radius / 2,
+            -this.radius / 2,
+            this.radius,
+            this.radius
+        );
+
+        this.ctx.restore();
+    });
 },
 
     updateParticles(deltaTime = 1) {
@@ -1598,6 +1701,7 @@ createShooter() {
               break;
       }
     this.updateParticles(deltaTime);
+    this.updateChainBreaks(deltaTime);
 
     if (this.victoryAnimation) {
         this.updateVictoryAnimation(deltaTime);
@@ -1781,55 +1885,77 @@ createShooter() {
 
       const removedBubbles = connected.length >= 3;
 
-      if (removedBubbles) {
-        Audio.playEffect("hit");
+ if (removedBubbles) {
+    Audio.playEffect("hit");
 
-        connected.forEach((bubble) => {
-          this.createPopEffect(
+    // Kettenbälle und normale Bälle trennen
+    const chainedBubbles = connected.filter(
+        (bubble) => bubble.isChained
+    );
+
+    const bubblesToRemove = connected.filter(
+        (bubble) => !bubble.isChained
+    );
+
+    chainedBubbles.forEach((bubble) => {
+    // Kette visuell auseinandersprengen
+    this.createChainBreakEffect(
+        bubble.x,
+        bubble.y
+    );
+
+    // Ball danach entsperren
+    bubble.isChained = false;
+});
+
+    // Nur normale Bälle zerplatzen
+    bubblesToRemove.forEach((bubble) => {
+        this.createPopEffect(
             bubble.x,
             bubble.y,
             bubble.color
-          );
-        });
-
-        const removalSet = new Set(connected);
-        this.bubbles = this.bubbles.filter(
-          (bubble) => !removalSet.has(bubble)
         );
+    });
 
-        connected.forEach((bubble) => {
+    // Nur normale Bälle entfernen
+    const removalSet = new Set(bubblesToRemove);
 
-    const colorId = bubble.color.id;
+    this.bubbles = this.bubbles.filter(
+        (bubble) => !removalSet.has(bubble)
+    );
 
+    // Nur wirklich entfernte Bälle zählen
+    bubblesToRemove.forEach((bubble) => {
+        const colorId = bubble.color.id;
 
-    if (!this.collectedColors[colorId]) {
-        this.collectedColors[colorId] = 0;
+        if (!this.collectedColors[colorId]) {
+            this.collectedColors[colorId] = 0;
+        }
+
+        this.collectedColors[colorId]++;
+    });
+
+    this.score += bubblesToRemove.length * 100;
+
+    this.removeFloatingBubbles();
+
+    dom.playScore.textContent =
+        `${this.score.toLocaleString("de-DE")} Punkte`;
+
+    const levelConfig = STAR_CONFIG[state.selectedLevel];
+
+    if (levelConfig?.mode === "colors") {
+        const current =
+            this.collectedColors[levelConfig.only_color] ?? 0;
+
+        dom.targetScoreDisplay.textContent =
+            `${current}/${levelConfig.need}`;
     }
 
-
-    this.collectedColors[colorId]++;
-    console.log("Gesammelt:", bubble.color, this.collectedColors);
-
-});
-
-        this.score += connected.length * 100;
-        this.removeFloatingBubbles();
-
-        dom.playScore.textContent = `${this.score.toLocaleString("de-DE")} Punkte`;
-
-const levelConfig = STAR_CONFIG[state.selectedLevel];
-
-if (levelConfig?.mode === "colors") {
-
-    const current = this.collectedColors[levelConfig.only_color] ?? 0;
-
-    dom.targetScoreDisplay.textContent =
-    `${current}/${levelConfig.need}`;
-
+    this.checkObjectiveWin();
 }
 
-        this.checkObjectiveWin();
-      }
+      
 
       const levelConfig = STAR_CONFIG[state.selectedLevel];
 
@@ -2459,8 +2585,28 @@ drawAimGuide() {
       //this.ctx.fillStyle = "rgba(0,0,0,.12)";
       //this.ctx.fillRect(0, 0, this.width, this.height);
 
-      this.bubbles.forEach((bubble) => this.drawBubble(bubble));
+      this.bubbles.forEach((bubble, index) => {
+    this.drawBubble(bubble);
+
+    // TEST: Kette nur über den ersten Ball legen
+    if (
+        bubble.isChained &&
+        this.chainLockImage?.complete &&
+        this.chainLockImage.naturalWidth > 0
+    ) {
+        const chainSize = this.radius * 2;
+
+        this.ctx.drawImage(
+            this.chainLockImage,
+            bubble.x - this.radius,
+            bubble.y - this.radius,
+            chainSize,
+            chainSize
+        );
+    }
+});
       this.drawParticles();
+      this.drawChainBreaks();
       this.drawThunders();
       this.drawAimGuide();
 

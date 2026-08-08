@@ -305,6 +305,9 @@ const STAR_CONFIG = {
     only_color: "red",
     need: 7,
     maxShots: 18,
+    chainedBalls: [
+        { row: 4, col: 4 }, { row: 4, col: 5 }, { row: 4, col: 6 }, { row: 4, col: 7 },
+    ],
 
     shots: {
         threeStars: 10,
