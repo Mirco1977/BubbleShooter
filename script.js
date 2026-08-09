@@ -306,6 +306,7 @@ const THEME_PATH = [
     openSettingsButton: $("openSettingsButton"),
     bombItemButton: $("bombItemButton"),
     thunderItemButton: $("thunderItemButton"),
+    rainbowItemButton: $("rainbowItemButton"),
     switchItemButton: $("switchItemButton"),
     aimItemButton: $("aimItemButton"),
     settingsItemButton: $("settingsItemButton"),
@@ -932,28 +933,35 @@ const THEME_PATH = [
     levelFinished: false,
 
     activateBombBall() {
-    if (!this.shooter || this.shooter.moving) return;
+        if (!this.shooter || this.shooter.moving) return;
 
-    this.shooter.isBomb = true;
+        this.shooter.isBomb = true;
     },
 
     activateThunderBall() {
-      if (!this.shooter || this.shooter.moving) return;
+        if (!this.shooter || this.shooter.moving) return;
 
-      this.shooter.isThunder = true;
+        this.shooter.isThunder = true;
+    },
+
+    activateRainbowBall() {
+        if (!this.shooter || this.shooter.moving) return;
+
+        this.shooter.isBomb = false;
+        this.shooter.isThunder = false;
+        this.shooter.isRainbow = true;
     },
 
     activateSwitchBall() {
-    if (!this.shooter || this.shooter.moving) return;
+        if (!this.shooter || this.shooter.moving) return;
 
-    this.swapShooterBall();
+        this.swapShooterBall();
     },
 
     activateAimItem() {
-      if (!this.shooter || this.shooter.moving) return;
+        if (!this.shooter || this.shooter.moving) return;
 
-    this.aimItemAktive = true;
-   
+        this.aimItemAktive = true;
     },
 
     testBombBall() {
@@ -1061,6 +1069,9 @@ const THEME_PATH = [
       
       this.thunderImage = new Image();
       this.thunderImage.src = "assets/ui/thunder-ball.png";
+
+      this.rainbowImage = new Image();
+      this.rainbowImage.src = "assets/ui/rainbow-ball.png";
 
       this.aimImage = new Image();
       this.aimImage.src = "assets/ui/lupe.png";
@@ -1635,13 +1646,14 @@ createShooter() {
         moving: false,
         isBomb: false,
         isThunder: false,
+        isRainbow: false,
         isAim: false,
         color: color,
         image: color.image || null
     };
 
     this.nextColor = this.randomColor();
-    },
+},
 
     swapShooterBall() {
     if (
@@ -1807,25 +1819,47 @@ createShooter() {
         );
       }
 
-      const ceilingHit = this.shooter.y <= this.radius;
-      const bubbleHit = this.bubbles.some((bubble) =>
-        Math.hypot(
-          bubble.x - this.shooter.x,
-          bubble.y - this.shooter.y
-        ) <= this.radius * 2 - 2
-      );
+     const ceilingHit = this.shooter.y <= this.radius;
+
+      let hitBubble = null;
+      let closestDistance = Infinity;
+
+      this.bubbles.forEach((bubble) => {
+
+          const distance = Math.hypot(
+              bubble.x - this.shooter.x,
+              bubble.y - this.shooter.y
+          );
+
+          if (
+              distance <= this.radius * 2 - 2 &&
+              distance < closestDistance
+          ) {
+              hitBubble = bubble;
+              closestDistance = distance;
+          }
+      });
+
+      const bubbleHit = hitBubble !== null;
 
       if (ceilingHit || bubbleHit) {
-      this.attachShooter();
 
-        // Max Schüsse prüfen nach abgeschlossenem Schuss
-        const maxShots = STAR_CONFIG[state.selectedLevel].maxShots;
+          this.lastHitBubble = hitBubble;
 
-        if (!this.levelFinished && this.shots >= maxShots) {
-        this.finish(false);
-        return;
-    }
-    }
+          this.attachShooter();
+
+          // Max Schüsse prüfen nach abgeschlossenem Schuss
+          const maxShots =
+              STAR_CONFIG[state.selectedLevel].maxShots;
+
+          if (
+              !this.levelFinished &&
+              this.shots >= maxShots
+          ) {
+              this.finish(false);
+              return;
+          }
+      }
 },
 
     attachShooter() {
@@ -1865,18 +1899,19 @@ createShooter() {
       ) / this.columnWidth
       );
 
-      const placed = {
-      x: Math.max(
-          this.radius,
-          Math.min(
-              this.width - this.radius,
-              this.gridBaseX +
-                  column * this.columnWidth +
-                  offset
-          )
-      ),
-      y: this.radius + row * this.rowHeight,
-      color: this.shooter.color
+     const placed = {
+          x: Math.max(
+              this.radius,
+              Math.min(
+                  this.width - this.radius,
+                  this.gridBaseX +
+                      column * this.columnWidth +
+                      offset
+              )
+          ),
+          y: this.radius + row * this.rowHeight,
+          color: this.shooter.color,
+          isRainbow: this.shooter.isRainbow === true
       };
 
       this.bubbles.push(placed);
@@ -2033,7 +2068,7 @@ explodeBomb() {
 
   this.screenShake = 12;
 
-  const explosionRadius = this.radius * 2.5;
+  const explosionRadius = this.radius * 3.4;
 
   const removedByBomb = this.bubbles.filter((bubble) => {
     const distance = Math.hypot(
@@ -2050,7 +2085,7 @@ explodeBomb() {
 dom.playScore.textContent =
     `${this.score.toLocaleString("de-DE")} Punkte`;
 
-this.checkScoreWin();
+this.checkObjectiveWin();
 
   this.bubbles = this.bubbles.filter((bubble) => {
     const distance = Math.hypot(
@@ -2262,35 +2297,127 @@ return targets;
 },*/
 
 findConnectedSameColor(origin) {
-      const result = [];
-      const visited = new Set();
-      const queue = [origin];
 
-      while (queue.length) {
+    const result = [];
+    const visited = new Set();
+    const queue = [origin];
+    const neighborDistance = this.radius * 2.35;
+
+    let targetColorId = origin.color.id;
+    let matchedColor = origin.color;
+
+    /*
+     * Ein Regenbogenball übernimmt die Farbe
+     * der tatsächlich getroffenen Kugel.
+     */
+    if (origin.isRainbow) {
+
+        if (
+            this.lastHitBubble &&
+            !this.lastHitBubble.isRainbow
+        ) {
+            targetColorId = this.lastHitBubble.color.id;
+            matchedColor = this.lastHitBubble.color;
+
+        } else {
+
+            /*
+             * Falls der Regenbogenball die Decke oder einen
+             * anderen Regenbogenball trifft, wird die nächste
+             * angrenzende normale Farbe verwendet.
+             */
+            let nearestBubble = null;
+            let nearestDistance = Infinity;
+
+            this.bubbles.forEach((bubble) => {
+
+                if (
+                    bubble === origin ||
+                    bubble.isRainbow
+                ) {
+                    return;
+                }
+
+                const distance = Math.hypot(
+                    bubble.x - origin.x,
+                    bubble.y - origin.y
+                );
+
+                if (
+                    distance <= neighborDistance &&
+                    distance < nearestDistance
+                ) {
+                    nearestBubble = bubble;
+                    nearestDistance = distance;
+                }
+            });
+
+            if (!nearestBubble) {
+                return [origin];
+            }
+
+            targetColorId = nearestBubble.color.id;
+            matchedColor = nearestBubble.color;
+        }
+    }
+
+    /*
+     * Normale Bälle müssen dieselbe Farbe besitzen.
+     * Regenbogenbälle gelten dabei als jede Farbe.
+     */
+    while (queue.length) {
+
         const current = queue.shift();
 
         if (visited.has(current)) continue;
         visited.add(current);
 
-        if (current.color.id !== origin.color.id) continue;
+        const matchesColor =
+            current.isRainbow ||
+            current.color.id === targetColorId;
+
+        if (!matchesColor) continue;
+
         result.push(current);
 
         for (const candidate of this.bubbles) {
-          if (
-            !visited.has(candidate) &&
-            candidate.color.id === origin.color.id &&
-            Math.hypot(
-              candidate.x - current.x,
-              candidate.y - current.y
-            ) <= this.radius * 2.35
-          ) {
-            queue.push(candidate);
-          }
-        }
-      }
 
-      return result;
-    },
+            const candidateMatches =
+                candidate.isRainbow ||
+                candidate.color.id === targetColorId;
+
+            if (
+                !visited.has(candidate) &&
+                candidateMatches &&
+                Math.hypot(
+                    candidate.x - current.x,
+                    candidate.y - current.y
+                ) <= neighborDistance
+            ) {
+                queue.push(candidate);
+            }
+        }
+    }
+
+    /*
+     * Nur wenn mindestens drei Bälle verbunden sind,
+     * übernehmen beteiligte Regenbogenbälle intern
+     * die getroffene Farbe.
+     *
+     * Das ist wichtig für Punkte, Farbziele und Partikel.
+     */
+    if (result.length >= 3) {
+
+        result.forEach((bubble) => {
+
+            if (bubble.isRainbow) {
+                bubble.color = matchedColor;
+            }
+        });
+    }
+
+    return result;
+},
 
     removeFloatingBubbles() {
       const connectedToTop = new Set();
@@ -2359,6 +2486,22 @@ drawBubble(bubble) {
 
         this.ctx.drawImage(
             this.bombImage,
+            bubble.x - this.radius,
+            bubble.y - this.radius,
+            size,
+            size
+        );
+
+        return;
+    }
+
+    // Regenbogenball
+    if (bubble.isRainbow && this.rainbowImage?.complete) {
+
+        const size = this.radius * 2;
+
+        this.ctx.drawImage(
+            this.rainbowImage,
             bubble.x - this.radius,
             bubble.y - this.radius,
             size,
@@ -3121,6 +3264,10 @@ const stars = calculateStars(
     BubbleGame.activateThunderBall();
   });
 
+  dom.rainbowItemButton.addEventListener("click",() => {
+    BubbleGame.activateRainbowBall();
+  });
+
   dom.aimItemButton.addEventListener("click", () => {
     BubbleGame.activateAimItem();
   });
@@ -3300,6 +3447,11 @@ const ITEM_INFO = {
     thunder: {
         title: "Thunder Ball",
         text: "Der Thunder Ball entfernt eine komplette Reihe und schafft dir neue Möglichkeiten."
+    },
+
+    rainbow: {
+      title: "Regenbogenball",
+      text: "Der Regenbogenball gilt für jede Farbe. Trifft er eine Farbgruppe, zählt er als passende Farbe. Mindestens drei verbundene Bälle werden weiterhin benötigt."
     },
 
 
