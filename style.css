@@ -1655,57 +1655,42 @@ font-weight:900;
    ========================================================= */
 
 .menu-card.has-image {
-    min-height: 128px;
+    width: 100%;
+    min-height: 120px;
+    height: 120px;
 
-    display: flex;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 100px;
     align-items: center;
-    justify-content: space-between;
 
-    gap: 14px;
+    gap: 12px;
+    padding: 14px 18px;
 
     overflow: hidden;
 }
 
 
 .menu-card-text {
-    flex: 1;
     min-width: 0;
-
-    position: relative;
-    z-index: 2;
+    text-align: left;
 }
 
 
-.menu-card-image {
-    width: 108px;
-    height: 100px;
+.menu-card.has-image .menu-card-image {
+    display: block;
 
-    flex: 0 0 108px;
+    width: 100px !important;
+    max-width: 100px !important;
+
+    height: 100px !important;
+    max-height: 100px !important;
 
     object-fit: contain;
+
+    justify-self: end;
 
     pointer-events: none;
 
     filter:
-        drop-shadow(0 6px 8px rgba(0, 0, 0, 0.45));
-
-    transition:
-        transform 0.25s ease;
-}
-
-
-.menu-card.has-image:hover .menu-card-image {
-    transform: scale(1.06);
-}
-
-
-@media (max-width: 420px) {
-
-    .menu-card-image {
-        width: 94px;
-        height: 90px;
-
-        flex-basis: 94px;
-    }
-
+        drop-shadow(0 5px 7px rgba(0, 0, 0, 0.45));
 }
