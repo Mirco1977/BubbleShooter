@@ -142,7 +142,22 @@
           <span class="eyebrow">BUBBLE ENGINE</span>
           <h2 id="playLevelTitle">Level 1</h2>
         </div>
-        <span id="playScore">0 Punkte</span>
+        <div class="play-toolbar-actions">
+
+    <span id="playScore">
+        0 Punkte
+    </span>
+
+    <button
+        id="settingsItemButton"
+        class="play-settings-button"
+        type="button"
+        aria-label="Einstellungen öffnen"
+        title="Einstellungen">
+        &#9881;
+    </button>
+
+</div>
       </div>
 
       <div class="game-hud">
@@ -160,13 +175,6 @@
 <div class="item-bar-wrapper">
 
     <div class="item-bar">
-
-        <button
-            id="settingsItemButton"
-            class="item-bar-button settings-item"
-            type="button">
-            ⚙️
-        </button>
 
         <button
             id="switchItemButton"
