@@ -405,6 +405,29 @@ button:disabled {
   background-position: center;
 }
 
+#levelGoalText {
+    width: min(calc(100% - 28px), 420px);
+
+    margin: 0;
+    padding: 13px 17px;
+
+    border-radius: 13px;
+
+    color: #ffffff;
+    background: linear-gradient(
+        135deg,
+        var(--brand),
+        #b11616
+    );
+
+    font-size: 16px;
+    font-weight: 800;
+    line-height: 1.35;
+    text-align: center;
+
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35);
+}
+
 .preview-bubbles {
 
 display:flex;
