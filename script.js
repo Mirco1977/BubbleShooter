@@ -1058,7 +1058,9 @@ const THEME_PATH = [
         { id:"blue" },
         { id:"green" },
         { id:"yellow" },
-        { id:"purple" }
+        { id:"purple" },
+        { id:"pink"},
+        { id:"black"}
     ];
   }
       this.switchImage = new Image();
@@ -1088,24 +1090,81 @@ const THEME_PATH = [
       this.running = true;
       this.levelFinished = false;
 
-    const levelConfig = STAR_CONFIG[levelNumber];
+   const levelConfig = STAR_CONFIG[levelNumber];
+
     const colorCount = Math.min(
-    levelConfig?.ballTypes ?? 3,
-    this.palette.length
+        levelConfig?.ballTypes ?? 3,
+        this.palette.length
     );
 
     const shuffledColors = [...this.palette];
 
+    /*
+     * Farben zufällig mischen
+     */
     for (let i = shuffledColors.length - 1; i > 0; i--) {
-        const randomIndex = Math.floor(Math.random() * (i + 1));
 
-        [shuffledColors[i], shuffledColors[randomIndex]] =
-            [shuffledColors[randomIndex], shuffledColors[i]];
+        const randomIndex =
+            Math.floor(Math.random() * (i + 1));
+
+        [
+            shuffledColors[i],
+            shuffledColors[randomIndex]
+        ] = [
+            shuffledColors[randomIndex],
+            shuffledColors[i]
+        ];
     }
 
-    this.activeColors = shuffledColors.slice(0, colorCount);
+    /*
+     * Diese Farbpärchen dürfen niemals
+     * gleichzeitig ausgewählt werden.
+     */
+    const forbiddenColorPairs = [
+        ["blue", "purple"],
+        ["red", "pink"]
+    ];
 
-      this.activeColors = this.palette.slice(0, colorCount);
+    this.activeColors = [];
+
+    for (const candidate of shuffledColors) {
+
+        const hasForbiddenCombination =
+            forbiddenColorPairs.some(([first, second]) => {
+
+                const candidateIsFirst =
+                    candidate.id === first;
+
+                const candidateIsSecond =
+                    candidate.id === second;
+
+                const firstAlreadySelected =
+                    this.activeColors.some(
+                        (color) => color.id === first
+                    );
+
+                const secondAlreadySelected =
+                    this.activeColors.some(
+                        (color) => color.id === second
+                    );
+
+                return (
+                    candidateIsFirst && secondAlreadySelected
+                ) || (
+                    candidateIsSecond && firstAlreadySelected
+                );
+            });
+
+        if (hasForbiddenCombination) {
+            continue;
+        }
+
+        this.activeColors.push(candidate);
+
+        if (this.activeColors.length >= colorCount) {
+            break;
+        }
+    }
       
       this.targetScore = levelConfig?.targetScore ?? 1000;
 
