@@ -159,9 +159,8 @@ button:disabled {
 
 .home-grid {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
+  grid-template-columns: 1fr;
   gap: 12px;
-  margin-top: 14px;
 }
 
 .menu-card {
@@ -1647,6 +1646,66 @@ font-weight:900;
         flex-basis: 32px;
 
         font-size: 22px;
+    }
+
+}
+
+/* =========================================================
+   GRAFIKEN AUF DEN STARTSEITEN-KARTEN
+   ========================================================= */
+
+.menu-card.has-image {
+    min-height: 128px;
+
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+
+    gap: 14px;
+
+    overflow: hidden;
+}
+
+
+.menu-card-text {
+    flex: 1;
+    min-width: 0;
+
+    position: relative;
+    z-index: 2;
+}
+
+
+.menu-card-image {
+    width: 108px;
+    height: 100px;
+
+    flex: 0 0 108px;
+
+    object-fit: contain;
+
+    pointer-events: none;
+
+    filter:
+        drop-shadow(0 6px 8px rgba(0, 0, 0, 0.45));
+
+    transition:
+        transform 0.25s ease;
+}
+
+
+.menu-card.has-image:hover .menu-card-image {
+    transform: scale(1.06);
+}
+
+
+@media (max-width: 420px) {
+
+    .menu-card-image {
+        width: 94px;
+        height: 90px;
+
+        flex-basis: 94px;
     }
 
 }

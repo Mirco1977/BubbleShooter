@@ -301,7 +301,7 @@ const THEME_PATH = [
     continueButton: $("continueButton"),
     newGameButton: $("newGameButton"),
     openMapButton: $("openMapButton"),
-    openThemesButton: $("openThemesButton"),
+  
     openRankingButton: $("openRankingButton"),
     openSettingsButton: $("openSettingsButton"),
     bombItemButton: $("bombItemButton"),
@@ -3491,7 +3491,7 @@ dom.winResultOverlay.classList.remove("hidden");
   });
 
   dom.openMapButton.addEventListener("click", () => Navigation.show("map"));
-  dom.openThemesButton.addEventListener("click", () => Navigation.show("themes"));
+ 
   dom.openRankingButton.addEventListener("click", () => Navigation.show("ranking"));
   dom.openSettingsButton.addEventListener("click", () => Navigation.show("settings"));
   
