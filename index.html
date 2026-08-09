@@ -244,26 +244,74 @@
 
 </div>
         <div id="winResultOverlay" class="game-result-overlay hidden">
-          <div class="game-result-card">
-            <span class="eyebrow">ERGEBNIS</span>
-            <h3 id="winResultTitle">Level geschafft!</h3>
-            <div id="winResultStars" class="result-stars">★★★</div>
-            <p id="winResultText"></p>
 
-            <div class="result-actions">
-              <button id="retryLevelButton" class="secondary-button">
-                Wiederholen
-              </button>
-              <button id="resultMapButton" class="primary-button">
-                Zur Karte
-              </button>
-              <button id="nextLevelButton" class="primary-button">
-                Nächstes Level
-              </button>
+    <div class="game-result-card">
+
+        <span class="eyebrow">ERGEBNIS</span>
+
+        <div
+            id="itemUnlockReward"
+            class="item-unlock-reward hidden"
+            aria-live="polite">
+
+            <span class="item-unlock-title">
+                ITEM FREIGESCHALTET!
+            </span>
+
+            <div class="item-unlock-image-wrapper">
+
+                <span
+                    class="item-unlock-glow"
+                    aria-hidden="true">
+                </span>
+
+                <img
+                    id="itemUnlockImage"
+                    class="item-unlock-image"
+                    alt="">
             </div>
-          </div>
+
+            <strong id="itemUnlockName"></strong>
+
         </div>
-      </div>
+
+        <h3 id="winResultTitle">
+            Level geschafft!
+        </h3>
+
+        <div
+            id="winResultStars"
+            class="result-stars">
+            ★★★
+        </div>
+
+        <p id="winResultText"></p>
+
+        <div class="result-actions">
+
+            <button
+                id="retryLevelButton"
+                class="secondary-button">
+                Wiederholen
+            </button>
+
+            <button
+                id="resultMapButton"
+                class="primary-button">
+                Zur Karte
+            </button>
+
+            <button
+                id="nextLevelButton"
+                class="primary-button">
+                Nächstes Level
+            </button>
+
+        </div>
+
+    </div>
+
+</div>
 
       <div id="loseShotsOverlay" class="game-result-overlay hidden">
     <div class="game-result-card">

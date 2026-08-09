@@ -355,6 +355,9 @@ const THEME_PATH = [
     winResultStars: $("winResultStars"),
     winResultText: $("winResultText"),
     nextLevelButton: $("nextLevelButton"),
+    itemUnlockReward: $("itemUnlockReward"),
+    itemUnlockImage: $("itemUnlockImage"),
+    itemUnlockName: $("itemUnlockName"),
 
     loseBoundaryPopup: $("loseBoundaryOverlay"),
     loseBoundaryTitle: $("loseBoundaryTitle"),
@@ -391,33 +394,44 @@ const THEME_PATH = [
     selectedLevel: 1
   };
 
-  const ITEM_UNLOCKS = {
-    ballswitch: {
-      button: dom.switchItemButton,
-      unlockLevel: 5,
-      label: "Ball Switch"
-    },
-    rainbow: {
-      button: dom.rainbowItemButton,
-      unlockLevel: 15,
-      label: "Regenbogenball"
-    },
-    aim: {
-      button: dom.aimItemButton,
-      unlockLevel: 25,
-      label: "Zielhilfe"
-    },
-    bomb: {
-      button: dom.bombItemButton,
-      unlockLevel: 35,
-      label: "Bombenball"
-    },
-    thunder: {
-      button: dom.thunderItemButton,
-      unlockLevel: 45,
-      label: "Thunder Ball"
-    }
-  };
+const ITEM_UNLOCKS = {
+
+  ballswitch: {
+    button: dom.switchItemButton,
+    unlockLevel: 5,
+    label: "Ball Switch",
+    image: "assets/ui/ballswitch.png"
+  },
+
+  rainbow: {
+    button: dom.rainbowItemButton,
+    unlockLevel: 15,
+    label: "Regenbogenball",
+    image: "assets/ui/rainbow-ball.png"
+  },
+
+  aim: {
+    button: dom.aimItemButton,
+    unlockLevel: 25,
+    label: "Zielhilfe",
+    image: "assets/ui/lupe.png"
+  },
+
+  bomb: {
+    button: dom.bombItemButton,
+    unlockLevel: 35,
+    label: "Bombenball",
+    image: "assets/ui/bomb-ball.png"
+  },
+
+  thunder: {
+    button: dom.thunderItemButton,
+    unlockLevel: 45,
+    label: "Thunder Ball",
+    image: "assets/ui/thunder-ball.png"
+  }
+
+};
 
   function isItemUnlocked(itemKey) {
     const item = ITEM_UNLOCKS[itemKey];
@@ -446,6 +460,41 @@ const THEME_PATH = [
         : `Wird nach dem Gewinn von Level ${item.unlockLevel} freigeschaltet`;
     });
   }
+
+  function showUnlockedItemReward(
+  levelNumber,
+  wasAlreadyCompleted
+) {
+
+  const unlockedItem = wasAlreadyCompleted
+    ? null
+    : Object.values(ITEM_UNLOCKS).find(
+        (item) =>
+          item.unlockLevel === Number(levelNumber)
+      );
+
+  if (!unlockedItem) {
+
+    dom.itemUnlockReward.classList.add("hidden");
+
+    dom.itemUnlockImage.removeAttribute("src");
+    dom.itemUnlockImage.alt = "";
+    dom.itemUnlockName.textContent = "";
+
+    return;
+  }
+
+  dom.itemUnlockImage.src =
+    unlockedItem.image;
+
+  dom.itemUnlockImage.alt =
+    unlockedItem.label;
+
+  dom.itemUnlockName.textContent =
+    unlockedItem.label;
+
+  dom.itemUnlockReward.classList.remove("hidden");
+}
 
   const Backend = {
     async getCurrentUser() {
@@ -732,26 +781,38 @@ const THEME_PATH = [
   };
 
   const Navigation = {
-    show(screenName) {
-      Object.entries(dom.screens).forEach(([name, element]) => {
-        element.classList.toggle("hidden", name !== screenName);
-      });
+  show(screenName) {
+    Object.entries(dom.screens).forEach(([name, element]) => {
+      element.classList.toggle("hidden", name !== screenName);
+    });
 
-      if (screenName === "map") {
-        StageMap.render();
-      }
+    const headerAusblenden =
+      screenName === "map" ||
+      screenName === "level" ||
+      screenName === "play";
 
-      if (screenName === "themes") {
-        ThemeManager.renderList();
-      }
+    document
+      .querySelector(".app-header")
+      ?.classList.toggle("hidden", headerAusblenden);
 
-      if (screenName === "ranking") {
-        Ranking.render();
-      }
-
-      window.scrollTo({ top: 0, behavior: "smooth" });
+    if (screenName === "map") {
+      StageMap.render();
     }
-  };
+
+    if (screenName === "themes") {
+      ThemeManager.renderList();
+    }
+
+    if (screenName === "ranking") {
+      Ranking.render();
+    }
+
+    window.scrollTo({
+      top: 0,
+      behavior: "smooth"
+    });
+  }
+};
 
   const StageMap = {
     getStageStart(stageNumber) {
@@ -3130,16 +3191,28 @@ const stars = calculateStars(
     }
 
 
-    // Sterne anzeigen
-    dom.winResultStars.textContent = "⭐".repeat(stars);
+    const oldResult =
+  (state.progress.results || {})[level];
 
 
-    dom.winResultText.textContent =
-        `${this.score.toLocaleString("de-DE")} Punkte mit ${this.shots} Schüssen.`;
+showUnlockedItemReward(
+  level,
+  Boolean(oldResult)
+);
 
-    dom.winResultOverlay.classList.remove("hidden");
-    
-    const oldResult = (state.progress.results || {})[level];
+
+// Sterne anzeigen
+dom.winResultStars.textContent =
+  "⭐".repeat(stars);
+
+
+dom.winResultText.textContent =
+  `${this.score.toLocaleString("de-DE")} Punkte mit ${this.shots} Schüssen.`;
+
+
+// Gewinn-Popup erst öffnen,
+// nachdem die Itembelohnung vorbereitet wurde
+dom.winResultOverlay.classList.remove("hidden");
 
       if (
         !oldResult ||
