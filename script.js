@@ -1127,7 +1127,43 @@ const THEME_PATH = [
 
     this.activeColors = [];
 
+    /*
+     * Bei Farbziel-Leveln muss die benötigte
+     * Zielfarbe zwingend vorhanden sein.
+     */
+    const requiredColorId =
+        levelConfig?.mode === "colors"
+            ? levelConfig.only_color
+            : null;
+
+    if (requiredColorId) {
+
+        const requiredColor = this.palette.find(
+            (color) => color.id === requiredColorId
+        );
+
+        if (requiredColor) {
+            this.activeColors.push(requiredColor);
+        }
+    }
+
+    /*
+     * Die restlichen Farben zufällig ergänzen.
+     */
     for (const candidate of shuffledColors) {
+
+        /*
+         * Die bereits fest eingefügte Zielfarbe
+         * nicht noch einmal hinzufügen.
+         */
+        const alreadySelected =
+            this.activeColors.some(
+                (color) => color.id === candidate.id
+            );
+
+        if (alreadySelected) {
+            continue;
+        }
 
         const hasForbiddenCombination =
             forbiddenColorPairs.some(([first, second]) => {
