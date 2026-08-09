@@ -169,70 +169,74 @@
         </button>
 
         <button
-            id="bombItemButton"
-            class="item-bar-button bomb-item"
-            type="button">
-            <img src="assets/ui/bomb-ball.png" alt="Bombenball">
-            <span class="item-info-button" data-item="bomb">
-                i
-            </span>
-            <span class="item-count">3</span>
-        </button>
-
-        <button
             id="switchItemButton"
-            class="item-bar-button switch-item"
-            type="button">
+            class="item-bar-button switch-item locked-item"
+            type="button"
+            disabled
+            aria-label="Ball Switch – gesperrt bis Level 5">
             <img src="assets/ui/ballswitch.png" alt="Ball Switch">
             <span class="item-info-button" data-item="ballswitch">
                 i
             </span>
             <span class="item-count">3</span>
-        </button>
-
-        <button
-            id="thunderItemButton"
-            class="item-bar-button thunder-item"
-            type="button">
-            <img src="assets/ui/thunder-ball.png" alt="Thunder Ball">
-            <span class="item-info-button" data-item="thunder">
-                i
-            </span>
-            <span class="item-count">3</span>
+            <span class="item-lock-icon" aria-hidden="true">🔒</span>
         </button>
 
         <button
             id="rainbowItemButton"
-            class="item-bar-button rainbow-item"
+            class="item-bar-button rainbow-item locked-item"
             type="button"
-            aria-label="Regenbogenball">
+            disabled
+            aria-label="Regenbogenball – gesperrt bis Level 15">
             <img src="assets/ui/rainbow-ball.png" alt="Regenbogenball">
-
-            <span
-                class="item-info-button"
-                data-item="rainbow">
+            <span class="item-info-button" data-item="rainbow">
                 i
             </span>
-
             <span class="item-count">3</span>
+            <span class="item-lock-icon" aria-hidden="true">🔒</span>
         </button>
 
         <button
             id="aimItemButton"
-            class="item-bar-button aim-item"
-            type="button">
+            class="item-bar-button aim-item locked-item"
+            type="button"
+            disabled
+            aria-label="Zielhilfe – gesperrt bis Level 25">
             <img src="assets/ui/lupe.png" alt="Zielhilfe">
             <span class="item-info-button" data-item="aim">
                 i
             </span>
             <span class="item-count">3</span>
+            <span class="item-lock-icon" aria-hidden="true">🔒</span>
         </button>
 
-        <!--
-        <button class="item-bar-button locked-item" type="button" disabled>
-            <span>?</span>
+        <button
+            id="bombItemButton"
+            class="item-bar-button bomb-item locked-item"
+            type="button"
+            disabled
+            aria-label="Bombenball – gesperrt bis Level 35">
+            <img src="assets/ui/bomb-ball.png" alt="Bombenball">
+            <span class="item-info-button" data-item="bomb">
+                i
+            </span>
+            <span class="item-count">3</span>
+            <span class="item-lock-icon" aria-hidden="true">🔒</span>
         </button>
-        -->
+
+        <button
+            id="thunderItemButton"
+            class="item-bar-button thunder-item locked-item"
+            type="button"
+            disabled
+            aria-label="Thunder Ball – gesperrt bis Level 45">
+            <img src="assets/ui/thunder-ball.png" alt="Thunder Ball">
+            <span class="item-info-button" data-item="thunder">
+                i
+            </span>
+            <span class="item-count">3</span>
+            <span class="item-lock-icon" aria-hidden="true">🔒</span>
+        </button>
 
     </div>
 

@@ -391,6 +391,62 @@ const THEME_PATH = [
     selectedLevel: 1
   };
 
+  const ITEM_UNLOCKS = {
+    ballswitch: {
+      button: dom.switchItemButton,
+      unlockLevel: 5,
+      label: "Ball Switch"
+    },
+    rainbow: {
+      button: dom.rainbowItemButton,
+      unlockLevel: 15,
+      label: "Regenbogenball"
+    },
+    aim: {
+      button: dom.aimItemButton,
+      unlockLevel: 25,
+      label: "Zielhilfe"
+    },
+    bomb: {
+      button: dom.bombItemButton,
+      unlockLevel: 35,
+      label: "Bombenball"
+    },
+    thunder: {
+      button: dom.thunderItemButton,
+      unlockLevel: 45,
+      label: "Thunder Ball"
+    }
+  };
+
+  function isItemUnlocked(itemKey) {
+    const item = ITEM_UNLOCKS[itemKey];
+
+    if (!item) return false;
+
+    return Boolean(
+      (state.progress.results || {})[item.unlockLevel]
+    );
+  }
+
+  function updateItemBarLocks() {
+    Object.entries(ITEM_UNLOCKS).forEach(([itemKey, item]) => {
+      const unlocked = isItemUnlocked(itemKey);
+
+      item.button.classList.toggle("locked-item", !unlocked);
+      item.button.disabled = !unlocked;
+      item.button.setAttribute(
+        "aria-label",
+        unlocked
+          ? item.label
+          : `${item.label} – gesperrt bis Level ${item.unlockLevel}`
+      );
+      item.button.title = unlocked
+        ? item.label
+        : `Wird nach dem Gewinn von Level ${item.unlockLevel} freigeschaltet`;
+    });
+  }
+
   const Backend = {
     async getCurrentUser() {
       if (GAME_CONFIG.backendMode === "mock") {
@@ -912,10 +968,6 @@ const THEME_PATH = [
     explosions: [],
     collectedColors: {},
 
-    hasSwitchItem: true,
-    hasBombItem: true,
-    hasAimItem: true,
-
     switchBallActive: false,
     aimItemAktive: false,
 
@@ -933,19 +985,31 @@ const THEME_PATH = [
     levelFinished: false,
 
     activateBombBall() {
-        if (!this.shooter || this.shooter.moving) return;
+        if (
+          !isItemUnlocked("bomb") ||
+          !this.shooter ||
+          this.shooter.moving
+        ) return;
 
         this.shooter.isBomb = true;
     },
 
     activateThunderBall() {
-        if (!this.shooter || this.shooter.moving) return;
+        if (
+          !isItemUnlocked("thunder") ||
+          !this.shooter ||
+          this.shooter.moving
+        ) return;
 
         this.shooter.isThunder = true;
     },
 
     activateRainbowBall() {
-        if (!this.shooter || this.shooter.moving) return;
+        if (
+          !isItemUnlocked("rainbow") ||
+          !this.shooter ||
+          this.shooter.moving
+        ) return;
 
         this.shooter.isBomb = false;
         this.shooter.isThunder = false;
@@ -953,13 +1017,21 @@ const THEME_PATH = [
     },
 
     activateSwitchBall() {
-        if (!this.shooter || this.shooter.moving) return;
+        if (
+          !isItemUnlocked("ballswitch") ||
+          !this.shooter ||
+          this.shooter.moving
+        ) return;
 
         this.swapShooterBall();
     },
 
     activateAimItem() {
-        if (!this.shooter || this.shooter.moving) return;
+        if (
+          !isItemUnlocked("aim") ||
+          !this.shooter ||
+          this.shooter.moving
+        ) return;
 
         this.aimItemAktive = true;
     },
@@ -1026,6 +1098,7 @@ const THEME_PATH = [
 
     start(levelNumber) {
       state.selectedLevel = levelNumber;
+      updateItemBarLocks();
       this.victoryAnimation = false;
       this.levelFinished = false;
       this.particles = [];
@@ -3104,6 +3177,7 @@ const stars = calculateStars(
     }
 
       SaveManager.saveProgress(state.progress);
+      updateItemBarLocks();
 
       try {
         await Backend.saveProgress({
@@ -3339,6 +3413,7 @@ const stars = calculateStars(
     localStorage.clear();
     state.progress = SaveManager.loadProgress();
     ThemeManager.apply(state.progress.activeTheme);
+    updateItemBarLocks();
     showToast("Neuer Spielstand wurde angelegt.");
   });
 
@@ -3518,6 +3593,7 @@ const stars = calculateStars(
   function init() {
     ThemeManager.apply(state.progress.activeTheme);
     ThemeManager.applyStageAssets(state.progress.selectedStage);
+    updateItemBarLocks();
     applySettingsToForm();
     updateUserUi();
     Navigation.show("home");
