@@ -500,6 +500,43 @@ const ITEM_UNLOCKS = {
   dom.itemUnlockReward.classList.remove("hidden");
 }
 
+function startVictoryImpact(stars) {
+
+    const starAmount =
+        Math.max(0, Number(stars) || 0);
+
+    dom.winResultStars.innerHTML =
+        Array.from(
+            { length: starAmount },
+            (_, index) => `
+                <span
+                    class="victory-impact-star"
+                    style="--star-index:${index};"
+                    aria-hidden="true">
+                    ★
+                </span>
+            `
+        ).join("");
+
+    dom.winResultStars.setAttribute(
+        "aria-label",
+        `${starAmount} von 3 Sternen`
+    );
+
+    dom.winResultOverlay.classList.remove(
+        "victory-impact-active"
+    );
+
+    dom.winResultOverlay.classList.remove("hidden");
+
+    void dom.winResultOverlay.offsetWidth;
+
+    dom.winResultOverlay.classList.add(
+        "victory-impact-active"
+    );
+
+}
+
   const Backend = {
     async getCurrentUser() {
       if (GAME_CONFIG.backendMode === "mock") {
@@ -3209,18 +3246,11 @@ showUnlockedItemReward(
 );
 
 
-// Sterne anzeigen
-dom.winResultStars.textContent =
-  "⭐".repeat(stars);
-
-
 dom.winResultText.textContent =
-  `${this.score.toLocaleString("de-DE")} Punkte mit ${this.shots} Schüssen.`;
+    `${this.score.toLocaleString("de-DE")} Punkte mit ${this.shots} Schüssen.`;
 
-
-// Gewinn-Popup erst öffnen,
-// nachdem die Itembelohnung vorbereitet wurde
-dom.winResultOverlay.classList.remove("hidden");
+// Gewinn-Popup mit Victory-Impact starten
+startVictoryImpact(stars);
 
       if (
         !oldResult ||
@@ -3294,10 +3324,9 @@ dom.winResultOverlay.classList.remove("hidden");
         nextButton.style.display = "block";
       }
 
-      dom.winResultStars.textContent = "★".repeat(stars);
       dom.winResultText.textContent =
-        `${this.score.toLocaleString("de-DE")} Punkte mit ` +
-        `${this.shots} Schüssen.`;
+    `${this.score.toLocaleString("de-DE")} Punkte mit ` +
+    `${this.shots} Schüssen.`;
 
           // Stage Abschluss prüfen
       const finishedStage = getStageForLevel(level);

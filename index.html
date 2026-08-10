@@ -326,11 +326,39 @@
 </div>
 
 </div>
-        <div id="winResultOverlay" class="game-result-overlay hidden">
+ <div
+    id="winResultOverlay"
+    class="game-result-overlay victory-impact-overlay hidden">
 
-    <div class="game-result-card">
+    <div
+        class="victory-impact-flash"
+        aria-hidden="true">
+    </div>
 
-        <span class="eyebrow">ERGEBNIS</span>
+    <div
+        class="victory-impact-particles"
+        aria-hidden="true">
+
+        <span style="--x:-180px; --y:-130px; --r:-130deg; --delay:0.04s;"></span>
+        <span style="--x:-105px; --y:-190px; --r:90deg; --delay:0.10s;"></span>
+        <span style="--x:-30px; --y:-215px; --r:160deg; --delay:0.02s;"></span>
+        <span style="--x:75px; --y:-195px; --r:220deg; --delay:0.13s;"></span>
+        <span style="--x:165px; --y:-125px; --r:280deg; --delay:0.07s;"></span>
+        <span style="--x:205px; --y:-25px; --r:350deg; --delay:0.16s;"></span>
+        <span style="--x:175px; --y:105px; --r:430deg; --delay:0.05s;"></span>
+        <span style="--x:85px; --y:175px; --r:500deg; --delay:0.12s;"></span>
+        <span style="--x:0px; --y:210px; --r:570deg; --delay:0.02s;"></span>
+        <span style="--x:-95px; --y:175px; --r:640deg; --delay:0.15s;"></span>
+        <span style="--x:-175px; --y:100px; --r:710deg; --delay:0.08s;"></span>
+        <span style="--x:-210px; --y:-15px; --r:780deg; --delay:0.18s;"></span>
+
+    </div>
+
+    <div class="game-result-card victory-impact-card">
+
+        <span class="eyebrow victory-impact-eyebrow">
+            ERGEBNIS
+        </span>
 
         <div
             id="itemUnlockReward"
@@ -352,25 +380,37 @@
                     id="itemUnlockImage"
                     class="item-unlock-image"
                     alt="">
+
             </div>
 
             <strong id="itemUnlockName"></strong>
 
         </div>
 
-        <h3 id="winResultTitle">
+        <div
+            class="victory-impact-symbol"
+            aria-hidden="true">
+            ✓
+        </div>
+
+        <h3
+            id="winResultTitle"
+            class="victory-impact-title">
             Level geschafft!
         </h3>
 
         <div
             id="winResultStars"
-            class="result-stars">
-            ★★★
+            class="result-stars victory-impact-stars"
+            aria-live="polite">
         </div>
 
-        <p id="winResultText"></p>
+        <p
+            id="winResultText"
+            class="victory-impact-text">
+        </p>
 
-        <div class="result-actions">
+        <div class="result-actions victory-impact-actions">
 
             <button
                 id="retryLevelButton"
