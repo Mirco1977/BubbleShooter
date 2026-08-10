@@ -1,4 +1,5 @@
   import { GAME_CONFIG } from "./js/config/gameConfig.js";
+  import { SHOP_CONFIG } from "./js/config/shopConfig.js";
   import { AudioManager } from "./js/managers/AudioManager.js";
   import { StorageManager } from "./js/managers/StorageManager.js";
   import { calculateStars, STAR_CONFIG } from "./js/config/starConfig.js";
@@ -293,6 +294,7 @@ const THEME_PATH = [
       play: $("playScreen"),
       themes: $("themesScreen"),
       ranking: $("rankingScreen"),
+      shop: $("shopScreen"),
       settings: $("settingsScreen")
     },
 
@@ -303,6 +305,7 @@ const THEME_PATH = [
     openMapButton: $("openMapButton"),
   
     openRankingButton: $("openRankingButton"),
+    openShopButton: $("openShopButton"),
     openSettingsButton: $("openSettingsButton"),
     bombItemButton: $("bombItemButton"),
     thunderItemButton: $("thunderItemButton"),
@@ -374,6 +377,7 @@ const THEME_PATH = [
     activeThemeLabel: $("activeThemeLabel"),
     themeList: $("themeList"),
     rankingList: $("rankingList"),
+    shopOffers: $("shopOffers"),
 
     musicSetting: $("musicSetting"),
     soundSetting: $("soundSetting"),
@@ -805,6 +809,10 @@ const ITEM_UNLOCKS = {
 
     if (screenName === "ranking") {
       Ranking.render();
+    }
+
+    if (screenName === "shop") {
+      Shop.render();
     }
 
     window.scrollTo({
@@ -3394,6 +3402,59 @@ dom.winResultOverlay.classList.remove("hidden");
     }
   };
 
+const Shop = {
+
+    render() {
+
+        if (!dom.shopOffers) {
+            return;
+        }
+
+        dom.shopOffers.innerHTML = SHOP_CONFIG.map((offer) => `
+
+            <article class="shop-offer-card">
+
+                <div class="shop-offer-items">
+
+                    ${offer.items.map((item) => `
+
+                        <div class="shop-offer-item">
+
+                            <img
+                                src="${item.image}"
+                                alt="${escapeHtml(item.name)}"
+                                draggable="false">
+
+                            <strong>
+                                ×${item.amount}
+                            </strong>
+
+                        </div>
+
+                    `).join("")}
+
+                </div>
+
+                <div class="shop-offer-footer">
+
+                    <strong class="shop-offer-name">
+                        ${escapeHtml(offer.name)}
+                    </strong>
+
+                    <span class="shop-offer-price">
+                        ${escapeHtml(offer.price)}
+                    </span>
+
+                </div>
+
+            </article>
+
+        `).join("");
+
+    }
+
+};
+
   function getStageForLevel(levelNumber) {
     return Math.ceil(levelNumber / GAME_CONFIG.levelsPerStage);
   }
@@ -3493,6 +3554,9 @@ dom.winResultOverlay.classList.remove("hidden");
   dom.openMapButton.addEventListener("click", () => Navigation.show("map"));
  
   dom.openRankingButton.addEventListener("click", () => Navigation.show("ranking"));
+
+  dom.openShopButton.addEventListener("click", () => Navigation.show("shop"));
+
   dom.openSettingsButton.addEventListener("click", () => Navigation.show("settings"));
   
   dom.bombItemButton.addEventListener("click", () => {
