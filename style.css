@@ -2558,21 +2558,57 @@ font-weight:900;
 }
 
 .wheel-reward {
-    position: relative;
-    overflow: hidden;
-    margin-top: 16px;
+    position: absolute;
+
+    z-index: 20;
+
+    top: 50%;
+    left: 50%;
+
+    width: min(88%, 340px);
+
+    margin: 0;
+
     padding: 20px 16px;
+
+    overflow: hidden;
+
     text-align: center;
+
     border: 2px solid #ffd45c;
-    border-radius: 24px;
+    border-radius: 22px;
+
+    color: #ffffff;
+
     background:
-        radial-gradient(circle at center, rgba(255,212,92,.25), transparent 46%),
-        linear-gradient(145deg, #280000, #860000 58%, #3c0000);
-    box-shadow: 0 0 24px rgba(255,212,92,.42);
+        radial-gradient(
+            circle at center,
+            rgba(255,212,92,.25),
+            transparent 46%
+        ),
+        linear-gradient(
+            145deg,
+            #280000,
+            #860000 58%,
+            #3c0000
+        );
+
+    box-shadow:
+        0 0 30px rgba(255,212,92,.55),
+        0 20px 45px rgba(0,0,0,.75);
+
+    transform:
+        translate(-50%, -50%);
+
+    transform-origin: center center;
 }
 
 .wheel-reward-active {
-    animation: wheelRewardIn .72s cubic-bezier(.2,.9,.3,1.25);
+    animation:
+        wheelRewardIn
+        .72s
+        cubic-bezier(.18,1.05,.3,1.3)
+        both;
 }
 
 .wheel-reward-kicker {
@@ -2610,6 +2646,21 @@ font-weight:900;
     margin: 0;
     font-size: 17px;
     font-weight: 800;
+}
+
+.wheel-inventory-note {
+
+    display: block;
+
+    margin-top: 8px;
+
+    color: rgba(255,255,255,.78);
+
+    font-size: 12px;
+
+    font-weight: 600;
+
+    line-height: 1.3;
 }
 
 .wheel-reward-items {
@@ -2653,7 +2704,35 @@ font-weight:900;
 }
 
 @keyframes wheelRewardIn {
-    0% { transform: scale(.55); opacity: 0; }
-    70% { transform: scale(1.06); opacity: 1; }
-    100% { transform: scale(1); opacity: 1; }
+
+    0% {
+        opacity: 0;
+
+        transform:
+            translate(-50%, -50%)
+            scale(.45);
+    }
+
+    65% {
+        opacity: 1;
+
+        transform:
+            translate(-50%, -50%)
+            scale(1.08);
+    }
+
+    82% {
+        transform:
+            translate(-50%, -50%)
+            scale(.97);
+    }
+
+    100% {
+        opacity: 1;
+
+        transform:
+            translate(-50%, -50%)
+            scale(1);
+    }
+
 }

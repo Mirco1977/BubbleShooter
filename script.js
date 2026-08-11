@@ -1136,30 +1136,85 @@ renderSegments() {
       addItemAmount(segment.itemKey, segment.amount || 1);
     },
 
-    showReward(segment) {
-      dom.wheelReward.classList.remove("hidden");
-      dom.wheelReward.classList.remove("wheel-reward-active");
-      void dom.wheelReward.offsetWidth;
-      dom.wheelReward.classList.add("wheel-reward-active");
-      dom.wheelRewardItems.innerHTML = "";
+   showReward(segment) {
 
-      if (segment.type === "jackpot") {
-        dom.wheelRewardImage.src = "assets/ui/shop-bandenkick.png";
-        dom.wheelRewardTitle.textContent = "JACKPOT!";
-        dom.wheelRewardText.textContent = "Von jedem Item 1× gewonnen";
-        dom.wheelRewardItems.innerHTML = Object.entries(ITEM_UNLOCKS).map(([key, item]) => `
-          <div class="wheel-jackpot-item">
-            <img src="${item.image}" alt="${item.label}">
-            <span>1×</span>
-          </div>
-        `).join("");
-      } else {
-        const item = ITEM_UNLOCKS[segment.itemKey];
-        dom.wheelRewardImage.src = item.image;
-        dom.wheelRewardTitle.textContent = "GEWONNEN!";
-        dom.wheelRewardText.textContent = `${segment.amount}× ${item.label}`;
-      }
-    },
+    dom.wheelReward.classList.remove("hidden");
+
+    dom.wheelReward.classList.remove(
+        "wheel-reward-active"
+    );
+
+    void dom.wheelReward.offsetWidth;
+
+    dom.wheelReward.classList.add(
+        "wheel-reward-active"
+    );
+
+    dom.wheelRewardItems.innerHTML = "";
+
+
+    if (segment.type === "jackpot") {
+
+        dom.wheelRewardImage.src =
+            "assets/ui/shop-bandenkick.png";
+
+        dom.wheelRewardTitle.textContent =
+            "JACKPOT!";
+
+        dom.wheelRewardText.innerHTML =
+            `
+                Von jedem Item 1× gewonnen
+                <span class="wheel-inventory-note">
+                    Gewinn wurde deinem Bestand hinzugefügt.
+                </span>
+            `;
+
+
+        dom.wheelRewardItems.innerHTML =
+            Object.entries(ITEM_UNLOCKS)
+                .map(([key, item]) => `
+
+                    <div class="wheel-jackpot-item">
+
+                        <img
+                            src="${item.image}"
+                            alt="${item.label}">
+
+                        <span>
+                            1×
+                        </span>
+
+                    </div>
+
+                `)
+                .join("");
+
+    } else {
+
+        const item =
+            ITEM_UNLOCKS[segment.itemKey];
+
+
+        dom.wheelRewardImage.src =
+            item.image;
+
+
+        dom.wheelRewardTitle.textContent =
+            "GEWONNEN!";
+
+
+        dom.wheelRewardText.innerHTML =
+            `
+                ${segment.amount}× ${item.label}
+
+                <span class="wheel-inventory-note">
+                    Gewinn wurde deinem Bestand hinzugefügt.
+                </span>
+            `;
+
+    }
+
+},
 
     spin() {
       if (this.spinning || !this.canSpinToday()) return;
