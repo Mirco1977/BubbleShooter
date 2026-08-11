@@ -1,6 +1,7 @@
   import { GAME_CONFIG } from "./js/config/gameConfig.js";
   import { SHOP_CONFIG } from "./js/config/shopConfig.js";
   import { WHEEL_CONFIG } from "./js/config/wheelConfig.js";
+  import { EPISODE_CONFIG, getEpisodeById, getEpisodeStatus, calculateEpisodeStars } from "./js/config/episodeConfig.js";
   import { AudioManager } from "./js/managers/AudioManager.js";
   import { StorageManager } from "./js/managers/StorageManager.js";
   import { calculateStars, STAR_CONFIG } from "./js/config/starConfig.js";
@@ -297,6 +298,7 @@ const THEME_PATH = [
       ranking: $("rankingScreen"),
       shop: $("shopScreen"),
       wheel: $("wheelScreen"),
+      episodes: $("episodesScreen"),
       settings: $("settingsScreen")
     },
 
@@ -309,6 +311,11 @@ const THEME_PATH = [
     openRankingButton: $("openRankingButton"),
     openShopButton: $("openShopButton"),
     openWheelButton: $("openWheelButton"),
+    openEpisodesButton: $("openEpisodesButton"),
+    episodeHomeStatus: $("episodeHomeStatus"),
+    episodeList: $("episodeList"),
+    episodeScreenBadge: $("episodeScreenBadge"),
+    levelBackButton: $("levelBackButton"),
     openSettingsButton: $("openSettingsButton"),
     bombItemButton: $("bombItemButton"),
     thunderItemButton: $("thunderItemButton"),
@@ -407,7 +414,9 @@ const THEME_PATH = [
     progress: SaveManager.loadProgress(),
     settings: SaveManager.loadSettings(),
     user: SaveManager.loadUser(),
-    selectedLevel: 1
+    selectedLevel: 1,
+    gameMode: "standard",
+    activeEpisodeId: null
   };
 
 const ITEM_START_AMOUNT = 5;
@@ -929,6 +938,275 @@ function startVictoryImpact(stars) {
     }
   };
 
+
+  const EpisodeRace = {
+    storageKey: "bandenkick_episode_progress_v1",
+
+    loadProgress() {
+      try {
+        const raw = localStorage.getItem(this.storageKey);
+        const parsed = raw ? JSON.parse(raw) : {};
+        return parsed && typeof parsed === "object" ? parsed : {};
+      } catch (error) {
+        console.warn("Episoden-Fortschritt konnte nicht geladen werden:", error);
+        return {};
+      }
+    },
+
+    saveProgress(progress) {
+      localStorage.setItem(this.storageKey, JSON.stringify(progress || {}));
+    },
+
+    getEpisodeProgress(episodeId) {
+      const all = this.loadProgress();
+      if (!all[episodeId] || typeof all[episodeId] !== "object") {
+        all[episodeId] = { results: {}, unlockedLevel: 1, completedAt: null };
+        this.saveProgress(all);
+      }
+      if (!all[episodeId].results || typeof all[episodeId].results !== "object") {
+        all[episodeId].results = {};
+      }
+      all[episodeId].unlockedLevel = Math.max(1, Number(all[episodeId].unlockedLevel) || 1);
+      return all[episodeId];
+    },
+
+    updateEpisodeProgress(episodeId, updater) {
+      const all = this.loadProgress();
+      const current = all[episodeId] || { results: {}, unlockedLevel: 1, completedAt: null };
+      current.results = current.results || {};
+      current.unlockedLevel = Math.max(1, Number(current.unlockedLevel) || 1);
+      updater(current);
+      all[episodeId] = current;
+      this.saveProgress(all);
+      return current;
+    },
+
+    getActiveEpisode() {
+      return getEpisodeById(state.activeEpisodeId);
+    },
+
+    getLevelConfig(levelNumber = state.selectedLevel) {
+      const episode = this.getActiveEpisode();
+      if (!episode) return null;
+      return episode.levels.find((level) => Number(level.id) === Number(levelNumber)) || null;
+    },
+
+    getThemeStage() {
+      return Number(this.getActiveEpisode()?.themeStage) || 1;
+    },
+
+    formatDate(value) {
+      const date = new Date(value);
+      return new Intl.DateTimeFormat("de-DE", { day: "2-digit", month: "2-digit", year: "numeric" }).format(date);
+    },
+
+    statusLabel(status) {
+      if (status === "active") return "AKTIV";
+      if (status === "upcoming") return "BALD";
+      if (status === "ended") return "BEENDET";
+      return "–";
+    },
+
+    renderHomeStatus() {
+      if (!dom.episodeHomeStatus) return;
+      const active = EPISODE_CONFIG.find((episode) => getEpisodeStatus(episode) === "active");
+      if (active) {
+        const progress = this.getEpisodeProgress(active.id);
+        const done = Object.keys(progress.results || {}).length;
+        dom.episodeHomeStatus.textContent = `${active.name}: ${done}/${active.levels.length} Level geschafft`;
+        return;
+      }
+      const upcoming = EPISODE_CONFIG.find((episode) => getEpisodeStatus(episode) === "upcoming");
+      dom.episodeHomeStatus.textContent = upcoming
+        ? `${upcoming.name} startet am ${this.formatDate(upcoming.startAt)}`
+        : "Aktuell kein Episodenrennen aktiv";
+    },
+
+    render() {
+      if (!dom.episodeList) return;
+      this.renderHomeStatus();
+      dom.episodeList.innerHTML = "";
+
+      if (!EPISODE_CONFIG.length) {
+        dom.episodeList.innerHTML = '<div class="episode-empty">Aktuell sind keine Episoden angelegt.</div>';
+        return;
+      }
+
+      EPISODE_CONFIG.forEach((episode) => {
+        const status = getEpisodeStatus(episode);
+        const progress = this.getEpisodeProgress(episode.id);
+        const results = progress.results || {};
+        const completed = episode.levels.filter((level) => results[level.id]).length;
+        const percent = Math.round((completed / Math.max(1, episode.levels.length)) * 100);
+        const complete = completed >= episode.levels.length;
+        const card = document.createElement("article");
+        card.className = `episode-card is-${status}`;
+
+        card.innerHTML = `
+          <div class="episode-card-head">
+            <div class="episode-card-head-row">
+              <div>
+                <span class="eyebrow">EPISODENRENNEN</span>
+                <h3>${escapeHtml(episode.name)}</h3>
+              </div>
+              <span class="episode-status-pill ${status}">${this.statusLabel(status)}</span>
+            </div>
+            <p>${escapeHtml(episode.subtitle || "")}</p>
+            <div class="episode-meta">${this.formatDate(episode.startAt)} – ${this.formatDate(episode.endAt)}</div>
+          </div>
+          <div class="episode-progress-wrap">
+            <div class="episode-progress-labels">
+              <span>${completed} von ${episode.levels.length} geschafft</span>
+              <span>${percent} %</span>
+            </div>
+            <div class="episode-progress-track"><div class="episode-progress-fill" style="width:${percent}%"></div></div>
+          </div>
+          <div class="episode-track"></div>
+          <div class="episode-reward">
+            <div class="episode-reward-row">
+              <div>
+                <strong>${escapeHtml(episode.reward?.title || "Belohnung")}</strong>
+                <span>${escapeHtml(complete ? "Strecke abgeschlossen – Belohnungslogik folgt später." : (episode.reward?.description || "Nach Abschluss der gesamten Strecke."))}</span>
+              </div>
+              <div class="episode-complete-mark">${complete ? "🏆" : "🎁"}</div>
+            </div>
+          </div>`;
+
+        const track = card.querySelector(".episode-track");
+        episode.levels.forEach((level) => {
+          const result = results[level.id];
+          const unlocked = status === "active" && Number(level.id) <= Number(progress.unlockedLevel || 1);
+          const wrapper = document.createElement("div");
+          wrapper.className = "episode-level";
+          const button = document.createElement("button");
+          button.className = "episode-level-button";
+          button.type = "button";
+
+          if (result) {
+            button.classList.add("completed");
+            button.textContent = String(level.id);
+          } else if (unlocked) {
+            button.textContent = String(level.id);
+            if (Number(level.id) === Number(progress.unlockedLevel || 1)) button.classList.add("current");
+          } else {
+            button.classList.add("locked");
+            button.textContent = "🔒";
+            button.disabled = true;
+          }
+
+          if (unlocked || result) {
+            button.addEventListener("click", () => this.openLevel(episode.id, level.id));
+          }
+
+          const stars = document.createElement("div");
+          stars.className = "episode-level-stars";
+          stars.textContent = result ? "★".repeat(result.stars || 0) : "";
+          wrapper.append(button, stars);
+          track.appendChild(wrapper);
+        });
+        dom.episodeList.appendChild(card);
+      });
+    },
+
+    openLevel(episodeId, levelNumber) {
+      const episode = getEpisodeById(episodeId);
+      if (!episode || getEpisodeStatus(episode) !== "active") {
+        showToast("Diese Episode ist aktuell nicht spielbar.");
+        return;
+      }
+      const progress = this.getEpisodeProgress(episodeId);
+      if (Number(levelNumber) > Number(progress.unlockedLevel || 1) && !progress.results?.[levelNumber]) {
+        showToast("Dieses Episodenlevel ist noch gesperrt.");
+        return;
+      }
+
+      state.gameMode = "episode";
+      state.activeEpisodeId = episodeId;
+      state.selectedLevel = Number(levelNumber);
+      const config = this.getLevelConfig(levelNumber);
+      const colors = config?.ballTypes ?? 3;
+      const target = config?.targetScore ?? 1000;
+      const result = progress.results?.[levelNumber];
+      const stage = this.getThemeStage();
+
+      ThemeManager.applyStageAssets(stage);
+      ThemeManager.applyLevelAsset((stage - 1) * GAME_CONFIG.levelsPerStage + 1);
+      dom.selectedLevelTitle.textContent = `${episode.name} – Level ${levelNumber}`;
+      dom.selectedStageBadge.textContent = "Episode";
+      dom.levelBackButton.dataset.back = "episodes";
+      dom.levelBackButton.textContent = "← Episode";
+
+      if (config?.mode === "colors") {
+        const colorNames = { red: "rote", green: "grüne", yellow: "gelbe", purple: "lila", blue: "blaue", pink: "pinke", black: "schwarze" };
+        dom.levelGoalText.textContent = `Sammle ${config.need} ${colorNames[config.only_color] || config.only_color} Bälle`;
+      } else {
+        dom.levelGoalText.textContent = `Erreiche mindestens ${target.toLocaleString("de-DE")} Punkte`;
+      }
+      dom.levelColors.textContent = String(colors);
+      dom.levelTarget.textContent = target.toLocaleString("de-DE");
+      dom.levelBest.textContent = result ? `${result.stars} ⭐` : "–";
+      renderPreviewBallsForConfig(config, stage);
+      Navigation.show("level");
+    },
+
+    finishLevel(levelNumber, stars, score, shots) {
+      const episode = this.getActiveEpisode();
+      if (!episode) return null;
+      const levelCount = episode.levels.length;
+      return this.updateEpisodeProgress(episode.id, (progress) => {
+        const old = progress.results[levelNumber];
+        if (!old || stars > old.stars || score > old.score) {
+          progress.results[levelNumber] = { stars, score, shots, completedAt: new Date().toISOString() };
+        }
+        if (Number(levelNumber) >= Number(progress.unlockedLevel || 1) && Number(levelNumber) < levelCount) {
+          progress.unlockedLevel = Number(levelNumber) + 1;
+        }
+        if (Number(levelNumber) === levelCount) {
+          progress.unlockedLevel = levelCount;
+          progress.completedAt = progress.completedAt || new Date().toISOString();
+        }
+      });
+    },
+
+    exitToEpisodes() {
+      BubbleGame.stop();
+      state.gameMode = "standard";
+      state.activeEpisodeId = null;
+      dom.levelBackButton.dataset.back = "map";
+      dom.levelBackButton.textContent = "← Karte";
+      Navigation.show("episodes");
+    }
+  };
+
+  function getActiveLevelConfig(levelNumber = state.selectedLevel) {
+    return state.gameMode === "episode"
+      ? EpisodeRace.getLevelConfig(levelNumber)
+      : STAR_CONFIG[levelNumber];
+  }
+
+  function getActiveThemeStage(levelNumber = state.selectedLevel) {
+    return state.gameMode === "episode"
+      ? EpisodeRace.getThemeStage()
+      : getStageForLevel(levelNumber);
+  }
+
+  function renderPreviewBallsForConfig(levelConfig, stageNumber) {
+    const container = document.getElementById("previewBubbles");
+    if (!container) return;
+    container.innerHTML = "";
+    const previewTheme = stageNumber === 2 ? "world-cup-balls" : "bk-arena-balls";
+    const balls = previewTheme === "world-cup-balls"
+      ? ["usa", "germany", "brazil", "spain", "australia"]
+      : ["red", "blue", "green", "yellow", "purple", "pink", "black"];
+    const amount = Math.min(levelConfig?.ballTypes ?? 3, 5, balls.length);
+    balls.slice(0, amount).forEach((ball) => {
+      const img = document.createElement("img");
+      img.src = `assets/balls/${previewTheme}/${ball}.png`;
+      img.alt = ball;
+      container.appendChild(img);
+    });
+  }
+
   const Navigation = {
   show(screenName) {
     Object.entries(dom.screens).forEach(([name, element]) => {
@@ -962,6 +1240,10 @@ function startVictoryImpact(stars) {
 
     if (screenName === "wheel") {
       LuckyWheel.render();
+    }
+
+    if (screenName === "episodes") {
+      EpisodeRace.render();
     }
 
     window.scrollTo({
@@ -1440,7 +1722,11 @@ this.showReward(segment);
 
   const LevelPreview = {
     open(levelNumber) {
+      state.gameMode = "standard";
+      state.activeEpisodeId = null;
       state.selectedLevel = levelNumber;
+      dom.levelBackButton.dataset.back = "map";
+      dom.levelBackButton.textContent = "← Karte";
 
       const stage = getStageForLevel(levelNumber);
       const levelConfig = STAR_CONFIG[levelNumber];
@@ -1654,7 +1940,7 @@ this.showReward(segment);
       this.particles = [];
       this.lightningHits = [];
       this.collectedColors = {};
-      const stageNumber = getStageForLevel(levelNumber);
+      const stageNumber = getActiveThemeStage(levelNumber);
       this.ballImageCache = {};
 
       currentBallTheme =
@@ -1713,7 +1999,7 @@ this.showReward(segment);
       this.running = true;
       this.levelFinished = false;
 
-   const levelConfig = STAR_CONFIG[levelNumber];
+   const levelConfig = getActiveLevelConfig(levelNumber);
 
     const colorCount = Math.min(
         levelConfig?.ballTypes ?? 3,
@@ -1827,7 +2113,9 @@ this.showReward(segment);
       
       this.targetScore = levelConfig?.targetScore ?? 1000;
 
-      dom.playLevelTitle.textContent = `Level ${levelNumber}`;
+      dom.playLevelTitle.textContent = state.gameMode === "episode"
+        ? `${EpisodeRace.getActiveEpisode()?.name || "Episode"} – Level ${levelNumber}`
+        : `Level ${levelNumber}`;
       dom.playScore.textContent = "0 Punkte";
       if (levelConfig?.mode === "colors") {
           const current = this.collectedColors?.[levelConfig.only_color] ?? 0;
@@ -1843,7 +2131,7 @@ this.showReward(segment);
       dom.loseShotsPopup?.classList.add("hidden");
       dom.loseBoundaryPopup?.classList.add("hidden");
 
-      ThemeManager.applyStageAssets(getStageForLevel(levelNumber));
+      ThemeManager.applyStageAssets(getActiveThemeStage(levelNumber));
 
       this.createBoard(levelNumber);
       this.createShooter();
@@ -1871,7 +2159,7 @@ this.showReward(segment);
       this.gridBaseX =
       (this.width - 12 * this.columnWidth) / 2;
 
-    const levelConfig = STAR_CONFIG[levelNumber];
+    const levelConfig = getActiveLevelConfig(levelNumber);
 
     const rows = levelConfig?.rows ?? 5;
       for (let row = 0; row < rows; row++) {
@@ -1915,7 +2203,7 @@ this.showReward(segment);
 
     addNewTopRow() {
      
-    const levelConfig = STAR_CONFIG[state.selectedLevel];
+    const levelConfig = getActiveLevelConfig(state.selectedLevel);
 
     // Funktion für dieses Level ausgeschaltet
     if (levelConfig?.addRowAfterShot !== "y") {
@@ -2568,7 +2856,7 @@ createShooter() {
 
           // Max Schüsse prüfen nach abgeschlossenem Schuss
           const maxShots =
-              STAR_CONFIG[state.selectedLevel].maxShots;
+              getActiveLevelConfig(state.selectedLevel).maxShots;
 
           if (
               !this.levelFinished &&
@@ -2695,7 +2983,7 @@ createShooter() {
     dom.playScore.textContent =
         `${this.score.toLocaleString("de-DE")} Punkte`;
 
-    const levelConfig = STAR_CONFIG[state.selectedLevel];
+    const levelConfig = getActiveLevelConfig(state.selectedLevel);
 
     if (levelConfig?.mode === "colors") {
         const current =
@@ -2710,7 +2998,7 @@ createShooter() {
 
       
 
-      const levelConfig = STAR_CONFIG[state.selectedLevel];
+      const levelConfig = getActiveLevelConfig(state.selectedLevel);
 
       if (!levelConfig || levelConfig.mode !== "colors") {
 
@@ -2744,7 +3032,7 @@ createShooter() {
 
 checkObjectiveWin() {
 
-  const levelConfig = STAR_CONFIG[state.selectedLevel];
+  const levelConfig = getActiveLevelConfig(state.selectedLevel);
 
 
   // Spezialmodus: Farben sammeln
@@ -3168,7 +3456,7 @@ findConnectedSameColor(origin) {
 
 if (floating.length > 0) {
 
-    const levelConfig = STAR_CONFIG[state.selectedLevel];
+    const levelConfig = getActiveLevelConfig(state.selectedLevel);
 
     if (levelConfig?.mode === "colors") {
 
@@ -3608,99 +3896,91 @@ showLoseShotsPopup(text) {
 
 dom.shotsMapButton.onclick = () => {
     dom.loseShotsPopup.classList.add("hidden");
-    Navigation.show("map");
+    if (state.gameMode === "episode") {
+        EpisodeRace.exitToEpisodes();
+    } else {
+        Navigation.show("map");
+    }
 };
 },
 
 
     async finish(won) {
-     
-    this.explosions = [];
-    this.particles = [];
+      this.explosions = [];
+      this.particles = [];
 
-    if (this.levelFinished) return;
+      if (this.levelFinished) return;
+      this.stop();
 
-    this.stop();
+      if (!won) {
+        this.showLoseShotsPopup("Level verloren!");
+        return;
+      }
 
-    if (!won) {
-    this.showLoseShotsPopup(
-        "Level verloren!"
-    );
-    return;
-}
+      const level = state.selectedLevel;
+      const levelConfig = getActiveLevelConfig(level);
+      const stars = state.gameMode === "episode"
+        ? calculateEpisodeStars(levelConfig, { shots: this.shots, score: this.score })
+        : calculateStars(level, { shots: this.shots, score: this.score });
 
-    const starsCheck = calculateStars(
-    state.selectedLevel,
-    {
-        shots: this.shots,
-        score: this.score
-    }
-);
-
-if (starsCheck === 0) {
-
-    this.showLoseShotsPopup(
-        "Zu viele Schüsse verbraucht."
-    );
-
-    return;
-}
-
-this.levelFinished = true;
-    this.score += 0;
-
-    dom.winResultTitle.textContent = "Level geschafft!";
-
-
-const level = state.selectedLevel;
-
-
-const stars = calculateStars(
-    level,
-    {
-        shots: this.shots,
-        score: this.score
-    }
-);
-
-
-    // 0 Sterne = verloren
-    if (stars === 0) {
-
-        dom.loseShotsTitle.textContent = "Leider verloren!";
-
-        dom.loseShotsStars.textContent = "";
-
-        dom.loseShotsText.textContent =
-            "Zu viele Schüsse verbraucht.";
-
-        dom.loseShotsPopup.classList.remove("hidden");
-
+      if (stars === 0) {
+        this.showLoseShotsPopup("Zu viele Schüsse verbraucht.");
         return false;
-    }
+      }
 
+      this.levelFinished = true;
 
-    const oldResult =
-  (state.progress.results || {})[level];
+      /* =====================================================
+         EPISODENRENNEN – vollständig getrennt vom Standardfortschritt
+         ===================================================== */
+      if (state.gameMode === "episode") {
+        const episode = EpisodeRace.getActiveEpisode();
+        const progress = EpisodeRace.finishLevel(level, stars, this.score, this.shots);
+        const isLastLevel = Boolean(episode && Number(level) === episode.levels.length);
 
+        dom.itemUnlockReward.classList.add("hidden");
+        dom.winResultTitle.textContent = isLastLevel ? "Episode geschafft!" : "Episodenlevel geschafft!";
+        dom.winResultText.textContent = isLastLevel
+          ? `${this.score.toLocaleString("de-DE")} Punkte. Du hast die komplette Strecke beendet!`
+          : `${this.score.toLocaleString("de-DE")} Punkte mit ${this.shots} Schüssen.`;
+        startVictoryImpact(stars);
 
-showUnlockedItemReward(
-  level,
-  Boolean(oldResult)
-);
+        const nextButton = dom.nextLevelButton;
+        nextButton.classList.remove("hidden");
+        nextButton.style.display = "block";
+        nextButton.textContent = isLastLevel ? "Zur Episode" : "Nächstes Episodenlevel";
+        nextButton.onclick = () => {
+          dom.winResultOverlay.classList.add("hidden");
+          if (isLastLevel) {
+            EpisodeRace.exitToEpisodes();
+            return;
+          }
+          setTimeout(() => this.start(Number(level) + 1), 300);
+        };
 
+        if (dom.resultMapButton) {
+          dom.resultMapButton.textContent = "Zur Episode";
+          dom.resultMapButton.onclick = () => {
+            dom.winResultOverlay.classList.add("hidden");
+            EpisodeRace.exitToEpisodes();
+          };
+        }
 
-dom.winResultText.textContent =
-    `${this.score.toLocaleString("de-DE")} Punkte mit ${this.shots} Schüssen.`;
+        EpisodeRace.renderHomeStatus();
+        return true;
+      }
 
-// Gewinn-Popup mit Victory-Impact starten
-startVictoryImpact(stars);
+      /* =====================================================
+         STANDARDLEVEL – bisheriges Verhalten
+         ===================================================== */
+      const oldResult = (state.progress.results || {})[level];
+      showUnlockedItemReward(level, Boolean(oldResult));
 
-      if (
-        !oldResult ||
-        stars > oldResult.stars ||
-        this.score > oldResult.score
-      ) {
+      dom.winResultText.textContent =
+        `${this.score.toLocaleString("de-DE")} Punkte mit ${this.shots} Schüssen.`;
+      startVictoryImpact(stars);
+
+      if (!oldResult || stars > oldResult.stars || this.score > oldResult.score) {
         state.progress.results[level] = {
           stars,
           score: this.score,
@@ -3711,25 +3991,15 @@ startVictoryImpact(stars);
 
       if (
         level === state.progress.unlockedLevel &&
-        state.progress.unlockedLevel <
-          GAME_CONFIG.totalStages * GAME_CONFIG.levelsPerStage
+        state.progress.unlockedLevel < GAME_CONFIG.totalStages * GAME_CONFIG.levelsPerStage
       ) {
         state.progress.unlockedLevel++;
       }
-      
-      if (won) {
 
-    dom.nextLevelButton.classList.remove("hidden");
-
-    const currentUnlocked =
-        Number(state.progress.unlockedLevel) || 1;
-
-    state.progress.unlockedLevel = Math.max(
-        currentUnlocked,
+      state.progress.unlockedLevel = Math.max(
+        Number(state.progress.unlockedLevel) || 1,
         level + 1
-    );
-
-    }
+      );
 
       SaveManager.saveProgress(state.progress);
       updateItemBarLocks();
@@ -3747,53 +4017,38 @@ startVictoryImpact(stars);
       }
 
       dom.winResultTitle.textContent = "Level geschafft!";
+      dom.nextLevelButton.classList.remove("hidden");
+      dom.nextLevelButton.style.display = "block";
+      dom.nextLevelButton.textContent = "Nächstes Level";
+      dom.nextLevelButton.onclick = () => {
+        dom.winResultOverlay.classList.add("hidden");
+        state.progress.unlockedLevel = Math.max(state.progress.unlockedLevel, level + 1);
+        SaveManager.saveProgress(state.progress);
+        setTimeout(() => this.start(level + 1), 300);
+      };
 
-      const nextButton = document.querySelector("#nextLevelButton");
-      if (nextButton) {
-    
-     nextButton.onclick = () => {
-      dom.winResultOverlay.classList.add("hidden");
-
-      state.progress.unlockedLevel = Math.max(
-          state.progress.unlockedLevel,
-          level + 1
-      );
-
-      SaveManager.saveProgress(state.progress);
-
-      setTimeout(() => {
-          this.start(level + 1);
-      }, 300);
-    };
-        nextButton.style.display = "block";
+      if (dom.resultMapButton) {
+        dom.resultMapButton.textContent = "Zur Karte";
+        dom.resultMapButton.onclick = () => {
+          dom.winResultOverlay.classList.add("hidden");
+          BubbleGame.stop();
+          state.progress.selectedStage = getStageForLevel(state.selectedLevel);
+          SaveManager.saveProgress(state.progress);
+          Navigation.show("map");
+        };
       }
-
-      dom.winResultText.textContent =
-    `${this.score.toLocaleString("de-DE")} Punkte mit ` +
-    `${this.shots} Schüssen.`;
-
-          // Stage Abschluss prüfen
-      const finishedStage = getStageForLevel(level);
 
       if (level % GAME_CONFIG.levelsPerStage === 0) {
-
-          setTimeout(() => {
-
-              dom.stageCompleteOverlay.classList.remove("hidden");
-
-              dom.stageCompleteName.textContent =
-                  `Stage ${finishedStage} geschafft!`;
-
-              dom.stageCompleteText.textContent =
-                  "Du hast diese Themenwelt gemeistert!";
-
-              dom.stageCompleteStars.textContent =
-                  "⭐".repeat(stars);
-
-          }, 1200);
-
+        const finishedStage = getStageForLevel(level);
+        setTimeout(() => {
+          dom.stageCompleteOverlay.classList.remove("hidden");
+          dom.stageCompleteName.textContent = `Stage ${finishedStage} geschafft!`;
+          dom.stageCompleteText.textContent = "Du hast diese Themenwelt gemeistert!";
+          dom.stageCompleteStars.textContent = "⭐".repeat(stars);
+        }, 1200);
       }
 
+      return true;
     },
 
     getCanvasPosition(event) {
@@ -4017,7 +4272,11 @@ const Shop = {
 
     if (!confirmed) return;
 
+    const episodeProgressBackup = localStorage.getItem(EpisodeRace.storageKey);
     localStorage.clear();
+    if (episodeProgressBackup !== null) {
+      localStorage.setItem(EpisodeRace.storageKey, episodeProgressBackup);
+    }
     state.progress = SaveManager.loadProgress();
     ThemeManager.apply(state.progress.activeTheme);
     updateItemBarLocks();
@@ -4031,6 +4290,8 @@ const Shop = {
   dom.openShopButton.addEventListener("click", () => Navigation.show("shop"));
 
   dom.openWheelButton.addEventListener("click", () => Navigation.show("wheel"));
+
+  dom.openEpisodesButton.addEventListener("click", () => Navigation.show("episodes"));
 
   dom.wheelSpinButton.addEventListener("click", () => LuckyWheel.spin());
 
@@ -4141,7 +4402,11 @@ const Shop = {
 
   dom.leaveGameButton.addEventListener("click", () => {
     BubbleGame.stop();
-    Navigation.show("level");
+    if (state.gameMode === "episode") {
+      EpisodeRace.exitToEpisodes();
+    } else {
+      Navigation.show("level");
+    }
   });
 
   dom.retryLevelButton.addEventListener("click", () => {
@@ -4149,9 +4414,12 @@ const Shop = {
   });
 
   dom.resultMapButton.addEventListener("click", () => {
+    if (state.gameMode === "episode") {
+      EpisodeRace.exitToEpisodes();
+      return;
+    }
     BubbleGame.stop();
-    state.progress.selectedStage =
-      getStageForLevel(state.selectedLevel);
+    state.progress.selectedStage = getStageForLevel(state.selectedLevel);
     SaveManager.saveProgress(state.progress);
     Navigation.show("map");
   });
@@ -4199,7 +4467,11 @@ const Shop = {
 
     if (!confirmed) return;
 
+    const episodeProgressBackup = localStorage.getItem(EpisodeRace.storageKey);
     localStorage.clear();
+    if (episodeProgressBackup !== null) {
+      localStorage.setItem(EpisodeRace.storageKey, episodeProgressBackup);
+    }
 
     location.reload();
 });
@@ -4213,6 +4485,7 @@ const Shop = {
     updateItemBarLocks();
     applySettingsToForm();
     updateUserUi();
+    EpisodeRace.renderHomeStatus();
     Navigation.show("home");
   }
 

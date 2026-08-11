@@ -136,6 +136,20 @@
 
 </button>
 
+        
+
+<button
+    id="openEpisodesButton"
+    class="menu-card has-image episode-menu-card">
+
+    <div class="menu-card-text">
+        <strong>Episodenrennen</strong>
+        <span id="episodeHomeStatus">Zeitlich begrenzte Spezialstrecken</span>
+    </div>
+
+    <div class="episode-menu-icon" aria-hidden="true">🏁</div>
+</button>
+
         <button
     id="openSettingsButton"
     class="menu-card has-image">
@@ -196,7 +210,7 @@
 
     <section id="levelScreen" class="screen hidden">
       <div class="screen-toolbar">
-        <button class="back-button" data-back="map">← Karte</button>
+        <button id="levelBackButton" class="back-button" data-back="map">← Karte</button>
         <div>
           <span class="eyebrow">LEVELVORSCHAU</span>
           <h2 id="selectedLevelTitle">Level 1</h2>
@@ -570,6 +584,21 @@
           <code>GAME_CONFIG.assets</code> nur die URLs deiner Bilder ein.
         </p>
       </div>
+    </section>
+
+
+
+    <section id="episodesScreen" class="screen hidden">
+      <div class="screen-toolbar">
+        <button class="back-button" data-back="home">← Start</button>
+        <div>
+          <span class="eyebrow">ZEITLICH BEGRENZT</span>
+          <h2>Episodenrennen</h2>
+        </div>
+        <span id="episodeScreenBadge">🏁</span>
+      </div>
+
+      <div id="episodeList" class="episode-list"></div>
     </section>
 
     <section id="rankingScreen" class="screen hidden">
