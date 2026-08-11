@@ -2565,18 +2565,17 @@ font-weight:900;
     top: 50%;
     left: 50%;
 
-    width: min(88%, 340px);
+    width: min(82%, 320px);
 
     margin: 0;
-
-    padding: 20px 16px;
+    padding: 16px 14px;
 
     overflow: hidden;
 
     text-align: center;
 
     border: 2px solid #ffd45c;
-    border-radius: 22px;
+    border-radius: 20px;
 
     color: #ffffff;
 
@@ -2595,12 +2594,57 @@ font-weight:900;
 
     box-shadow:
         0 0 30px rgba(255,212,92,.55),
-        0 20px 45px rgba(0,0,0,.75);
+        0 18px 40px rgba(0,0,0,.78);
 
     transform:
         translate(-50%, -50%);
 
-    transform-origin: center center;
+    transform-origin:
+        center center;
+
+    /*
+     * Wichtig:
+     * Popup blockiert keine Buttons
+     * oder Navigation.
+     */
+    pointer-events: none;
+}
+
+@media (max-width: 500px) {
+
+    .wheel-reward {
+        width: 78%;
+        padding: 12px 10px;
+    }
+
+    .wheel-reward-image-wrap {
+        width: 86px;
+        height: 86px;
+
+        margin-top: 6px;
+    }
+
+    .wheel-reward-image-wrap img {
+        width: 70px;
+        height: 70px;
+    }
+
+    .wheel-reward h3 {
+        margin: 2px 0 3px;
+
+        font-size: 23px;
+    }
+
+    .wheel-reward p {
+        font-size: 14px;
+    }
+
+    .wheel-inventory-note {
+        margin-top: 6px;
+
+        font-size: 11px;
+    }
+
 }
 
 .wheel-reward-active {
