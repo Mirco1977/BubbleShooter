@@ -398,8 +398,6 @@ const THEME_PATH = [
     selectedLevel: 1
   };
 
-const ITEM_START_AMOUNT = 5;
-
 const ITEM_UNLOCKS = {
 
   ballswitch: {
@@ -439,161 +437,67 @@ const ITEM_UNLOCKS = {
 
 };
 
-function ensureItemInventory() {
-  if (!state.progress.inventory || typeof state.progress.inventory !== "object") {
-    state.progress.inventory = {};
+  function isItemUnlocked(itemKey) {
+    const item = ITEM_UNLOCKS[itemKey];
+
+    if (!item) return false;
+
+    return Boolean(
+      (state.progress.results || {})[item.unlockLevel]
+    );
   }
 
-  if (!state.progress.itemStarterRewards || typeof state.progress.itemStarterRewards !== "object") {
-    state.progress.itemStarterRewards = {};
-  }
+  function updateItemBarLocks() {
+    Object.entries(ITEM_UNLOCKS).forEach(([itemKey, item]) => {
+      const unlocked = isItemUnlocked(itemKey);
 
-  Object.keys(ITEM_UNLOCKS).forEach((itemKey) => {
-    const currentAmount = Number(state.progress.inventory[itemKey]);
-    if (!Number.isFinite(currentAmount)) {
-      state.progress.inventory[itemKey] = 0;
-    }
-  });
-}
-
-function isItemUnlocked(itemKey) {
-  const item = ITEM_UNLOCKS[itemKey];
-  if (!item) return false;
-
-  return Boolean(
-    (state.progress.results || {})[item.unlockLevel]
-  );
-}
-
-function getItemAmount(itemKey) {
-  ensureItemInventory();
-  return Math.max(0, Number(state.progress.inventory[itemKey]) || 0);
-}
-
-function addItemAmount(itemKey, amount = 1, save = true) {
-  if (!ITEM_UNLOCKS[itemKey]) return false;
-
-  ensureItemInventory();
-
-  const addAmount = Math.max(0, Number(amount) || 0);
-  state.progress.inventory[itemKey] = getItemAmount(itemKey) + addAmount;
-
-  if (save) {
-    SaveManager.saveProgress(state.progress);
-  }
-
-  updateItemBarLocks();
-  return true;
-}
-
-function consumeItem(itemKey, amount = 1) {
-  if (!ITEM_UNLOCKS[itemKey]) return false;
-  if (!isItemUnlocked(itemKey)) return false;
-
-  ensureItemInventory();
-
-  const consumeAmount = Math.max(1, Number(amount) || 1);
-  const currentAmount = getItemAmount(itemKey);
-
-  if (currentAmount < consumeAmount) {
-    showToast(`${ITEM_UNLOCKS[itemKey].label} ist nicht mehr verfügbar.`);
-    updateItemBarLocks();
-    return false;
-  }
-
-  state.progress.inventory[itemKey] = currentAmount - consumeAmount;
-  SaveManager.saveProgress(state.progress);
-  updateItemBarLocks();
-
-  return true;
-}
-
-function grantUnlockedItemStarterRewards() {
-  ensureItemInventory();
-
-  let changed = false;
-
-  Object.entries(ITEM_UNLOCKS).forEach(([itemKey]) => {
-    const unlocked = isItemUnlocked(itemKey);
-    const alreadyGranted = Boolean(state.progress.itemStarterRewards[itemKey]);
-
-    if (unlocked && !alreadyGranted) {
-      state.progress.inventory[itemKey] = getItemAmount(itemKey) + ITEM_START_AMOUNT;
-      state.progress.itemStarterRewards[itemKey] = true;
-      changed = true;
-    }
-  });
-
-  if (changed) {
-    SaveManager.saveProgress(state.progress);
-  }
-}
-
-function updateItemBarLocks() {
-  ensureItemInventory();
-
-  Object.entries(ITEM_UNLOCKS).forEach(([itemKey, item]) => {
-    const unlocked = isItemUnlocked(itemKey);
-    const amount = getItemAmount(itemKey);
-    const empty = unlocked && amount <= 0;
-    const countElement = item.button.querySelector(".item-count");
-
-    if (countElement) {
-      countElement.textContent = String(amount);
-    }
-
-    item.button.classList.toggle("locked-item", !unlocked);
-    item.button.disabled = !unlocked || empty;
-
-    if (!unlocked) {
+      item.button.classList.toggle("locked-item", !unlocked);
+      item.button.disabled = !unlocked;
       item.button.setAttribute(
         "aria-label",
-        `${item.label} – gesperrt bis Level ${item.unlockLevel}`
+        unlocked
+          ? item.label
+          : `${item.label} – gesperrt bis Level ${item.unlockLevel}`
       );
-      item.button.title = `Wird nach dem Gewinn von Level ${item.unlockLevel} freigeschaltet`;
-    } else if (empty) {
-      item.button.setAttribute("aria-label", `${item.label} – Bestand 0`);
-      item.button.title = `${item.label}: 0 verfügbar`;
-    } else {
-      item.button.setAttribute("aria-label", `${item.label} – ${amount} verfügbar`);
-      item.button.title = `${item.label}: ${amount} verfügbar`;
-    }
-  });
-}
+      item.button.title = unlocked
+        ? item.label
+        : `Wird nach dem Gewinn von Level ${item.unlockLevel} freigeschaltet`;
+    });
+  }
 
-function showUnlockedItemReward(levelNumber, wasAlreadyCompleted) {
-  const unlockedEntry = wasAlreadyCompleted
+  function showUnlockedItemReward(
+  levelNumber,
+  wasAlreadyCompleted
+) {
+
+  const unlockedItem = wasAlreadyCompleted
     ? null
-    : Object.entries(ITEM_UNLOCKS).find(
-        ([, item]) => item.unlockLevel === Number(levelNumber)
+    : Object.values(ITEM_UNLOCKS).find(
+        (item) =>
+          item.unlockLevel === Number(levelNumber)
       );
 
-  if (!unlockedEntry) {
+  if (!unlockedItem) {
+
     dom.itemUnlockReward.classList.add("hidden");
+
     dom.itemUnlockImage.removeAttribute("src");
     dom.itemUnlockImage.alt = "";
     dom.itemUnlockName.textContent = "";
+
     return;
   }
 
-  const [itemKey, unlockedItem] = unlockedEntry;
+  dom.itemUnlockImage.src =
+    unlockedItem.image;
 
-  ensureItemInventory();
+  dom.itemUnlockImage.alt =
+    unlockedItem.label;
 
-  const alreadyGranted = Boolean(state.progress.itemStarterRewards[itemKey]);
+  dom.itemUnlockName.textContent =
+    unlockedItem.label;
 
-  if (!alreadyGranted) {
-    state.progress.inventory[itemKey] = getItemAmount(itemKey) + ITEM_START_AMOUNT;
-    state.progress.itemStarterRewards[itemKey] = true;
-    SaveManager.saveProgress(state.progress);
-  }
-
-  dom.itemUnlockImage.src = unlockedItem.image;
-  dom.itemUnlockImage.alt = unlockedItem.label;
-  dom.itemUnlockName.textContent = `${unlockedItem.label} ×${ITEM_START_AMOUNT}`;
   dom.itemUnlockReward.classList.remove("hidden");
-
-  updateItemBarLocks();
 }
 
 function startVictoryImpact(stars) {
@@ -1191,15 +1095,9 @@ function startVictoryImpact(stars) {
           !isItemUnlocked("bomb") ||
           !this.shooter ||
           this.shooter.moving
-        ) return false;
-
-        if (this.shooter.isBomb) return false;
-        if (!consumeItem("bomb")) return false;
+        ) return;
 
         this.shooter.isBomb = true;
-        this.shooter.isThunder = false;
-        this.shooter.isRainbow = false;
-        return true;
     },
 
     activateThunderBall() {
@@ -1207,15 +1105,9 @@ function startVictoryImpact(stars) {
           !isItemUnlocked("thunder") ||
           !this.shooter ||
           this.shooter.moving
-        ) return false;
+        ) return;
 
-        if (this.shooter.isThunder) return false;
-        if (!consumeItem("thunder")) return false;
-
-        this.shooter.isBomb = false;
-        this.shooter.isRainbow = false;
         this.shooter.isThunder = true;
-        return true;
     },
 
     activateRainbowBall() {
@@ -1223,15 +1115,11 @@ function startVictoryImpact(stars) {
           !isItemUnlocked("rainbow") ||
           !this.shooter ||
           this.shooter.moving
-        ) return false;
-
-        if (this.shooter.isRainbow) return false;
-        if (!consumeItem("rainbow")) return false;
+        ) return;
 
         this.shooter.isBomb = false;
         this.shooter.isThunder = false;
         this.shooter.isRainbow = true;
-        return true;
     },
 
     activateSwitchBall() {
@@ -1239,12 +1127,9 @@ function startVictoryImpact(stars) {
           !isItemUnlocked("ballswitch") ||
           !this.shooter ||
           this.shooter.moving
-        ) return false;
-
-        if (!consumeItem("ballswitch")) return false;
+        ) return;
 
         this.swapShooterBall();
-        return true;
     },
 
     activateAimItem() {
@@ -1252,13 +1137,9 @@ function startVictoryImpact(stars) {
           !isItemUnlocked("aim") ||
           !this.shooter ||
           this.shooter.moving
-        ) return false;
-
-        if (this.aimItemAktive) return false;
-        if (!consumeItem("aim")) return false;
+        ) return;
 
         this.aimItemAktive = true;
-        return true;
     },
 
     testBombBall() {
@@ -3878,8 +3759,6 @@ const Shop = {
   function init() {
     ThemeManager.apply(state.progress.activeTheme);
     ThemeManager.applyStageAssets(state.progress.selectedStage);
-    ensureItemInventory();
-    grantUnlockedItemStarterRewards();
     updateItemBarLocks();
     applySettingsToForm();
     updateUserUi();
