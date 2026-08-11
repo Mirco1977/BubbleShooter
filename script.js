@@ -1,5 +1,6 @@
   import { GAME_CONFIG } from "./js/config/gameConfig.js";
   import { SHOP_CONFIG } from "./js/config/shopConfig.js";
+  import { WHEEL_CONFIG } from "./js/config/wheelConfig.js";
   import { AudioManager } from "./js/managers/AudioManager.js";
   import { StorageManager } from "./js/managers/StorageManager.js";
   import { calculateStars, STAR_CONFIG } from "./js/config/starConfig.js";
@@ -295,6 +296,7 @@ const THEME_PATH = [
       themes: $("themesScreen"),
       ranking: $("rankingScreen"),
       shop: $("shopScreen"),
+      wheel: $("wheelScreen"),
       settings: $("settingsScreen")
     },
 
@@ -306,6 +308,7 @@ const THEME_PATH = [
   
     openRankingButton: $("openRankingButton"),
     openShopButton: $("openShopButton"),
+    openWheelButton: $("openWheelButton"),
     openSettingsButton: $("openSettingsButton"),
     bombItemButton: $("bombItemButton"),
     thunderItemButton: $("thunderItemButton"),
@@ -378,6 +381,15 @@ const THEME_PATH = [
     themeList: $("themeList"),
     rankingList: $("rankingList"),
     shopOffers: $("shopOffers"),
+    wheelStatus: $("wheelStatus"),
+    wheelDisc: $("wheelDisc"),
+    wheelSegments: $("wheelSegments"),
+    wheelSpinButton: $("wheelSpinButton"),
+    wheelReward: $("wheelReward"),
+    wheelRewardImage: $("wheelRewardImage"),
+    wheelRewardTitle: $("wheelRewardTitle"),
+    wheelRewardText: $("wheelRewardText"),
+    wheelRewardItems: $("wheelRewardItems"),
 
     musicSetting: $("musicSetting"),
     soundSetting: $("soundSetting"),
@@ -948,12 +960,270 @@ function startVictoryImpact(stars) {
       Shop.render();
     }
 
+    if (screenName === "wheel") {
+      LuckyWheel.render();
+    }
+
     window.scrollTo({
       top: 0,
       behavior: "smooth"
     });
   }
 };
+
+  const LuckyWheel = {
+    spinning: false,
+    rotation: 0,
+
+    getTodayKey() {
+      const now = new Date();
+      const year = now.getFullYear();
+      const month = String(now.getMonth() + 1).padStart(2, "0");
+      const day = String(now.getDate()).padStart(2, "0");
+      return `${year}-${month}-${day}`;
+    },
+
+    ensureState() {
+      if (!state.progress.dailyWheel || typeof state.progress.dailyWheel !== "object") {
+        state.progress.dailyWheel = { lastSpinDate: "" };
+      }
+    },
+
+
+    canSpinToday() {
+
+    /*
+    =========================================================
+    NORMALBETRIEB – NUR 1 GRATIS-DREH PRO KALENDERTAG
+
+    this.ensureState();
+
+    return (
+        state.progress.dailyWheel.lastSpinDate !==
+        this.getTodayKey()
+    );
+
+    =========================================================
+    */
+
+
+    /*
+     * DEMO-MODUS
+     *
+     * Für Tests darf unbegrenzt gedreht werden.
+     */
+
+    return true;
+
+},
+
+renderSegments() {
+
+    if (!dom.wheelSegments) {
+        return;
+    }
+
+
+    const total =
+        WHEEL_CONFIG.segments.length;
+
+
+    dom.wheelSegments.innerHTML =
+        WHEEL_CONFIG.segments
+            .map((segment, index) => {
+
+                /*
+                 * Mittelpunkt des jeweiligen
+                 * Glücksrad-Feldes.
+                 */
+
+                const angle =
+                    (360 / total) * index +
+                    (180 / total);
+
+
+                const isJackpot =
+                    segment.type === "jackpot";
+
+
+                const image =
+                    isJackpot
+                        ? "assets/ui/shop-bandenkick.png"
+                        : ITEM_UNLOCKS[
+                            segment.itemKey
+                          ]?.image;
+
+
+                return `
+
+                    <div
+                        class="wheel-segment-label"
+                        style="
+                            --segment-angle:${angle}deg;
+                        ">
+
+
+                        <div
+                            class="wheel-segment-content">
+
+
+                            ${
+                                isJackpot
+                                    ? `
+                                        <strong
+                                            class="wheel-jackpot-label">
+                                            JACKPOT
+                                        </strong>
+                                      `
+                                    : `
+                                        <strong
+                                            class="wheel-item-amount">
+                                            ×${segment.amount}
+                                        </strong>
+                                      `
+                            }
+
+
+                            <img
+                                src="${image}"
+                                alt="">
+
+
+                        </div>
+
+                    </div>
+
+                `;
+
+            })
+            .join("");
+
+},
+
+    render() {
+      this.ensureState();
+      this.renderSegments();
+      const available = this.canSpinToday();
+      dom.wheelStatus.textContent = available
+        ? "Dein kostenloser Dreh für heute ist bereit."
+        : "Heute bereits gedreht – morgen gibt es den nächsten Gratis-Dreh.";
+      dom.wheelSpinButton.disabled = !available || this.spinning;
+      dom.wheelSpinButton.textContent = available ? "JETZT DREHEN" : "HEUTE VERBRAUCHT";
+      if (available && !this.spinning) {
+        dom.wheelReward.classList.add("hidden");
+      }
+    },
+
+    chooseSegmentIndex() {
+      const totalWeight = WHEEL_CONFIG.segments.reduce(
+        (sum, segment) => sum + Math.max(0, Number(segment.weight) || 0), 0
+      );
+      let roll = Math.random() * totalWeight;
+      for (let index = 0; index < WHEEL_CONFIG.segments.length; index++) {
+        roll -= Math.max(0, Number(WHEEL_CONFIG.segments[index].weight) || 0);
+        if (roll <= 0) return index;
+      }
+      return WHEEL_CONFIG.segments.length - 1;
+    },
+
+    grantReward(segment) {
+      if (segment.type === "jackpot") {
+        Object.keys(ITEM_UNLOCKS).forEach((itemKey) => addItemAmount(itemKey, 1, false));
+        SaveManager.saveProgress(state.progress);
+        updateItemBarLocks();
+        return;
+      }
+      addItemAmount(segment.itemKey, segment.amount || 1);
+    },
+
+    showReward(segment) {
+      dom.wheelReward.classList.remove("hidden");
+      dom.wheelReward.classList.remove("wheel-reward-active");
+      void dom.wheelReward.offsetWidth;
+      dom.wheelReward.classList.add("wheel-reward-active");
+      dom.wheelRewardItems.innerHTML = "";
+
+      if (segment.type === "jackpot") {
+        dom.wheelRewardImage.src = "assets/ui/shop-bandenkick.png";
+        dom.wheelRewardTitle.textContent = "JACKPOT!";
+        dom.wheelRewardText.textContent = "Von jedem Item 1× gewonnen";
+        dom.wheelRewardItems.innerHTML = Object.entries(ITEM_UNLOCKS).map(([key, item]) => `
+          <div class="wheel-jackpot-item">
+            <img src="${item.image}" alt="${item.label}">
+            <span>1×</span>
+          </div>
+        `).join("");
+      } else {
+        const item = ITEM_UNLOCKS[segment.itemKey];
+        dom.wheelRewardImage.src = item.image;
+        dom.wheelRewardTitle.textContent = "GEWONNEN!";
+        dom.wheelRewardText.textContent = `${segment.amount}× ${item.label}`;
+      }
+    },
+
+    spin() {
+      if (this.spinning || !this.canSpinToday()) return;
+      this.spinning = true;
+      dom.wheelSpinButton.disabled = true;
+      dom.wheelReward.classList.add("hidden");
+
+      const index = this.chooseSegmentIndex();
+      const total = WHEEL_CONFIG.segments.length;
+      const segmentAngle = 360 / total;
+      const centerAngle = index * segmentAngle + segmentAngle / 2;
+      const extraTurns = 6 + Math.floor(Math.random() * 3);
+      const currentNormalized = ((this.rotation % 360) + 360) % 360;
+      const targetNormalized = (360 - centerAngle) % 360;
+      const correction = (targetNormalized - currentNormalized + 360) % 360;
+      this.rotation += extraTurns * 360 + correction;
+
+      dom.wheelDisc.style.transform = `rotate(${this.rotation}deg)`;
+
+      window.setTimeout(() => {
+        const segment = WHEEL_CONFIG.segments[index];
+        this.grantReward(segment);
+      
+        /*
+=========================================================
+NORMALBETRIEB – TÄGLICHEN DREH ALS VERBRAUCHT SPEICHERN
+
+this.ensureState();
+
+state.progress.dailyWheel.lastSpinDate =
+    this.getTodayKey();
+
+SaveManager.saveProgress(
+    state.progress
+);
+
+=========================================================
+*/
+
+
+/*
+ * DEMO-MODUS:
+ * Kein Datum speichern.
+ *
+ * Der Item-Gewinn selbst wurde bereits vorher
+ * durch grantReward() gespeichert.
+ */
+
+        this.spinning = false;
+
+/*
+ * Erst Glücksrad-Status und Button aktualisieren.
+ */
+this.render();
+
+/*
+ * Danach Gewinn anzeigen.
+ * So kann render() die Gewinnanimation im Demo-Modus
+ * nicht direkt wieder verstecken.
+ */
+this.showReward(segment);
+      }, WHEEL_CONFIG.spinDurationMs);
+    }
+  };
 
   const StageMap = {
     getStageStart(stageNumber) {
@@ -3705,6 +3975,10 @@ const Shop = {
 
   dom.openShopButton.addEventListener("click", () => Navigation.show("shop"));
 
+  dom.openWheelButton.addEventListener("click", () => Navigation.show("wheel"));
+
+  dom.wheelSpinButton.addEventListener("click", () => LuckyWheel.spin());
+
   dom.openSettingsButton.addEventListener("click", () => Navigation.show("settings"));
   
   dom.bombItemButton.addEventListener("click", () => {
@@ -3880,6 +4154,7 @@ const Shop = {
     ThemeManager.applyStageAssets(state.progress.selectedStage);
     ensureItemInventory();
     grantUnlockedItemStarterRewards();
+    LuckyWheel.ensureState();
     updateItemBarLocks();
     applySettingsToForm();
     updateUserUi();
