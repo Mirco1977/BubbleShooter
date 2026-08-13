@@ -14,8 +14,8 @@ export const WORLD_MAP_CONFIG_2 = {
   totalLevels: 100,
   levelsPerStage: 10,
 
-  levelSpacing: 132,
-  stageGap: -50,
+  levelSpacing: 82,
+  stageGap: -80,
   bottomPadding: 200,
   topPadding: 320,
 
@@ -46,7 +46,7 @@ stageLayouts: {
 
   standard: {
     image: "assets/world/stages/world-stage-standard.png",
-    height: 1500,
+    height: 1000,
 
     roadPattern: [
       50, 43, 55, 64, 51,
