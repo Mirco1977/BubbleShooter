@@ -7,6 +7,7 @@
   <title>Bandenkick Bubble Challenge</title>
 
   <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="css/worldMap2.css">
 </head>
 
 <body>
@@ -136,7 +137,29 @@
 
 </button>
 
-        
+
+<button id="openWorldMap2Button" class="menu-card has-image">
+
+  <div class="menu-card-text">
+
+    <strong>
+      Endlos-Levelkarte
+    </strong>
+
+    <span>
+      Test · neue Hauptlevel-Strecke
+    </span>
+
+  </div>
+
+  <div
+    class="world2-menu-icon"
+    aria-hidden="true">
+  </div>
+
+</button>
+
+      
 
 <button
     id="openEpisodesButton"
@@ -207,6 +230,59 @@
 
       <div id="levelMap" class="level-map"></div>
     </section>
+
+<!-- =========================================================
+     ENDLOS-LEVELKARTE 2 – TESTSYSTEM
+     ========================================================= -->
+
+<section id="worldMap2Screen" class="screen hidden">
+
+  <div class="world2-shell">
+
+    <div class="world2-toolbar">
+
+      <button
+        id="worldMap2BackButton"
+        class="world2-back"
+        type="button">
+        ← Start
+      </button>
+
+      <div class="world2-title">
+
+        <strong id="worldMap2StageLabel">
+          Endlos-Levelkarte
+        </strong>
+
+        <span id="worldMap2ProgressLabel">
+          Fortschritt wird geladen
+        </span>
+
+      </div>
+
+      <button
+        id="worldMap2ToCurrent"
+        class="world2-current"
+        type="button">
+        Aktuelles Level
+      </button>
+
+    </div>
+
+    <div id="worldMap2Viewport">
+
+      <div id="worldMap2World"></div>
+
+    </div>
+
+    <div
+      id="worldMap2Hint"
+      class="world2-hint">
+    </div>
+
+  </div>
+
+</section>
 
     <section id="levelScreen" class="screen hidden">
       <div class="screen-toolbar">
@@ -805,6 +881,7 @@
 
 <script type="module" src="./script.js"></script>
 <script type="module" src="./js/main.js"></script>
+<script type="module" src="./js/worldmap/worldMap2.js"></script>
 
 </body>
 </html>

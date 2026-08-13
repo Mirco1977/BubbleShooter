@@ -299,7 +299,8 @@ const THEME_PATH = [
       shop: $("shopScreen"),
       wheel: $("wheelScreen"),
       episodes: $("episodesScreen"),
-      settings: $("settingsScreen")
+      settings: $("settingsScreen"),
+      wolrdMap2: $("worldMap2Screen")
     },
 
     profileName: $("profileName"),
@@ -1764,6 +1765,47 @@ this.showReward(segment);
       Navigation.show("level");
     }
   };
+
+
+window.BK_getMainProgress = () => state.progress;
+
+window.BK_openMainLevel = (levelNumber) => {
+
+  const level = Number(levelNumber);
+
+  if (!Number.isInteger(level) || level < 1) return;
+
+  window.BK_levelOrigin = "worldMap2";
+
+  LevelPreview.open(level);
+
+  const worldMapScreen =
+    document.getElementById("worldMap2Screen");
+
+  const levelScreen =
+    document.getElementById("levelScreen");
+
+  if (worldMapScreen && levelScreen) {
+
+    // Endloskarte wieder sichtbar machen
+    worldMapScreen.classList.remove("hidden");
+
+    // Levelvorschau als Overlay markieren
+    levelScreen.classList.add("world2-level-overlay");
+
+  }
+
+  if (dom.levelBackButton) {
+
+    dom.levelBackButton.dataset.back = "worldMap2";
+
+    dom.levelBackButton.textContent =
+      "← Endloskarte";
+
+  }
+
+};
+
 
   const BubbleGame = {
     canvas: null,
@@ -4045,7 +4087,7 @@ dom.shotsMapButton.onclick = () => {
           dom.stageCompleteName.textContent = `Stage ${finishedStage} geschafft!`;
           dom.stageCompleteText.textContent = "Du hast diese Themenwelt gemeistert!";
           dom.stageCompleteStars.textContent = "⭐".repeat(stars);
-        }, 1200);
+        }, 2000);
       }
 
       return true;
@@ -4390,15 +4432,48 @@ const Shop = {
 }
 
   dom.startLevelButton.addEventListener("click", () => {
-    Audio.stopBackground();
-    Audio.playEffect("levelStart");
 
-    BubbleGame.start(state.selectedLevel);
+  Audio.stopBackground();
+  Audio.playEffect("levelStart");
+
+  // Wenn das Level von der Endloskarte kommt:
+  // Map und Vorschau vollständig ausblenden.
+  if (window.BK_levelOrigin === "worldMap2") {
+
+    const worldMapScreen =
+      document.getElementById("worldMap2Screen");
+
+    const levelScreen =
+      document.getElementById("levelScreen");
+
+    if (worldMapScreen) {
+      worldMapScreen.classList.add("hidden");
+    }
+
+    if (levelScreen) {
+      levelScreen.classList.add("hidden");
+      levelScreen.classList.remove("world2-level-overlay");
+    }
+
+    // Keine alte Scrollposition übernehmen
+    window.scrollTo({
+      top: 0,
+      behavior: "auto"
+    });
+  }
+
+  BubbleGame.start(state.selectedLevel);
+
+  // Die alte Scrollanimation nur noch bei der alten Levelkarte
+  if (window.BK_levelOrigin !== "worldMap2") {
 
     setTimeout(() => {
-      scrollToGame("premium")
+      scrollToGame("premium");
     }, 300);
-  });
+
+  }
+
+});
 
   dom.leaveGameButton.addEventListener("click", () => {
     BubbleGame.stop();
@@ -4425,15 +4500,27 @@ const Shop = {
   });
 
   dom.stageCompleteButton.addEventListener("click", () => {
-    dom.stageCompleteOverlay.classList.add("hidden");
 
-    state.progress.selectedStage =
-        getStageForLevel(state.progress.unlockedLevel);
+  dom.stageCompleteOverlay.classList.add("hidden");
 
-    SaveManager.saveProgress(state.progress);
+  state.progress.selectedStage =
+      getStageForLevel(state.progress.unlockedLevel);
 
-    Navigation.show("map");
-  });
+  SaveManager.saveProgress(state.progress);
+
+  if (window.BK_levelOrigin === "worldMap2") {
+
+  if (window.WorldMap2) {
+    window.WorldMap2.open();
+  }
+
+} else {
+
+  Navigation.show("map");
+
+}
+
+});
 
   [
       dom.musicSetting,

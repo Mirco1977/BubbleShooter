@@ -1,0 +1,650 @@
+/*
+ * =========================================================
+ * BANDENKICK – ENDLOSKARTE 2
+ * Datei: css/worldMap2.css
+ * =========================================================
+ */
+
+#worldMap2Screen {
+  padding: 0 !important;
+  overflow: hidden;
+}
+
+.world2-shell {
+  width: min(100%, 530px);
+  height: calc(100dvh - 92px);
+  min-height: 560px;
+  margin: 0 auto;
+  position: relative;
+  overflow: hidden;
+  border-radius: 24px;
+  background: #121722;
+  box-shadow: 0 18px 50px rgba(0,0,0,.42);
+}
+
+.world2-toolbar {
+  position: absolute;
+  z-index: 40;
+  top: 0;
+  left: 0;
+  right: 0;
+  min-height: 78px;
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  background:
+    linear-gradient(180deg, rgba(15,18,26,.96), rgba(15,18,26,.80) 72%, transparent);
+  pointer-events: none;
+}
+
+.world2-toolbar > * {
+  pointer-events: auto;
+}
+
+.world2-back,
+.world2-current {
+  min-height: 40px;
+  border: 0;
+  border-radius: 999px;
+  padding: 0 12px;
+  color: #fff;
+  font-weight: 900;
+  background: rgba(134,0,0,.96);
+  box-shadow: 0 5px 14px rgba(0,0,0,.30);
+}
+
+.world2-title {
+  min-width: 0;
+  text-align: center;
+  color: #fff;
+  text-shadow: 0 2px 5px rgba(0,0,0,.75);
+}
+
+.world2-title strong,
+.world2-title span {
+  display: block;
+}
+
+.world2-title strong {
+  font-size: 17px;
+}
+
+.world2-title span {
+  margin-top: 2px;
+  font-size: 12px;
+  color: rgba(255,255,255,.78);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+#worldMap2Viewport {
+  position: absolute;
+  inset: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scroll-behavior: smooth;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+
+#worldMap2Viewport::-webkit-scrollbar {
+  display: none;
+}
+
+#worldMap2World {
+  position: relative;
+  width: 100%;
+  min-height: 100%;
+  overflow: hidden;
+  background-repeat: repeat-y;
+  background-position: center bottom;
+  isolation: isolate;
+}
+
+/* leichte Vignette, damit Levelpunkte immer gut lesbar bleiben */
+#worldMap2World::after {
+  content: "";
+  position: absolute;
+  z-index: 2;
+  inset: 0;
+  pointer-events: none;
+  background:
+    linear-gradient(90deg, rgba(7,10,17,.25), transparent 22%, transparent 78%, rgba(7,10,17,.25)),
+    linear-gradient(180deg, rgba(0,0,0,.05), transparent 20%, transparent 80%, rgba(0,0,0,.18));
+}
+
+.world2-path-svg {
+  position: absolute;
+  z-index: 3;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  pointer-events: none;
+}
+
+.world2-path-line {
+  fill: none;
+  stroke: rgba(255,255,255,.28);
+  stroke-width: 5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-dasharray: 5 12;
+}
+
+.world2-level {
+  position: absolute;
+  z-index: 10;
+  width: 74px;
+  min-width: 74px;
+  height: 84px;
+  padding: 0;
+  border: 0;
+  transform: translateX(-50%);
+  background: transparent;
+  overflow: visible;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.world2-level-orb {
+  width: 64px;
+  height: 64px;
+  margin: 0 auto;
+  display: grid;
+  place-items: center;
+  border: 4px solid rgba(255,255,255,.92);
+  border-radius: 50%;
+  background:
+    radial-gradient(circle at 34% 25%, #ff7777 0 9%, #b90d1a 31%, #860000 68%, #4c0000 100%);
+  box-shadow:
+    0 7px 0 #460000,
+    0 10px 18px rgba(0,0,0,.45),
+    inset 0 2px 4px rgba(255,255,255,.38);
+}
+
+.world2-level-number {
+  color: #fff;
+  font-size: 20px;
+  font-weight: 1000;
+  line-height: 1;
+  text-shadow: 0 2px 3px rgba(0,0,0,.75);
+}
+
+.world2-stars {
+  display: block;
+  height: 18px;
+  margin-top: 4px;
+  color: #ffd84a;
+  font-size: 17px;
+  letter-spacing: -2px;
+  line-height: 1;
+  text-shadow: 0 2px 2px rgba(0,0,0,.75);
+}
+
+.world2-level.completed .world2-level-orb {
+  background:
+    radial-gradient(circle at 34% 25%, #ffcb6c 0 9%, #ff941f 31%, #d66300 69%, #7b3000 100%);
+  box-shadow:
+    0 7px 0 #733000,
+    0 10px 18px rgba(0,0,0,.42),
+    inset 0 2px 4px rgba(255,255,255,.45);
+}
+
+.world2-level.current {
+  z-index: 16;
+}
+
+.world2-level.current .world2-level-orb {
+  animation: world2CurrentPulse 1.45s ease-in-out infinite;
+  outline: 5px solid rgba(255,220,75,.20);
+}
+
+.world2-level.locked {
+  opacity: .58;
+  cursor: default;
+}
+
+.world2-level.locked .world2-level-orb {
+  filter: grayscale(.75);
+  background: linear-gradient(#59606c, #313741);
+  box-shadow:
+    0 7px 0 #242832,
+    0 10px 18px rgba(0,0,0,.35);
+}
+
+.world2-milestone {
+  position: absolute;
+  z-index: 13;
+  width: 112px;
+  min-height: 58px;
+  transform: translateX(-50%);
+  display: grid;
+  justify-items: center;
+  align-content: center;
+  gap: 2px;
+  pointer-events: none;
+  filter: drop-shadow(0 6px 7px rgba(0,0,0,.42));
+}
+
+.world2-milestone-icon {
+  font-size: 34px;
+  line-height: 1;
+}
+
+.world2-milestone-text {
+  max-width: 112px;
+  padding: 4px 7px;
+  border-radius: 999px;
+  color: #fff;
+  font-size: 10px;
+  font-weight: 900;
+  line-height: 1.05;
+  text-align: center;
+  background: rgba(24,27,36,.84);
+  border: 1px solid rgba(255,255,255,.18);
+}
+
+.world2-milestone.stage .world2-milestone-icon {
+  font-size: 43px;
+}
+
+.world2-milestone.passed {
+  filter:
+    drop-shadow(0 0 7px rgba(255,212,67,.62))
+    drop-shadow(0 6px 7px rgba(0,0,0,.42));
+}
+
+.world2-decoration {
+  position: absolute;
+  z-index: 5;
+  width: 76px;
+  height: 76px;
+  display: grid;
+  place-items: center;
+  font-size: 48px;
+  opacity: .88;
+  pointer-events: none;
+  filter: drop-shadow(0 7px 8px rgba(0,0,0,.32));
+}
+
+.world2-decoration.left {
+  left: 4%;
+}
+
+.world2-decoration.right {
+  right: 4%;
+}
+
+.world2-hint {
+  position: absolute;
+  z-index: 60;
+  right: 16px;
+  bottom: 18px;
+  left: 16px;
+  padding: 12px 14px;
+  border-radius: 16px;
+  color: #fff;
+  font-size: 13px;
+  font-weight: 800;
+  text-align: center;
+  background: rgba(20,23,31,.95);
+  border: 1px solid rgba(255,255,255,.16);
+  box-shadow: 0 10px 30px rgba(0,0,0,.42);
+  opacity: 0;
+  transform: translateY(18px);
+  pointer-events: none;
+  transition: .22s ease;
+}
+
+.world2-hint.show {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* Startseitenkarte bekommt ohne zusätzliche PNG ein eigenes Icon */
+.world2-menu-icon {
+  width: 94px;
+  height: 94px;
+  justify-self: end;
+  position: relative;
+  border-radius: 26px;
+  background:
+    radial-gradient(circle at 50% 72%, #ffcc52 0 8%, transparent 9%),
+    radial-gradient(circle at 32% 50%, #ffcc52 0 8%, transparent 9%),
+    radial-gradient(circle at 66% 31%, #ffcc52 0 8%, transparent 9%),
+    linear-gradient(145deg, #9b0010, #4f0007);
+  border: 3px solid rgba(255,255,255,.18);
+  box-shadow:
+    0 8px 15px rgba(0,0,0,.35),
+    inset 0 1px 0 rgba(255,255,255,.28);
+  overflow: hidden;
+}
+
+.world2-menu-icon::before {
+  content: "";
+  position: absolute;
+  width: 18px;
+  height: 108px;
+  left: 38px;
+  top: -8px;
+  border-radius: 999px;
+  background: rgba(255,255,255,.82);
+  transform: rotate(28deg);
+  box-shadow: 0 0 0 5px rgba(134,0,0,.75);
+}
+
+.world2-menu-icon::after {
+  content: "∞";
+  position: absolute;
+  right: 7px;
+  bottom: 2px;
+  color: #fff;
+  font-size: 34px;
+  font-weight: 1000;
+  text-shadow: 0 2px 4px rgba(0,0,0,.8);
+}
+
+@keyframes world2CurrentPulse {
+  0%,100% { transform: scale(1); }
+  50% { transform: scale(1.12); }
+}
+
+@media (max-width: 420px) {
+  .world2-shell {
+    border-radius: 0;
+    height: calc(100dvh - 74px);
+  }
+
+  .world2-toolbar {
+    grid-template-columns: auto 1fr;
+  }
+
+  .world2-current {
+    grid-column: 1 / -1;
+    justify-self: center;
+    min-height: 34px;
+  }
+
+  .world2-level {
+    transform: translateX(-50%) scale(.92);
+  }
+
+  .world2-milestone {
+    transform: translateX(-50%) scale(.90);
+  }
+}
+
+/* =========================================================
+   ENDLOSKARTE – LEVELVORSCHAU ALS OVERLAY
+   ========================================================= */
+
+#levelScreen.world2-level-overlay {
+  position: fixed;
+  inset: 0;
+
+  z-index: 9999;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  padding: 20px;
+
+  background: rgba(0, 0, 0, 0.72);
+
+  overflow-y: auto;
+}
+
+#levelScreen.world2-level-overlay .screen-toolbar {
+  width: min(100%, 530px);
+
+  margin: auto;
+
+  position: relative;
+
+  z-index: 2;
+}
+
+#levelScreen.world2-level-overlay > * {
+  width: min(100%, 530px);
+}
+
+#levelScreen.world2-level-overlay .level-preview-card,
+#levelScreen.world2-level-overlay .level-preview,
+#levelScreen.world2-level-overlay .preview-card {
+  margin-left: auto;
+  margin-right: auto;
+}
+
+body:has(#levelScreen.world2-level-overlay:not(.hidden)) {
+  overflow: hidden;
+}
+
+/* =========================================================
+   ENDLOSKARTE – LEVELVORSCHAU UNTEREINANDER ZENTRIEREN
+   ========================================================= */
+
+#levelScreen.world2-level-overlay {
+  flex-direction: column;
+  gap: 14px;
+}
+
+#levelScreen.world2-level-overlay .screen-toolbar {
+  flex: 0 0 auto;
+  width: min(100%, 530px);
+  margin: 0;
+}
+
+#levelScreen.world2-level-overlay > * {
+  flex: 0 0 auto;
+  width: min(100%, 530px);
+}
+
+/* =========================================================
+   ENDLOSKARTE – EINZELNE LANGE COMIC-WELTKARTE
+   ========================================================= */
+
+/*
+ * Die Straße ist jetzt Bestandteil von world-road-long.svg.
+ * Alte zusätzliche Pfad-/Emoji-Deko wird nicht mehr gebraucht.
+ */
+.world2-path-svg,
+.world2-decoration {
+  display: none !important;
+}
+
+/* Stage-Logo links/rechts neben der Straße */
+.world2-stage-marker {
+  position: absolute;
+  z-index: 8;
+
+  width: 142px;
+  min-height: 112px;
+
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+
+  gap: 5px;
+
+  pointer-events: none;
+
+  filter:
+    drop-shadow(0 7px 10px rgba(0, 0, 0, .42));
+}
+
+.world2-stage-marker.left {
+  left: 2%;
+}
+
+.world2-stage-marker.right {
+  right: 2%;
+}
+
+.world2-stage-logo-wrap {
+  width: 78px;
+  height: 78px;
+
+  display: grid;
+  place-items: center;
+
+  border-radius: 50%;
+
+  background:
+    radial-gradient(
+      circle,
+      rgba(255,255,255,.22),
+      rgba(255,255,255,.06) 58%,
+      transparent 72%
+    );
+
+  border:
+    2px solid color-mix(
+      in srgb,
+      var(--stage-accent) 72%,
+      white
+    );
+
+  box-shadow:
+    0 0 18px
+      color-mix(
+        in srgb,
+        var(--stage-accent) 50%,
+        transparent
+      );
+}
+
+.world2-stage-logo {
+  display: block;
+
+  width: 68px;
+  height: 68px;
+
+  object-fit: contain;
+
+  filter:
+    drop-shadow(0 4px 5px rgba(0,0,0,.55));
+}
+
+.world2-stage-copy {
+  max-width: 142px;
+
+  padding: 5px 9px 6px;
+
+  border-radius: 14px;
+
+  text-align: center;
+
+  color: #fff;
+
+  background:
+    linear-gradient(
+      145deg,
+      rgba(18,22,29,.92),
+      rgba(18,22,29,.76)
+    );
+
+  border:
+    1px solid rgba(255,255,255,.18);
+
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.10);
+}
+
+.world2-stage-copy span,
+.world2-stage-copy strong {
+  display: block;
+}
+
+.world2-stage-copy span {
+  color:
+    color-mix(
+      in srgb,
+      var(--stage-accent) 72%,
+      white
+    );
+
+  font-size: 9px;
+  font-weight: 1000;
+  letter-spacing: .12em;
+}
+
+.world2-stage-copy strong {
+  margin-top: 2px;
+
+  font-size: 11px;
+  line-height: 1.05;
+}
+
+/*
+ * Hintergrund bleibt bewusst comicartig und ruhig,
+ * damit Levelpunkte und Stage-Logos die Hauptrolle spielen.
+ */
+#worldMap2World::after {
+  background:
+    linear-gradient(
+      90deg,
+      rgba(7,10,17,.17),
+      transparent 19%,
+      transparent 81%,
+      rgba(7,10,17,.17)
+    );
+}
+
+@media (max-width: 420px) {
+  .world2-stage-marker {
+    transform: scale(.88);
+  }
+
+  .world2-stage-marker.left {
+    left: -1%;
+  }
+
+  .world2-stage-marker.right {
+    right: -1%;
+  }
+}
+
+/* =========================================================
+   ENDLOSKARTE – WIEDERVERWENDBARE STAGE-GERÜSTE
+   ========================================================= */
+
+.world2-stage-background {
+  overflow: hidden;
+
+  border-radius: 0;
+
+  user-select: none;
+
+  -webkit-user-select: none;
+
+  filter:
+    saturate(0.92)
+    brightness(0.82);
+}
+
+/*
+ * Leicht abdunkeln,
+ * damit dynamische Levelpunkte klar darüber stehen.
+ */
+.world2-stage-background::after {
+  content: "";
+
+  position: absolute;
+  inset: 0;
+
+  background:
+    linear-gradient(
+      90deg,
+      rgba(0,0,0,.16),
+      transparent 24%,
+      transparent 76%,
+      rgba(0,0,0,.16)
+    );
+}
