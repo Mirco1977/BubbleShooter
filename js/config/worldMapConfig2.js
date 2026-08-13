@@ -14,6 +14,8 @@ export const WORLD_MAP_CONFIG_2 = {
   totalLevels: 100,
   levelsPerStage: 10,
 
+  baseWidth: 960,
+
   levelSpacing: 82,
   stageGap: -80,
   bottomPadding: 200,
