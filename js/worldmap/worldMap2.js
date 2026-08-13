@@ -228,17 +228,33 @@ block.style.bottom =
 
 },
 
-  yForLevel(level) {
+ yForLevel(level) {
 
-  // Wie viele komplette 10er-Blöcke liegen
-  // bereits unter diesem Level?
-  const completedStages =
+  const stageIndex =
     Math.floor((level - 1) / CONFIG.levelsPerStage);
 
+  const localLevelIndex =
+    (level - 1) % CONFIG.levelsPerStage;
+
+  // Stage 1 = Sonderbild
+  if (stageIndex === 0) {
+    return (
+      CONFIG.bottomPadding +
+      (localLevelIndex * CONFIG.levelSpacing)
+    );
+  }
+
+  // Ab Stage 2 immer gleicher Startpunkt im Standardbild,
+  // aber mit EINEM festen Extra-Abstand zwischen den 10er-Blöcken.
+  const blockBottom =
+    CONFIG.stageLayouts.first.height +
+    ((stageIndex - 1) * CONFIG.stageLayouts.standard.height);
+
   return (
+    blockBottom +
+    CONFIG.stageGap +
     CONFIG.bottomPadding +
-    ((level - 1) * CONFIG.levelSpacing) +
-    (completedStages * CONFIG.stageGap)
+    (localLevelIndex * CONFIG.levelSpacing)
   );
 },
 

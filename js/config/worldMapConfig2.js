@@ -15,8 +15,8 @@ export const WORLD_MAP_CONFIG_2 = {
   levelsPerStage: 10,
 
   levelSpacing: 132,
-  stageGap: 250,
-  bottomPadding: 230,
+  stageGap: -50,
+  bottomPadding: 200,
   topPadding: 320,
 
   /*
@@ -25,7 +25,7 @@ export const WORLD_MAP_CONFIG_2 = {
    * Sie wiederholt sich automatisch vertikal.
    */
   backgroundImage: "assets/world/world-road-long.svg",
-  backgroundSegmentHeight: 9000,
+  backgroundSegmentHeight: 6000,
 
   /*
    * 50 Positionen = exakt ein kompletter Hintergrund-Zyklus.
