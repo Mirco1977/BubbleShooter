@@ -42,6 +42,17 @@ const WorldMap2 = {
   currentLevel: 1,
   initialized: false,
 
+getMapScale() {
+    if (!this.world) return 1;
+
+    const width = this.world.clientWidth || CONFIG.baseWidth;
+
+    return Math.min(
+      1,
+      width / CONFIG.baseWidth
+    );
+  },
+
   init() {
     if (!CONFIG.enabled || this.initialized) return;
 
@@ -102,10 +113,14 @@ const WorldMap2 = {
 
     this.currentLevel = unlockedLevel;
 
-    const totalHeight =
-      CONFIG.bottomPadding +
-      CONFIG.topPadding +
-      (CONFIG.totalLevels - 1) * CONFIG.levelSpacing;
+    const scale = this.getMapScale();
+
+const totalHeight =
+  (
+    CONFIG.bottomPadding +
+    CONFIG.topPadding +
+    (CONFIG.totalLevels - 1) * CONFIG.levelSpacing
+  ) * scale;
 
     this.world.style.height = `${totalHeight}px`;
 
@@ -182,7 +197,8 @@ const layout = isFirstStage
   ? CONFIG.stageLayouts.first
   : CONFIG.stageLayouts.standard;
 
-const blockHeight = layout.height;
+const scale = this.getMapScale();
+const blockHeight = layout.height * scale;
 
 let blockBottom;
 
@@ -190,8 +206,10 @@ if (isFirstStage) {
   blockBottom = 0;
 } else {
   blockBottom =
-    CONFIG.stageLayouts.first.height +
-    ((stageIndex - 1) * CONFIG.stageLayouts.standard.height);
+    (
+      CONFIG.stageLayouts.first.height +
+      ((stageIndex - 1) * CONFIG.stageLayouts.standard.height)
+    ) * scale;
 }
 
 block.style.position = "absolute";
@@ -228,7 +246,9 @@ block.style.bottom =
 
 },
 
- yForLevel(level) {
+yForLevel(level) {
+
+  const scale = this.getMapScale();
 
   const stageIndex =
     Math.floor((level - 1) / CONFIG.levelsPerStage);
@@ -236,16 +256,15 @@ block.style.bottom =
   const localLevelIndex =
     (level - 1) % CONFIG.levelsPerStage;
 
-  // Stage 1 = Sonderbild
+  // Stage 1
   if (stageIndex === 0) {
     return (
-      CONFIG.bottomPadding +
+      CONFIG.bottomPadding -50 +
       (localLevelIndex * CONFIG.levelSpacing)
-    );
+    ) * scale;
   }
 
-  // Ab Stage 2 immer gleicher Startpunkt im Standardbild,
-  // aber mit EINEM festen Extra-Abstand zwischen den 10er-Blöcken.
+  // Ab Stage 2
   const blockBottom =
     CONFIG.stageLayouts.first.height +
     ((stageIndex - 1) * CONFIG.stageLayouts.standard.height);
@@ -255,7 +274,7 @@ block.style.bottom =
     CONFIG.stageGap +
     CONFIG.bottomPadding +
     (localLevelIndex * CONFIG.levelSpacing)
-  );
+  ) * scale;
 },
 
 xForLevel(level) {
