@@ -77,6 +77,7 @@ getMapScale() {
 
   open() {
     const progress = getProgress();
+    document.querySelector(".app-header")?.classList.add("world2-header-hidden");
 
     this.currentLevel = clamp(
       Number(progress.unlockedLevel || 1),
@@ -98,9 +99,11 @@ getMapScale() {
   },
 
   close() {
-    this.screen.classList.add("hidden");
-    $("homeScreen")?.classList.remove("hidden");
-  },
+  this.screen.classList.add("hidden");
+  $("homeScreen")?.classList.remove("hidden");
+
+  document.querySelector(".app-header")?.classList.remove("world2-header-hidden");
+},
 
   render() {
     const progress = getProgress();

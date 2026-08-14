@@ -371,12 +371,14 @@
   }
 
   .world2-level {
-    transform: translateX(-50%) scale(.92);
-  }
+  transform: translateX(-50%) scale(.68);
+  transform-origin: center bottom;
+}
 
-  .world2-milestone {
-    transform: translateX(-50%) scale(.90);
-  }
+.world2-milestone {
+  transform: translateX(-50%) scale(.68);
+  transform-origin: center center;
+}
 }
 
 /* =========================================================
@@ -599,7 +601,7 @@ body:has(#levelScreen.world2-level-overlay:not(.hidden)) {
 
 @media (max-width: 420px) {
   .world2-stage-marker {
-    transform: scale(.88);
+    transform: scale(.68);
   }
 
   .world2-stage-marker.left {
@@ -647,4 +649,9 @@ body:has(#levelScreen.world2-level-overlay:not(.hidden)) {
       transparent 76%,
       rgba(0,0,0,.16)
     );
+}
+
+/* Hauptheader auf der Endloskarte ausblenden */
+.app-header.world2-header-hidden {
+  display: none !important;
 }
