@@ -381,8 +381,7 @@
 }
 
 .world2-next-item {
-  transform: translateX(-50%) scale(.68);
-  transform-origin: center center;
+  transform: translateX(-50%) scale(.72);
 }
 }
 
@@ -709,4 +708,24 @@ body:has(#levelScreen.world2-level-overlay:not(.hidden)) {
   object-fit: contain;
 
   filter: drop-shadow(0 5px 7px rgba(0,0,0,.45));
+}
+
+/* =========================================================
+   NEXT ITEM – HANDYGRÖSSE
+   MUSS GANZ UNTEN IN DER DATEI STEHEN
+   ========================================================= */
+
+@media (max-width: 600px) {
+
+  .world2-next-item {
+    width: 68px !important;
+    height: 68px !important;
+  }
+
+  .world2-next-item img {
+    width: 64px !important;
+    height: 64px !important;
+    object-fit: contain;
+  }
+
 }
