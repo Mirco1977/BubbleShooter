@@ -144,7 +144,8 @@
   height: 84px;
   padding: 0;
   border: 0;
-  transform: translateX(-50%);
+  transform: translateX(-50%) scale(.78);
+  transform-origin: center bottom;
   background: transparent;
   overflow: visible;
   cursor: pointer;
@@ -613,7 +614,7 @@ body:has(#levelScreen.world2-level-overlay:not(.hidden)) {
   }
 
   .world2-stage-marker.right {
-    right: -1%;
+    right: -5%;
   }
 }
 
