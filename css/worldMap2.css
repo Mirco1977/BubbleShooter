@@ -732,7 +732,7 @@ body:has(#levelScreen.world2-level-overlay:not(.hidden)) {
 }
 
 #worldMap2Screen::after {
-  content: "UPDATE TEST Version 27";
+  content: "UPDATE TEST Version 28";
   position: fixed;
   top: 5px;
   left: 50%;
