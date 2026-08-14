@@ -606,7 +606,7 @@ body:has(#levelScreen.world2-level-overlay:not(.hidden)) {
 
 @media (max-width: 420px) {
   .world2-stage-marker {
-    transform: scale(.80);
+    transform: scale(.100);
   }
 
   .world2-stage-marker.left {
