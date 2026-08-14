@@ -379,6 +379,11 @@
   transform: translateX(-50%) scale(.68);
   transform-origin: center center;
 }
+
+.world2-next-item {
+  transform: translateX(-50%) scale(.68);
+  transform-origin: center center;
+}
 }
 
 /* =========================================================
