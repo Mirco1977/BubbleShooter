@@ -742,7 +742,7 @@ body:has(#levelScreen.world2-level-overlay:not(.hidden)) {
 }
 
 #worldMap2Screen::after {
-  content: "UPDATE TEST Version 34";
+  content: "UPDATE TEST Version 35";
   position: fixed;
   top: 5px;
   left: 50%;
@@ -755,79 +755,4 @@ body:has(#levelScreen.world2-level-overlay:not(.hidden)) {
   font-size: 18px;
   font-weight: 900;
   border: 3px solid red;
-}
-/* =========================================================
-   WORLD ROLL / WALZEN-EFFEKT
-   Die Wölbung hängt am sichtbaren Viewport, nicht an der Stage-Grafik.
-   ========================================================= */
-#worldMap2Viewport {
-  perspective: 900px;
-  perspective-origin: 50% 52%;
-}
-
-#worldMap2World.world2-roll-world {
-  overflow: visible;
-  transform-style: preserve-3d;
-}
-
-.world2-roll-block {
-  overflow: visible !important;
-  filter: none !important;
-  background: none !important;
-}
-
-.world2-roll-block::after {
-  display: none !important;
-}
-
-.world2-roll-slice {
-  position: absolute;
-  left: 0;
-  width: 100%;
-  background-repeat: no-repeat;
-  transform-origin: center center;
-  will-change: transform;
-  backface-visibility: hidden;
-}
-
-/* Dynamische Elemente folgen derselben virtuellen Rolle. */
-.world2-level {
-  transform: translateX(-50%) translateZ(var(--world2-roll-z, 0px)) scaleX(var(--world2-roll-x, 1)) scale(.78);
-  will-change: transform;
-}
-
-.world2-stage-marker,
-.world2-next-item,
-.world2-milestone {
-  --world2-roll-x: 1;
-  --world2-roll-z: 0px;
-  will-change: transform;
-}
-
-.world2-stage-marker.fixed {
-  transform: translateZ(var(--world2-roll-z, 0px)) scaleX(var(--world2-roll-x, 1));
-}
-
-.world2-next-item,
-.world2-milestone {
-  transform: translateX(-50%) translateZ(var(--world2-roll-z, 0px)) scaleX(var(--world2-roll-x, 1));
-}
-
-@media (max-width: 420px) {
-  .world2-level {
-    transform: translateX(-50%) translateZ(var(--world2-roll-z, 0px)) scaleX(var(--world2-roll-x, 1)) scale(.68);
-  }
-
-  .world2-stage-marker.fixed,
-  .world2-stage-marker.fixed.right {
-    transform: translateZ(var(--world2-roll-z, 0px)) scaleX(var(--world2-roll-x, 1)) scale(.68);
-  }
-
-  .world2-next-item {
-    transform: translateX(-50%) translateZ(var(--world2-roll-z, 0px)) scaleX(var(--world2-roll-x, 1)) scale(.72);
-  }
-
-  .world2-milestone {
-    transform: translateX(-50%) translateZ(var(--world2-roll-z, 0px)) scaleX(var(--world2-roll-x, 1)) scale(.68);
-  }
 }
