@@ -614,7 +614,7 @@ body:has(#levelScreen.world2-level-overlay:not(.hidden)) {
   }
 
   .world2-stage-marker.right {
-    right: -5%;
+    right: -10%;
   }
 }
 
