@@ -731,8 +731,18 @@ body:has(#levelScreen.world2-level-overlay:not(.hidden)) {
 
 }
 
+@media (max-width: 420px) {
+
+    .world2-stage-marker.fixed,
+    .world2-stage-marker.fixed.right {
+        left: auto !important;
+        right: -30% !important;
+    }
+
+}
+
 #worldMap2Screen::after {
-  content: "UPDATE TEST Version 29";
+  content: "UPDATE TEST Version 30";
   position: fixed;
   top: 5px;
   left: 50%;
