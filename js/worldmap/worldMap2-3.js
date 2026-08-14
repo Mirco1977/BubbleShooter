@@ -72,9 +72,6 @@ getMapScale() {
       this.scrollToCurrent(true);
     });
 
-    this.viewport.addEventListener("scroll", () => this.scheduleRollUpdate(), { passive: true });
-    window.addEventListener("resize", () => this.scheduleRollUpdate(), { passive: true });
-
     this.initialized = true;
   },
 
@@ -98,7 +95,6 @@ getMapScale() {
 
     requestAnimationFrame(() => {
       this.scrollToCurrent(false);
-      requestAnimationFrame(() => this.updateWorldRoll());
     });
   },
 
@@ -130,7 +126,6 @@ const totalHeight =
   ) * scale;
 
     this.world.style.height = `${totalHeight}px`;
-    this.world.classList.add("world2-roll-world");
 
     /*
      * Eine einzige lange Karte.
@@ -162,77 +157,97 @@ this.renderStageMarkers(progress);
 
     $("worldMap2ProgressLabel").textContent =
       `Aktuell Level ${unlockedLevel}`;
-
-    this.scheduleRollUpdate();
   },
 
   renderStageBackgrounds() {
-    const stageCount = Math.ceil(CONFIG.totalLevels / CONFIG.levelsPerStage);
-    const scale = this.getMapScale();
-    for (let stageIndex = 0; stageIndex < stageCount; stageIndex++) {
-      const isFirstStage = stageIndex === 0;
-      const layout = isFirstStage ? CONFIG.stageLayouts.first : CONFIG.stageLayouts.standard;
-      const blockHeight = layout.height * scale;
-      const blockBottom = isFirstStage ? 0 : (CONFIG.stageLayouts.first.height + ((stageIndex - 1) * CONFIG.stageLayouts.standard.height)) * scale;
-      const block = document.createElement("div");
-      block.className = "world2-stage-background world2-roll-block";
-      block.style.position = "absolute";
-      block.style.left = "0"; block.style.width = "100%";
-      block.style.height = `${blockHeight}px`; block.style.bottom = `${blockBottom}px`;
-      block.style.pointerEvents = "none"; block.style.zIndex = "0";
-      const sliceHeight = Math.max(24, 34 * scale);
-      const sliceCount = Math.ceil(blockHeight / sliceHeight);
-      for (let i = 0; i < sliceCount; i++) {
-        const y = i * sliceHeight;
-        const h = Math.min(sliceHeight + 1, blockHeight - y);
-        const slice = document.createElement("div");
-        slice.className = "world2-roll-slice";
-        slice.style.top = `${y}px`; slice.style.height = `${h}px`;
-        slice.style.backgroundImage = `url("${layout.image}")`;
-        slice.style.backgroundSize = `100% ${blockHeight}px`;
-        slice.style.backgroundPosition = `center -${y}px`;
-        block.appendChild(slice);
-      }
-      this.world.appendChild(block);
-    }
-  },
 
-  scheduleRollUpdate() {
-    if (this.rollFrame) return;
-    this.rollFrame = requestAnimationFrame(() => {
-      this.rollFrame = 0;
-      this.updateWorldRoll();
-    });
-  },
+  const stageCount =
+    Math.ceil(
+      CONFIG.totalLevels / CONFIG.levelsPerStage
+    );
 
-  getRollTransformForY(screenY) {
-    const rect = this.viewport.getBoundingClientRect();
-    const center = rect.top + rect.height * 0.52;
-    const half = Math.max(1, rect.height * 0.56);
-    const n = clamp((screenY - center) / half, -1, 1);
-    const edge = Math.abs(n);
-    return {
-      scaleX: 1 + (1 - edge * edge) * 0.105,
-      scaleY: 0.985 + (1 - edge) * 0.015,
-      z: (1 - edge * edge) * 18
-    };
-  },
+  for (
+    let stageIndex = 0;
+    stageIndex < stageCount;
+    stageIndex++
+  ) {
 
-  updateWorldRoll() {
-    if (!this.viewport || !this.world || this.screen?.classList.contains("hidden")) return;
-    this.world.querySelectorAll(".world2-roll-slice").forEach(slice => {
-      const r = slice.getBoundingClientRect();
-      const t = this.getRollTransformForY(r.top + r.height / 2);
-      slice.style.transform = `translateZ(${t.z}px) scaleX(${t.scaleX}) scaleY(${t.scaleY})`;
-    });
-    this.world.querySelectorAll(".world2-level, .world2-stage-marker, .world2-next-item, .world2-milestone").forEach(el => {
-      const r = el.getBoundingClientRect();
-      const t = this.getRollTransformForY(r.top + r.height / 2);
-      el.style.setProperty("--world2-roll-x", t.scaleX.toFixed(4));
-      el.style.setProperty("--world2-roll-z", `${t.z.toFixed(1)}px`);
-    });
-  },
+    /*
+     * GERÜST 1 erscheint bei:
+     *
+     * Level 1–10
+     * Level 101–110
+     * Level 201–210
+     * usw.
+     */
+    const layoutNumber =
+      (stageIndex % 10) + 1;
 
+    
+
+    const firstLevel =
+      stageIndex * CONFIG.levelsPerStage + 1;
+
+    const block =
+      document.createElement("div");
+
+    block.className =
+      "world2-stage-background";
+
+    const isFirstStage = stageIndex === 0;
+
+const layout = isFirstStage
+  ? CONFIG.stageLayouts.first
+  : CONFIG.stageLayouts.standard;
+
+const scale = this.getMapScale();
+const blockHeight = layout.height * scale;
+
+let blockBottom;
+
+if (isFirstStage) {
+  blockBottom = 0;
+} else {
+  blockBottom =
+    (
+      CONFIG.stageLayouts.first.height +
+      ((stageIndex - 1) * CONFIG.stageLayouts.standard.height)
+    ) * scale;
+}
+
+block.style.position = "absolute";
+block.style.left = "0";
+block.style.width = "100%";
+
+block.style.height =
+  `${blockHeight}px`;
+
+block.style.bottom =
+  `${blockBottom}px`;
+
+  
+    block.style.backgroundImage =
+      `url("${layout.image}")`;
+
+    block.style.backgroundSize =
+      "100% 100%";
+
+    block.style.backgroundRepeat =
+      "no-repeat";
+
+    block.style.backgroundPosition =
+      "center bottom";
+
+    block.style.pointerEvents =
+      "none";
+
+    block.style.zIndex =
+      "0";
+
+    this.world.appendChild(block);
+  }
+
+},
 
 yForLevel(level) {
 
