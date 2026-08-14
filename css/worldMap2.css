@@ -736,13 +736,13 @@ body:has(#levelScreen.world2-level-overlay:not(.hidden)) {
     .world2-stage-marker.fixed,
     .world2-stage-marker.fixed.right {
         left: auto !important;
-        right: -6% !important;
+        right: 6% !important;
     }
 
 }
 
 #worldMap2Screen::after {
-  content: "UPDATE TEST Version 32";
+  content: "UPDATE TEST Version 33";
   position: fixed;
   top: 5px;
   left: 50%;
