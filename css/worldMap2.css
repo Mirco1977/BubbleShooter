@@ -606,7 +606,7 @@ body:has(#levelScreen.world2-level-overlay:not(.hidden)) {
 
 @media (max-width: 420px) {
   .world2-stage-marker {
-    transform: scale(.400);
+    transform: scale(.250);
   }
 
   .world2-stage-marker.left {
@@ -742,7 +742,7 @@ body:has(#levelScreen.world2-level-overlay:not(.hidden)) {
 }
 
 #worldMap2Screen::after {
-  content: "UPDATE TEST Version 36";
+  content: "UPDATE TEST Version 37";
   position: fixed;
   top: 5px;
   left: 50%;
