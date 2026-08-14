@@ -310,18 +310,34 @@ xForLevel(level) {
       const marker = document.createElement("div");
       marker.className = "world2-stage-marker";
 
-      const x = this.xForLevel(firstLevel);
+      const scale = this.getMapScale();
 
-      /*
-       * Logo bewusst seitlich neben der Straße.
-       * Wechselt automatisch links/rechts.
-       */
-      const sideLeft = stageIndex % 2 === 0;
+/*
+ * Stage-Logo immer an derselben festen Position
+ * innerhalb jedes 10-Level-Bildes.
+ */
+marker.classList.add("fixed");
 
-      marker.classList.add(sideLeft ? "left" : "right");
+/*
+ * Unterkante des jeweiligen Stage-Bildes bestimmen.
+ */
+let stageBottom;
 
-      marker.style.bottom =
-        `${this.yForLevel(firstLevel) + 54}px`;
+if (stageIndex === 0) {
+  stageBottom = 0;
+} else {
+  stageBottom =
+    (
+      CONFIG.stageLayouts.first.height +
+      ((stageIndex - 1) * CONFIG.stageLayouts.standard.height)
+    ) * scale;
+}
+
+/*
+ * Feste vertikale Position innerhalb des Stage-Bildes.
+ */
+marker.style.bottom =
+  `${stageBottom + (180 * scale)}px`;
 
       marker.style.setProperty(
         "--stage-accent",
@@ -422,55 +438,115 @@ xForLevel(level) {
     this.world.appendChild(node);
   },
 
+  getMilestoneImage(level) {
+  const images = {
+    5:  "assets/ui/ballswitch.png",
+    15: "assets/ui/rainbow-ball.png",
+    25: "assets/ui/lupe.png",
+    35: "assets/ui/bomb-ball.png",
+    45: "assets/ui/thunder-ball.png"
+  };
+
+  return images[level] || "";
+},
+
   renderMilestones(level, progress) {
-    const entries =
-      CONFIG.milestones.filter(
-        milestone => milestone.level === level
-      );
 
-    if (!entries.length) return;
+  const entries =
+    CONFIG.milestones.filter(
+      milestone => milestone.level === level
+    );
 
-    entries.forEach((entry, i) => {
-      const el = document.createElement("div");
+  if (!entries.length) return;
 
-      el.className =
-        `world2-milestone ${entry.type || ""}`;
+  const scale = this.getMapScale();
 
-      const passed =
-        Number(progress.unlockedLevel || 1) > level;
+  const stageIndex =
+    Math.floor((level - 1) / CONFIG.levelsPerStage);
 
-      if (passed) {
-        el.classList.add("passed");
-      }
+  let stageBottom;
 
-      const x =
-        this.xForLevel(level);
+  if (stageIndex === 0) {
+    stageBottom = 0;
+  } else {
+    stageBottom =
+      (
+        CONFIG.stageLayouts.first.height +
+        ((stageIndex - 1) * CONFIG.stageLayouts.standard.height)
+      ) * scale;
+  }
 
-      const side =
-        x < 50 ? 1 : -1;
+  entries.forEach((entry) => {
 
-      const offset =
-        23 + i * 12;
+    /* =========================
+       NEXT-ITEM PNG LINKS
+       ========================= */
 
-      el.style.left =
-        `${clamp(x + side * offset, 12, 88)}%`;
+    const nextItem =
+      document.createElement("div");
 
-      el.style.bottom =
-        `${this.yForLevel(level) + 18}px`;
+    nextItem.className =
+      "world2-next-item";
 
-      el.innerHTML = `
-        <span class="world2-milestone-icon">
-          ${entry.icon || "★"}
-        </span>
+    nextItem.style.left =
+      "35%";
 
-        <span class="world2-milestone-text">
-          ${entry.label || ""}
-        </span>
-      `;
+    nextItem.style.bottom =
+      `${stageBottom + (350 * scale)}px`;
 
-      this.world.appendChild(el);
-    });
-  },
+    nextItem.innerHTML = `
+      <img
+        src="assets/ui/next-item.png"
+        alt=""
+        draggable="false">
+    `;
+
+    this.world.appendChild(nextItem);
+
+
+    /* =========================
+       EIGENTLICHES ITEM RECHTS
+       ========================= */
+
+    const el =
+      document.createElement("div");
+
+    el.className =
+      `world2-milestone ${entry.type || ""}`;
+
+    const passed =
+      Number(progress.unlockedLevel || 1) > level;
+
+    if (passed) {
+      el.classList.add("passed");
+    }
+
+    el.style.left =
+      "70%";
+
+    el.style.bottom =
+      `${stageBottom + (475 * scale)}px`;
+
+    const itemImage = this.getMilestoneImage(level);
+
+    el.innerHTML = `
+      <span class="world2-milestone-icon">
+        ${itemImage
+          ? `<img
+              src="${itemImage}"
+              alt="${entry.label || "Item"}"
+              draggable="false">`
+          : ""}
+      </span>
+
+      <span class="world2-milestone-text">
+        ${entry.label || ""}
+      </span>
+    `;
+
+    this.world.appendChild(el);
+  });
+},
 
   openLevel(level) {
     if (typeof window.BK_openMainLevel === "function") {

@@ -655,3 +655,53 @@ body:has(#levelScreen.world2-level-overlay:not(.hidden)) {
 .app-header.world2-header-hidden {
   display: none !important;
 }
+
+/* =========================================================
+   STAGE-LOGO – FESTE POSITION IN JEDEM 10ER-BLOCK
+   ========================================================= */
+
+.world2-stage-marker.fixed {
+  left: auto !important;
+  right: 15% !important;
+}
+
+/* =========================================================
+   NEXT ITEM – FESTE POSITION LINKS
+   ========================================================= */
+
+.world2-next-item {
+  position: absolute;
+  z-index: 13;
+
+  width: 100px;
+  height: 100px;
+
+  transform: translateX(-50%);
+
+  display: grid;
+  place-items: center;
+
+  pointer-events: none;
+
+  filter: drop-shadow(0 6px 8px rgba(0,0,0,.42));
+}
+
+.world2-next-item img {
+  display: block;
+
+  width: 92px;
+  height: 92px;
+
+  object-fit: contain;
+}
+
+/* ITEM-PNG AUF DER ENDLOSKARTE */
+
+.world2-milestone-icon img {
+  display: block;
+  width: 58px;
+  height: 58px;
+  object-fit: contain;
+
+  filter: drop-shadow(0 5px 7px rgba(0,0,0,.45));
+}
