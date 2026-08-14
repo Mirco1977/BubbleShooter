@@ -488,11 +488,17 @@ marker.style.bottom =
     nextItem.className =
       "world2-next-item";
 
-    nextItem.style.left =
-      "35%";
-
-    nextItem.style.bottom =
-      `${stageBottom + (350 * scale)}px`;
+    if (stageIndex === 0) {
+  // FIRST STAGE
+  nextItem.style.left = "35%";
+  nextItem.style.bottom =
+    `${stageBottom + (400 * scale)}px`;
+} else {
+  // STANDARD STAGES
+  nextItem.style.left = "35%";
+  nextItem.style.bottom =
+    `${stageBottom + (350 * scale)}px`;
+}
 
     nextItem.innerHTML = `
       <img
@@ -521,11 +527,17 @@ marker.style.bottom =
       el.classList.add("passed");
     }
 
-    el.style.left =
-      "70%";
-
-    el.style.bottom =
-      `${stageBottom + (475 * scale)}px`;
+    if (stageIndex === 0) {
+  // FIRST STAGE
+  el.style.left = "70%";
+  el.style.bottom =
+    `${stageBottom + (500 * scale)}px`;
+} else {
+  // STANDARD STAGES
+  el.style.left = "70%";
+  el.style.bottom =
+    `${stageBottom + (475 * scale)}px`;
+}
 
     const itemImage = this.getMilestoneImage(level);
 
