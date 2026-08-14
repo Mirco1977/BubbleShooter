@@ -38,7 +38,7 @@ export const WORLD_MAP_CONFIG_2 = {
 stageLayouts: {
   first: {
     image: "assets/world/stages/world-stage-01.png",
-    height: 1600,
+    height: 1000,
 
     roadPattern: [
       50, 43, 55, 64, 51,
