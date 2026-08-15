@@ -1,6 +1,5 @@
 import { WORLD_MAP_CONFIG_2 as CONFIG } from "../config/worldMapConfig2.js";
 
-
 const $ = (id) => document.getElementById(id);
 
 function clamp(value, min, max) {
@@ -42,9 +41,6 @@ const WorldMap2 = {
   world: null,
   currentLevel: 1,
   initialized: false,
-  totalLevels: CONFIG.totalLevels,
-  progressAnimating: false,
-  assetReadyPromise: null,
 
 getMapScale() {
     if (!this.world) return 1;
@@ -76,46 +72,7 @@ getMapScale() {
       this.scrollToCurrent(true);
     });
 
-    // Kartenbilder frühzeitig in den Browser-Cache laden. Dadurch gibt es
-    // beim Rücksprung aus einem gewonnenen Level keinen blauen Leerzustand.
-    this.preloadMapAssets();
-
     this.initialized = true;
-  },
-
-  preloadMapAssets() {
-    if (this.assetReadyPromise) return this.assetReadyPromise;
-
-    const urls = new Set();
-
-    if (CONFIG.stageLayouts?.first?.image) {
-      urls.add(CONFIG.stageLayouts.first.image);
-    }
-
-    if (CONFIG.stageLayouts?.standard?.image) {
-      urls.add(CONFIG.stageLayouts.standard.image);
-    }
-
-    (CONFIG.stages || []).forEach(stage => {
-      if (stage?.logo) urls.add(stage.logo);
-    });
-
-    this.assetReadyPromise = Promise.all(
-      [...urls].map(url => new Promise(resolve => {
-        const img = new Image();
-        img.onload = async () => {
-          try {
-            if (typeof img.decode === "function") await img.decode();
-          } catch (_) {}
-          resolve();
-        };
-        img.onerror = resolve;
-        img.src = url;
-        if (img.complete) img.onload();
-      }))
-    );
-
-    return this.assetReadyPromise;
   },
 
   open() {
@@ -606,289 +563,7 @@ marker.style.bottom =
   });
 },
 
-  async openAfterLevelWin(fromLevel, toLevel) {
-    const from = clamp(Number(fromLevel || 1), 1, CONFIG.totalLevels);
-    const to = clamp(Number(toLevel || from), 1, CONFIG.totalLevels);
-
-    this.progressAnimating = true;
-
-    // Erst alle Kartenassets laden, solange das Ergebnis-Popup noch sichtbar ist.
-    await this.preloadMapAssets();
-
-    document.querySelector(".app-header")?.classList.add("world2-header-hidden");
-
-    // Karte fuer die Positionsmessung aktivieren, aber noch unsichtbar halten.
-    this.screen.style.visibility = "hidden";
-    this.screen.classList.remove("hidden");
-    this.screen.classList.add("world2-progress-moving");
-
-    this.currentLevel = to;
-    this.render();
-
-    // WICHTIG: Karte bleibt waehrend der kompletten Punktfahrt FEST stehen.
-    // Wir positionieren sie einmal auf dem geschafften Level und scrollen danach
-    // bis zum Ende der Animation keinen einzigen Pixel mehr.
-    this.scrollToLevel(from, false);
-
-    await new Promise(resolve =>
-      requestAnimationFrame(() => requestAnimationFrame(resolve))
-    );
-
-    document.querySelectorAll(".screen").forEach(screen => {
-      if (screen !== this.screen) screen.classList.add("hidden");
-    });
-
-    const prepared = this.prepareProgressMover(from, to);
-
-    this.screen.style.visibility = "visible";
-
-    // Ergebnis-Popup darf jetzt verschwinden; die Karte ist fertig aufgebaut.
-    document.getElementById("winResultOverlay")?.classList.add("hidden");
-
-    // Einen kurzen sichtbaren Stillstand am Startpunkt erzwingen.
-    await new Promise(resolve => requestAnimationFrame(resolve));
-    window.setTimeout(() => {
-      this.startProgressMover(prepared);
-    }, 350);
-  },
-
-  lockProgressScreen() {
-    // Vorhandenen Lock entfernen, falls durch einen abgebrochenen Test noch einer da ist.
-    this.unlockProgressScreen();
-
-    const lock = document.createElement("div");
-    lock.className = "world2-animation-lock";
-    lock.setAttribute("aria-hidden", "true");
-
-    // Lock liegt ueber Toolbar UND Karte. Keine Maus-, Touch- oder Scroll-Eingabe
-    // kann die Geometrie waehrend der Fahrt veraendern.
-    this.screen.appendChild(lock);
-    this.animationLock = lock;
-
-    this.previousBodyOverflow = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-
-    this.previousViewportOverflow = this.viewport.style.overflowY;
-    this.previousViewportScrollBehavior = this.viewport.style.scrollBehavior;
-    this.previousViewportTouchAction = this.viewport.style.touchAction;
-
-    this.viewport.style.overflowY = "hidden";
-    this.viewport.style.scrollBehavior = "auto";
-    this.viewport.style.touchAction = "none";
-  },
-
-  unlockProgressScreen() {
-    this.animationLock?.remove();
-    this.animationLock = null;
-
-    if (this.viewport) {
-      this.viewport.style.overflowY = this.previousViewportOverflow ?? "";
-      this.viewport.style.scrollBehavior = this.previousViewportScrollBehavior ?? "";
-      this.viewport.style.touchAction = this.previousViewportTouchAction ?? "";
-    }
-
-    if (typeof this.previousBodyOverflow === "string") {
-      document.body.style.overflow = this.previousBodyOverflow;
-    }
-
-    this.previousBodyOverflow = undefined;
-    this.previousViewportOverflow = undefined;
-    this.previousViewportScrollBehavior = undefined;
-    this.previousViewportTouchAction = undefined;
-  },
-
-  prepareProgressMover(fromLevel, toLevel) {
-    const fromNode = this.world.querySelector(
-      `.world2-level[data-level="${fromLevel}"]`
-    );
-    const toNode = this.world.querySelector(
-      `.world2-level[data-level="${toLevel}"]`
-    );
-
-    if (!fromNode || !toNode || fromLevel === toLevel) {
-      return null;
-    }
-
-    const fromOrb = fromNode.querySelector(".world2-level-orb") || fromNode;
-    const toOrb = toNode.querySelector(".world2-level-orb") || toNode;
-
-    const viewportRect = this.viewport.getBoundingClientRect();
-    const fromRect = fromOrb.getBoundingClientRect();
-    const toRect = toOrb.getBoundingClientRect();
-
-    // Feste Pixelkoordinaten INNERHALB des sichtbaren Viewports.
-    // Damit sind CSS transform/scale der Levelbuttons fuer die Bewegung irrelevant.
-    const startX = fromRect.left + fromRect.width / 2 - viewportRect.left;
-    const startY = fromRect.top + fromRect.height / 2 - viewportRect.top;
-    const endX = toRect.left + toRect.width / 2 - viewportRect.left;
-    const endY = toRect.top + toRect.height / 2 - viewportRect.top;
-
-    // Der echte neue rote Punkt darf waehrend der Fahrt NICHT sichtbar sein.
-    // So existiert visuell garantiert nur genau EIN roter Punkt.
-    toNode.style.visibility = "hidden";
-    toNode.style.pointerEvents = "none";
-
-    const mover = document.createElement("div");
-    mover.className = "world2-progress-mover";
-    mover.innerHTML = `
-      <span class="world2-progress-mover-orb">
-        <span class="world2-progress-mover-number">${fromLevel}</span>
-      </span>
-    `;
-
-    mover.style.left = `${startX}px`;
-    mover.style.top = `${startY}px`;
-
-    // FIX 8: Der Marker darf NICHT im scrollenden Viewport liegen.
-    // Ein absolut positioniertes Kind von #worldMap2Viewport wird durch scrollTop
-    // mitverschoben. Bei z.B. scrollTop 1831 und top 502 lag der Marker bei -1329px
-    // und war deshalb unsichtbar, obwohl requestAnimationFrame korrekt lief.
-    //
-    // .world2-shell ist position:relative und selbst NICHT gescrollt. Da der Viewport
-    // inset:0 in dieser Shell liegt, koennen die bereits gemessenen viewport-relativen
-    // Koordinaten 1:1 fuer die Shell verwendet werden.
-    const shell = this.screen.querySelector(".world2-shell");
-    if (!shell) {
-      toNode.style.visibility = "";
-      toNode.style.pointerEvents = "";
-      return null;
-    }
-
-    shell.appendChild(mover);
-
-    this.lockProgressScreen();
-
-    // Der Lock wurde nach dem Mover eingefuegt und liegt normal darueber.
-    // Mover bewusst auf hoehere Ebene setzen.
-    mover.style.zIndex = "1002";
-
-    const distance = Math.hypot(endX - startX, endY - startY);
-
-    return {
-      fromLevel,
-      toLevel,
-      toNode,
-      mover,
-      startX,
-      startY,
-      endX,
-      endY
-    };
-  },
-
-  startProgressMover(prepared) {
-
-    if (!prepared?.mover || !prepared?.toNode) {
-      this.finishProgressMover(prepared);
-      return;
-    }
-
-    const { mover, startX, startY, endX, endY } = prepared;
-
-    // Produktionsgeschwindigkeit der Kartenfahrt.
-    const duration = 2200;
-    const startedAt = performance.now();
-
-    this.preparedProgress = prepared;
-
-    const easeInOut = (t) =>
-      t < 0.5
-        ? 4 * t * t * t
-        : 1 - Math.pow(-2 * t + 2, 3) / 2;
-
-    const tick = (now) => {
-      if (!this.progressAnimating || this.preparedProgress !== prepared) return;
-
-      const raw = clamp((now - startedAt) / duration, 0, 1);
-      const eased = easeInOut(raw);
-
-      const x = startX + (endX - startX) * eased;
-      const y = startY + (endY - startY) * eased;
-
-      mover.style.left = `${x}px`;
-      mover.style.top = `${y}px`;
-
-      if (raw < 1) {
-        this.progressRaf = requestAnimationFrame(tick);
-      } else {
-        this.finishProgressMover(prepared);
-      }
-    };
-
-    this.progressRaf = requestAnimationFrame(tick);
-  },
-
-  finishProgressMover(prepared) {
-    if (this.progressRaf) {
-      cancelAnimationFrame(this.progressRaf);
-      this.progressRaf = null;
-    }
-
-    const data = prepared || this.preparedProgress;
-    const level = data?.toLevel || this.currentLevel;
-
-    data?.mover?.remove();
-
-    if (data?.toNode) {
-      data.toNode.style.visibility = "";
-      data.toNode.style.pointerEvents = "";
-
-      // Erst JETZT beginnt wieder der normale Puls des echten aktuellen Levels.
-      const orb = data.toNode.querySelector(".world2-level-orb");
-      if (orb) orb.style.animation = "";
-
-      data.toNode.classList.add("world2-arrival");
-      window.setTimeout(() => {
-        data.toNode?.classList.remove("world2-arrival");
-      }, 700);
-    }
-
-    this.preparedProgress = null;
-    this.unlockProgressScreen();
-
-    this.progressAnimating = false;
-    this.screen.classList.remove("world2-progress-moving");
-    this.currentLevel = level;
-
-    const hint = $("worldMap2Hint");
-    if (hint) {
-      hint.textContent = `Level ${level} freigeschaltet – roten Punkt antippen.`;
-      hint.classList.add("show");
-      clearTimeout(this.hintTimer);
-      this.hintTimer = window.setTimeout(
-        () => hint.classList.remove("show"),
-        2600
-      );
-    }
-  },
-
-  scrollToLevel(level, smooth = true) {
-    const node = this.world.querySelector(
-      `.world2-level[data-level="${level}"]`
-    );
-
-    if (!node) return;
-
-    const viewportHeight = this.viewport.clientHeight;
-    const nodeBottom = parseFloat(node.style.bottom || "0");
-    const worldHeight = this.world.clientHeight;
-    const nodeTop = worldHeight - nodeBottom - node.offsetHeight / 2;
-
-    const target = clamp(
-      nodeTop - viewportHeight * 0.62,
-      0,
-      Math.max(0, worldHeight - viewportHeight)
-    );
-
-    this.viewport.scrollTo({
-      top: target,
-      behavior: smooth ? "smooth" : "auto"
-    });
-  },
-
   openLevel(level) {
-    if (this.progressAnimating) return;
-
     if (typeof window.BK_openMainLevel === "function") {
       window.BK_openMainLevel(level);
       return;
@@ -912,7 +587,38 @@ marker.style.bottom =
   },
 
   scrollToCurrent(smooth = true) {
-    this.scrollToLevel(this.currentLevel, smooth);
+    const node =
+      this.world.querySelector(
+        `.world2-level[data-level="${this.currentLevel}"]`
+      );
+
+    if (!node) return;
+
+    const viewportHeight =
+      this.viewport.clientHeight;
+
+    const nodeBottom =
+      parseFloat(node.style.bottom || "0");
+
+    const worldHeight =
+      this.world.clientHeight;
+
+    const nodeTop =
+      worldHeight -
+      nodeBottom -
+      node.offsetHeight / 2;
+
+    const target =
+      clamp(
+        nodeTop - viewportHeight * 0.62,
+        0,
+        Math.max(0, worldHeight - viewportHeight)
+      );
+
+    this.viewport.scrollTo({
+      top: target,
+      behavior: smooth ? "smooth" : "auto"
+    });
   }
 };
 

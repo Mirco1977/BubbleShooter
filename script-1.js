@@ -8,7 +8,8 @@
 
   (() => {
   "use strict";
-/*
+
+  /*
    * =========================================================
    * BANDENKICK BUBBLE CHALLENGE – VERSION 0.2
    * =========================================================
@@ -4060,53 +4061,11 @@ dom.shotsMapButton.onclick = () => {
       dom.winResultTitle.textContent = "Level geschafft!";
       dom.nextLevelButton.classList.remove("hidden");
       dom.nextLevelButton.style.display = "block";
-
-      const cameFromWorldMap2 = window.BK_levelOrigin === "worldMap2";
-
-      // ENDLOSKARTE: Nach dem Sieg NICHT direkt das nächste Level starten.
-      // Erst zurück auf die Karte und den roten Positionspunkt sichtbar
-      // vom gerade geschafften Level zum neu freigeschalteten Level bewegen.
-      dom.nextLevelButton.textContent = cameFromWorldMap2 ? "Weiter" : "Nächstes Level";
-      dom.nextLevelButton.onclick = async () => {
-
+      dom.nextLevelButton.textContent = "Nächstes Level";
+      dom.nextLevelButton.onclick = () => {
+        dom.winResultOverlay.classList.add("hidden");
         state.progress.unlockedLevel = Math.max(state.progress.unlockedLevel, level + 1);
         SaveManager.saveProgress(state.progress);
-
-        if (cameFromWorldMap2) {
-          // Ergebnis-Popup absichtlich NOCH NICHT ausblenden.
-          // WorldMap2 baut die Karte unsichtbar fertig auf und schaltet erst
-          // dann um. Dadurch verschwindet der blaue/leere Zwischenframe.
-          BubbleGame.stop();
-
-          // WICHTIG: Die Endloskarte hat eine eigene Levelanzahl.
-          // NICHT mehr die alte Standardkarten-Grenze
-          // GAME_CONFIG.totalStages * GAME_CONFIG.levelsPerStage verwenden
-          // (aktuell 5 * 10 = 50), sonst würde z.B. 60 -> 50 animiert.
-          const worldMapMaxLevel = Number(
-            window.WorldMap2?.totalLevels || state.progress.unlockedLevel || (level + 1)
-          );
-
-          const nextLevel = Math.min(
-            level + 1,
-            worldMapMaxLevel
-          );
-
-          if (window.WorldMap2?.openAfterLevelWin) {
-            try {
-              await window.WorldMap2.openAfterLevelWin(level, nextLevel);
-            } catch (error) {
-              console.error("[WorldMap2] Fortschrittsanimation fehlgeschlagen:", error);
-              window.WorldMap2?.open?.();
-            }
-          } else if (window.WorldMap2?.open) {
-            window.WorldMap2.open();
-          }
-
-          dom.winResultOverlay.classList.add("hidden");
-          return;
-        }
-
-        dom.winResultOverlay.classList.add("hidden");
         setTimeout(() => this.start(level + 1), 300);
       };
 
@@ -4121,13 +4080,7 @@ dom.shotsMapButton.onclick = () => {
         };
       }
 
-      // Auf der Endloskarte führt "Weiter" direkt in die neue
-      // Karten-Fortschrittsanimation. Das alte Stage-Popup würde sonst
-      // zeitversetzt über diese Animation springen.
-      if (
-        level % GAME_CONFIG.levelsPerStage === 0 &&
-        window.BK_levelOrigin !== "worldMap2"
-      ) {
+      if (level % GAME_CONFIG.levelsPerStage === 0) {
         const finishedStage = getStageForLevel(level);
         setTimeout(() => {
           dom.stageCompleteOverlay.classList.remove("hidden");

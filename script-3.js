@@ -8,7 +8,8 @@
 
   (() => {
   "use strict";
-/*
+
+  /*
    * =========================================================
    * BANDENKICK BUBBLE CHALLENGE – VERSION 0.2
    * =========================================================
@@ -4068,7 +4069,6 @@ dom.shotsMapButton.onclick = () => {
       // vom gerade geschafften Level zum neu freigeschalteten Level bewegen.
       dom.nextLevelButton.textContent = cameFromWorldMap2 ? "Weiter" : "Nächstes Level";
       dom.nextLevelButton.onclick = async () => {
-
         state.progress.unlockedLevel = Math.max(state.progress.unlockedLevel, level + 1);
         SaveManager.saveProgress(state.progress);
 
@@ -4078,17 +4078,9 @@ dom.shotsMapButton.onclick = () => {
           // dann um. Dadurch verschwindet der blaue/leere Zwischenframe.
           BubbleGame.stop();
 
-          // WICHTIG: Die Endloskarte hat eine eigene Levelanzahl.
-          // NICHT mehr die alte Standardkarten-Grenze
-          // GAME_CONFIG.totalStages * GAME_CONFIG.levelsPerStage verwenden
-          // (aktuell 5 * 10 = 50), sonst würde z.B. 60 -> 50 animiert.
-          const worldMapMaxLevel = Number(
-            window.WorldMap2?.totalLevels || state.progress.unlockedLevel || (level + 1)
-          );
-
           const nextLevel = Math.min(
             level + 1,
-            worldMapMaxLevel
+            GAME_CONFIG.totalStages * GAME_CONFIG.levelsPerStage
           );
 
           if (window.WorldMap2?.openAfterLevelWin) {

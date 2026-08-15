@@ -753,8 +753,23 @@ body:has(#levelScreen.world2-level-overlay:not(.hidden)) {
 
 }
 
+#worldMap2Screen::after {
+  content: "UPDATE TEST Version 42";
+  position: fixed;
+  top: 5px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 999999;
+
+  background: lime;
+  color: black;
+  padding: 8px 16px;
+  font-size: 18px;
+  font-weight: 900;
+  border: 3px solid red;
+}
 /* =========================================================
-   FORTSCHRITTSANIMATION / BILDSCHIRMSPERRE
+   FIX 5 – LANGSAMER FORTSCHRITTS-TEST / HARTE BILDSCHIRMSPERRE
    ========================================================= */
 
 /* Transparente Sperrschicht ueber der kompletten Endloskarte.
@@ -769,11 +784,10 @@ body:has(#levelScreen.world2-level-overlay:not(.hidden)) {
   background: transparent;
 }
 
-/* Der Bewegungsmarker lebt in der festen world2-shell und damit in
-   sichtbaren Bildschirmkoordinaten. Er ist von der gescrollten Karten-Geometrie unabhaengig. */
+/* Der Bewegungsmarker lebt direkt im sichtbaren Viewport und damit in
+   Bildschirmkoordinaten. Er ist von der langen Karten-Geometrie unabhaengig. */
 .world2-progress-mover {
   position: absolute;
-  z-index: 1002;
   width: 64px;
   height: 64px;
   margin-left: -32px;
@@ -806,21 +820,8 @@ body:has(#levelScreen.world2-level-overlay:not(.hidden)) {
   text-shadow: 0 2px 3px rgba(0,0,0,.75);
 }
 
-/* Waehrend der Fahrt keinerlei Bedienung der Karte zulassen. */
+/* Waehrend des Tests wirklich keinerlei Bedienung der Karte zulassen. */
 #worldMap2Screen.world2-progress-moving #worldMap2Viewport,
 #worldMap2Screen.world2-progress-moving .world2-toolbar {
   user-select: none;
-}
-
-
-/* Kurzes Einrasten des neu erreichten Levels */
-.world2-level.world2-arrival .world2-level-orb {
-  animation: world2ArrivalImpact .68s cubic-bezier(.2,.9,.25,1.25) both !important;
-}
-
-@keyframes world2ArrivalImpact {
-  0%   { transform: scale(.82); filter: brightness(1); }
-  45%  { transform: scale(1.18); filter: brightness(1.35); }
-  72%  { transform: scale(.96); filter: brightness(1.08); }
-  100% { transform: scale(1); filter: brightness(1); }
 }

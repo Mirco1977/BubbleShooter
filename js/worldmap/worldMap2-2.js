@@ -1,6 +1,5 @@
 import { WORLD_MAP_CONFIG_2 as CONFIG } from "../config/worldMapConfig2.js";
 
-
 const $ = (id) => document.getElementById(id);
 
 function clamp(value, min, max) {
@@ -42,7 +41,6 @@ const WorldMap2 = {
   world: null,
   currentLevel: 1,
   initialized: false,
-  totalLevels: CONFIG.totalLevels,
   progressAnimating: false,
   assetReadyPromise: null,
 
@@ -612,12 +610,13 @@ marker.style.bottom =
 
     this.progressAnimating = true;
 
-    // Erst alle Kartenassets laden, solange das Ergebnis-Popup noch sichtbar ist.
+    // Karte + Bilder vorbereiten, WAehrend das Ergebnis-Popup noch sichtbar ist.
+    // Dadurch gibt es beim Umschalten keinen blauen/leeren Zwischenframe mehr.
     await this.preloadMapAssets();
 
     document.querySelector(".app-header")?.classList.add("world2-header-hidden");
 
-    // Karte fuer die Positionsmessung aktivieren, aber noch unsichtbar halten.
+    // Endloskarte fuer Layout-Berechnung aktivieren, aber noch unsichtbar halten.
     this.screen.style.visibility = "hidden";
     this.screen.classList.remove("hidden");
     this.screen.classList.add("world2-progress-moving");
@@ -625,79 +624,33 @@ marker.style.bottom =
     this.currentLevel = to;
     this.render();
 
-    // WICHTIG: Karte bleibt waehrend der kompletten Punktfahrt FEST stehen.
-    // Wir positionieren sie einmal auf dem geschafften Level und scrollen danach
-    // bis zum Ende der Animation keinen einzigen Pixel mehr.
+    // Die Karte wird auf das gerade geschaffte Level gesetzt. Kein Smooth-Scroll.
     this.scrollToLevel(from, false);
 
+    // Zwei Paint-Zyklen abwarten, damit Hintergrund und Levelpunkte wirklich
+    // ihre finalen Bildschirmpositionen haben.
     await new Promise(resolve =>
-      requestAnimationFrame(() => requestAnimationFrame(resolve))
+      requestAnimationFrame(() =>
+        requestAnimationFrame(resolve)
+      )
     );
 
+    // Jetzt erst alle anderen Screens ausblenden. Bis hierhin blieb das
+    // Ergebnis-Popup sichtbar und verdeckte den Kartenaufbau.
     document.querySelectorAll(".screen").forEach(screen => {
       if (screen !== this.screen) screen.classList.add("hidden");
     });
 
-    const prepared = this.prepareProgressMover(from, to);
+    this.prepareProgressPoint(from, to);
 
     this.screen.style.visibility = "visible";
 
-    // Ergebnis-Popup darf jetzt verschwinden; die Karte ist fertig aufgebaut.
-    document.getElementById("winResultOverlay")?.classList.add("hidden");
-
-    // Einen kurzen sichtbaren Stillstand am Startpunkt erzwingen.
+    // Einen Frame sichtbar am Startpunkt stehen lassen, dann losfahren.
     await new Promise(resolve => requestAnimationFrame(resolve));
-    window.setTimeout(() => {
-      this.startProgressMover(prepared);
-    }, 350);
+    this.startPreparedProgressPoint(from, to);
   },
 
-  lockProgressScreen() {
-    // Vorhandenen Lock entfernen, falls durch einen abgebrochenen Test noch einer da ist.
-    this.unlockProgressScreen();
-
-    const lock = document.createElement("div");
-    lock.className = "world2-animation-lock";
-    lock.setAttribute("aria-hidden", "true");
-
-    // Lock liegt ueber Toolbar UND Karte. Keine Maus-, Touch- oder Scroll-Eingabe
-    // kann die Geometrie waehrend der Fahrt veraendern.
-    this.screen.appendChild(lock);
-    this.animationLock = lock;
-
-    this.previousBodyOverflow = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-
-    this.previousViewportOverflow = this.viewport.style.overflowY;
-    this.previousViewportScrollBehavior = this.viewport.style.scrollBehavior;
-    this.previousViewportTouchAction = this.viewport.style.touchAction;
-
-    this.viewport.style.overflowY = "hidden";
-    this.viewport.style.scrollBehavior = "auto";
-    this.viewport.style.touchAction = "none";
-  },
-
-  unlockProgressScreen() {
-    this.animationLock?.remove();
-    this.animationLock = null;
-
-    if (this.viewport) {
-      this.viewport.style.overflowY = this.previousViewportOverflow ?? "";
-      this.viewport.style.scrollBehavior = this.previousViewportScrollBehavior ?? "";
-      this.viewport.style.touchAction = this.previousViewportTouchAction ?? "";
-    }
-
-    if (typeof this.previousBodyOverflow === "string") {
-      document.body.style.overflow = this.previousBodyOverflow;
-    }
-
-    this.previousBodyOverflow = undefined;
-    this.previousViewportOverflow = undefined;
-    this.previousViewportScrollBehavior = undefined;
-    this.previousViewportTouchAction = undefined;
-  },
-
-  prepareProgressMover(fromLevel, toLevel) {
+  prepareProgressPoint(fromLevel, toLevel) {
     const fromNode = this.world.querySelector(
       `.world2-level[data-level="${fromLevel}"]`
     );
@@ -706,145 +659,131 @@ marker.style.bottom =
     );
 
     if (!fromNode || !toNode || fromLevel === toLevel) {
-      return null;
+      this.preparedProgress = null;
+      return;
     }
 
     const fromOrb = fromNode.querySelector(".world2-level-orb") || fromNode;
     const toOrb = toNode.querySelector(".world2-level-orb") || toNode;
 
-    const viewportRect = this.viewport.getBoundingClientRect();
     const fromRect = fromOrb.getBoundingClientRect();
     const toRect = toOrb.getBoundingClientRect();
 
-    // Feste Pixelkoordinaten INNERHALB des sichtbaren Viewports.
-    // Damit sind CSS transform/scale der Levelbuttons fuer die Bewegung irrelevant.
-    const startX = fromRect.left + fromRect.width / 2 - viewportRect.left;
-    const startY = fromRect.top + fromRect.height / 2 - viewportRect.top;
-    const endX = toRect.left + toRect.width / 2 - viewportRect.left;
-    const endY = toRect.top + toRect.height / 2 - viewportRect.top;
+    const fromX = fromRect.left + fromRect.width / 2;
+    const fromY = fromRect.top + fromRect.height / 2;
+    const toX = toRect.left + toRect.width / 2;
+    const toY = toRect.top + toRect.height / 2;
 
-    // Der echte neue rote Punkt darf waehrend der Fahrt NICHT sichtbar sein.
-    // So existiert visuell garantiert nur genau EIN roter Punkt.
-    toNode.style.visibility = "hidden";
+    const dx = fromX - toX;
+    const dy = fromY - toY;
+
+    // WICHTIG: Kein zusaetzlicher Ghost-Punkt mehr. Der ECHTE rote neue
+    // Levelpunkt wird optisch auf die Position des alten Levels gesetzt und
+    // faehrt von dort zu seiner echten Zielposition. Somit kann nie ein zweiter
+    // roter Punkt am Ziel stehen oder eine Gegenbewegung entstehen.
+    toNode.style.zIndex = "60";
     toNode.style.pointerEvents = "none";
+    toNode.style.transform =
+      `translateX(-50%) translate(${dx}px, ${dy}px) scale(.78)`;
+    toNode.style.willChange = "transform";
 
-    const mover = document.createElement("div");
-    mover.className = "world2-progress-mover";
-    mover.innerHTML = `
-      <span class="world2-progress-mover-orb">
-        <span class="world2-progress-mover-number">${fromLevel}</span>
-      </span>
-    `;
+    const orb = toNode.querySelector(".world2-level-orb");
+    if (orb) orb.style.animation = "none";
 
-    mover.style.left = `${startX}px`;
-    mover.style.top = `${startY}px`;
+    // Karte waehrend der Fahrt hart sperren. Nicht nur per CSS, damit der Fix
+    // auch dann funktioniert, wenn der Browser noch eine alte CSS-Datei cached.
+    this.viewport.style.overflowY = "hidden";
+    this.viewport.style.scrollBehavior = "auto";
+    this.viewport.style.touchAction = "none";
 
-    // FIX 8: Der Marker darf NICHT im scrollenden Viewport liegen.
-    // Ein absolut positioniertes Kind von #worldMap2Viewport wird durch scrollTop
-    // mitverschoben. Bei z.B. scrollTop 1831 und top 502 lag der Marker bei -1329px
-    // und war deshalb unsichtbar, obwohl requestAnimationFrame korrekt lief.
-    //
-    // .world2-shell ist position:relative und selbst NICHT gescrollt. Da der Viewport
-    // inset:0 in dieser Shell liegt, koennen die bereits gemessenen viewport-relativen
-    // Koordinaten 1:1 fuer die Shell verwendet werden.
-    const shell = this.screen.querySelector(".world2-shell");
-    if (!shell) {
-      toNode.style.visibility = "";
-      toNode.style.pointerEvents = "";
-      return null;
-    }
-
-    shell.appendChild(mover);
-
-    this.lockProgressScreen();
-
-    // Der Lock wurde nach dem Mover eingefuegt und liegt normal darueber.
-    // Mover bewusst auf hoehere Ebene setzen.
-    mover.style.zIndex = "1002";
-
-    const distance = Math.hypot(endX - startX, endY - startY);
-
-    return {
-      fromLevel,
-      toLevel,
-      toNode,
-      mover,
-      startX,
-      startY,
-      endX,
-      endY
-    };
+    this.preparedProgress = { toNode, orb, dx, dy, toLevel };
   },
 
-  startProgressMover(prepared) {
+  startPreparedProgressPoint(fromLevel, toLevel) {
+    const prepared = this.preparedProgress;
 
-    if (!prepared?.mover || !prepared?.toNode) {
-      this.finishProgressMover(prepared);
+    if (!prepared || !prepared.toNode) {
+      this.finishProgressAnimation(toLevel);
       return;
     }
 
-    const { mover, startX, startY, endX, endY } = prepared;
+    const { toNode } = prepared;
 
-    // Produktionsgeschwindigkeit der Kartenfahrt.
-    const duration = 2200;
-    const startedAt = performance.now();
-
-    this.preparedProgress = prepared;
-
-    const easeInOut = (t) =>
-      t < 0.5
-        ? 4 * t * t * t
-        : 1 - Math.pow(-2 * t + 2, 3) / 2;
-
-    const tick = (now) => {
-      if (!this.progressAnimating || this.preparedProgress !== prepared) return;
-
-      const raw = clamp((now - startedAt) / duration, 0, 1);
-      const eased = easeInOut(raw);
-
-      const x = startX + (endX - startX) * eased;
-      const y = startY + (endY - startY) * eased;
-
-      mover.style.left = `${x}px`;
-      mover.style.top = `${y}px`;
-
-      if (raw < 1) {
-        this.progressRaf = requestAnimationFrame(tick);
-      } else {
-        this.finishProgressMover(prepared);
+    // Web-Animations-API statt left/top-CSS-Transition. Transform laeuft in
+    // einem einzigen Koordinatensystem und kann deshalb nicht scheinbar
+    // rueckwaerts springen, wenn die Karte skaliert ist.
+    const animation = toNode.animate(
+      [
+        {
+          transform: toNode.style.transform,
+          offset: 0
+        },
+        {
+          transform: "translateX(-50%) translate(0px, 0px) scale(.78)",
+          offset: 1
+        }
+      ],
+      {
+        duration: 1050,
+        easing: "cubic-bezier(.22,.72,.20,1)",
+        fill: "forwards"
       }
+    );
+
+    this.progressAnimation = animation;
+
+    let done = false;
+    const finish = () => {
+      if (done) return;
+      done = true;
+      this.finishProgressAnimation(toLevel);
     };
 
-    this.progressRaf = requestAnimationFrame(tick);
+    animation.addEventListener("finish", finish, { once: true });
+    animation.addEventListener("cancel", finish, { once: true });
+    window.setTimeout(finish, 1400);
   },
 
-  finishProgressMover(prepared) {
-    if (this.progressRaf) {
-      cancelAnimationFrame(this.progressRaf);
-      this.progressRaf = null;
-    }
+  finishProgressAnimation(level) {
+    const prepared = this.preparedProgress;
+    const target = prepared?.toNode || this.world.querySelector(
+      `.world2-level[data-level="${level}"]`
+    );
 
-    const data = prepared || this.preparedProgress;
-    const level = data?.toLevel || this.currentLevel;
+    try {
+      this.progressAnimation?.cancel();
+    } catch (_) {}
 
-    data?.mover?.remove();
+    this.progressAnimation = null;
 
-    if (data?.toNode) {
-      data.toNode.style.visibility = "";
-      data.toNode.style.pointerEvents = "";
+    if (target) {
+      // Endzustand exakt auf die normale Kartenposition zuruecksetzen.
+      target.style.transform = "";
+      target.style.willChange = "";
+      target.style.pointerEvents = "";
+      target.style.zIndex = "";
 
-      // Erst JETZT beginnt wieder der normale Puls des echten aktuellen Levels.
-      const orb = data.toNode.querySelector(".world2-level-orb");
+      const orb = target.querySelector(".world2-level-orb");
       if (orb) orb.style.animation = "";
 
-      data.toNode.classList.add("world2-arrival");
-      window.setTimeout(() => {
-        data.toNode?.classList.remove("world2-arrival");
-      }, 700);
+      // Kurzer, ruhiger Ankunftsimpuls direkt auf dem echten Zielpunkt.
+      try {
+        target.animate(
+          [
+            { transform: "translateX(-50%) scale(.78)" },
+            { transform: "translateX(-50%) scale(.88)" },
+            { transform: "translateX(-50%) scale(.78)" }
+          ],
+          { duration: 380, easing: "ease-out" }
+        );
+      } catch (_) {}
     }
 
     this.preparedProgress = null;
-    this.unlockProgressScreen();
+
+    this.viewport.style.overflowY = "";
+    this.viewport.style.scrollBehavior = "";
+    this.viewport.style.touchAction = "";
 
     this.progressAnimating = false;
     this.screen.classList.remove("world2-progress-moving");
@@ -857,7 +796,7 @@ marker.style.bottom =
       clearTimeout(this.hintTimer);
       this.hintTimer = window.setTimeout(
         () => hint.classList.remove("show"),
-        2600
+        2200
       );
     }
   },

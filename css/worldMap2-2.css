@@ -753,42 +753,61 @@ body:has(#levelScreen.world2-level-overlay:not(.hidden)) {
 
 }
 
+
 /* =========================================================
-   FORTSCHRITTSANIMATION / BILDSCHIRMSPERRE
+   ENDLOSKARTE – FORTSCHRITTSFAHRT NACH LEVELGEWINN
    ========================================================= */
 
-/* Transparente Sperrschicht ueber der kompletten Endloskarte.
-   Sie blockiert Toolbar, Buttons, Touch und Maus waehrend der Fahrt. */
-.world2-animation-lock {
-  position: absolute;
-  inset: 0;
-  z-index: 1000;
-  pointer-events: all;
-  touch-action: none;
-  cursor: wait;
-  background: transparent;
+/* Während der Fahrt kann weder ein Level geöffnet noch die Karte
+   versehentlich per Touch/Maus verschoben werden. */
+#worldMap2Screen.world2-progress-moving .world2-level {
+  pointer-events: none !important;
 }
 
-/* Der Bewegungsmarker lebt in der festen world2-shell und damit in
-   sichtbaren Bildschirmkoordinaten. Er ist von der gescrollten Karten-Geometrie unabhaengig. */
+#worldMap2Screen.world2-progress-moving #worldMap2Viewport {
+  overflow-y: hidden !important;
+  scroll-behavior: auto !important;
+  touch-action: none;
+}
+
+/* Der echte neue aktuelle Punkt bleibt bis zur tatsächlichen Ankunft
+   unsichtbar. Dadurch sind nie zwei rote Current-Punkte gleichzeitig da. */
+.world2-level.world2-arrival-target {
+  opacity: 0 !important;
+  pointer-events: none !important;
+  animation: none !important;
+}
+
+/* Beweglicher roter Punkt. Positionierung jetzt mit echten Pixelkoordinaten
+   der sichtbaren Level-Orbs statt bottom/%-Berechnungen. */
 .world2-progress-mover {
   position: absolute;
-  z-index: 1002;
+  z-index: 45;
   width: 64px;
   height: 64px;
-  margin-left: -32px;
-  margin-top: -32px;
+  padding: 0;
+  transform: translate(-50%, -50%) scale(.78);
+  transform-origin: center center;
   pointer-events: none;
+  overflow: visible;
   will-change: left, top;
-  filter: drop-shadow(0 9px 13px rgba(0,0,0,.48));
+
+  transition:
+    left 1.18s cubic-bezier(.24,.78,.22,1),
+    top 1.18s cubic-bezier(.24,.78,.22,1);
+
+  filter:
+    drop-shadow(0 0 9px rgba(255,70,70,.48))
+    drop-shadow(0 9px 12px rgba(0,0,0,.34));
 }
 
-.world2-progress-mover-orb {
+.world2-progress-mover .world2-level-orb {
   width: 64px;
   height: 64px;
+  margin: 0;
   display: grid;
   place-items: center;
-  border: 4px solid rgba(255,255,255,.96);
+  border: 4px solid rgba(255,255,255,.95);
   border-radius: 50%;
   background:
     radial-gradient(circle at 34% 25%, #ff7777 0 9%, #b90d1a 31%, #860000 68%, #4c0000 100%);
@@ -796,9 +815,13 @@ body:has(#levelScreen.world2-level-overlay:not(.hidden)) {
     0 7px 0 #460000,
     0 10px 18px rgba(0,0,0,.45),
     inset 0 2px 4px rgba(255,255,255,.38);
+
+  /* Kein Hüpfen mehr – das war im Video einer der Gründe für die
+     unruhige bzw. scheinbar falsche Flugbahn. */
+  animation: none !important;
 }
 
-.world2-progress-mover-number {
+.world2-progress-mover .world2-level-number {
   color: #fff;
   font-size: 20px;
   font-weight: 1000;
@@ -806,21 +829,34 @@ body:has(#levelScreen.world2-level-overlay:not(.hidden)) {
   text-shadow: 0 2px 3px rgba(0,0,0,.75);
 }
 
-/* Waehrend der Fahrt keinerlei Bedienung der Karte zulassen. */
-#worldMap2Screen.world2-progress-moving #worldMap2Viewport,
-#worldMap2Screen.world2-progress-moving .world2-toolbar {
-  user-select: none;
+/* Ruhiger kurzer Ankunftsimpuls – kein starkes Zurückspringen/Überfedern. */
+.world2-level.world2-arrived {
+  z-index: 46;
+  animation: world2ArrivalSettle .62s cubic-bezier(.20,.82,.24,1);
 }
 
-
-/* Kurzes Einrasten des neu erreichten Levels */
-.world2-level.world2-arrival .world2-level-orb {
-  animation: world2ArrivalImpact .68s cubic-bezier(.2,.9,.25,1.25) both !important;
+.world2-level.world2-arrived .world2-level-orb {
+  animation: none !important;
+  box-shadow:
+    0 7px 0 #460000,
+    0 10px 18px rgba(0,0,0,.45),
+    0 0 0 7px rgba(255,218,74,.18),
+    0 0 24px rgba(255,218,74,.65),
+    inset 0 2px 4px rgba(255,255,255,.38);
 }
 
-@keyframes world2ArrivalImpact {
-  0%   { transform: scale(.82); filter: brightness(1); }
-  45%  { transform: scale(1.18); filter: brightness(1.35); }
-  72%  { transform: scale(.96); filter: brightness(1.08); }
-  100% { transform: scale(1); filter: brightness(1); }
+@keyframes world2ArrivalSettle {
+  0%   { transform: translateX(-50%) scale(.70); opacity: .45; }
+  58%  { transform: translateX(-50%) scale(.84); opacity: 1; }
+  100% { transform: translateX(-50%) scale(.78); opacity: 1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .world2-progress-mover {
+    transition-duration: .15s;
+  }
+
+  .world2-level.world2-arrived {
+    animation: none !important;
+  }
 }

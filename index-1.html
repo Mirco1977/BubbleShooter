@@ -1,0 +1,887 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <title>Bandenkick Bubble Challenge</title>
+
+  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="css/worldMap2.css">
+</head>
+
+<body>
+<div id="app">
+  <header class="app-header">
+    <div class="brand-block">
+      <img src="assets/logos/LigaLogoBordered.png" class="game-logo" alt="Bandenkick Logo">
+      <h1>Bubble Challenge</h1>
+    </div>
+
+    <div class="profile-block">
+      <span id="profileName">Gast</span>
+      <button id="loginButton" class="small-button">Login-Demo</button>
+    </div>
+  </header>
+
+  <main>
+    <section id="homeScreen" class="screen">
+      <div class="hero-card">
+        <div class="hero-content">
+          <span class="eyebrow">VERSION 0.1</span>
+          <h2>Dein Weg durch die Bandenkick-Welten</h2>
+          <p>
+            Spiele Level, sammle Sterne und schalte neue Stages frei.
+          </p>
+
+          <div class="hero-actions">
+            <button id="continueButton" class="primary-button">Weiterspielen</button>
+            <button id="newGameButton" class="secondary-button">Neuer Spielstand</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="home-grid">
+        <button
+    id="openMapButton"
+    class="menu-card has-image">
+
+    <div class="menu-card-text">
+
+        <strong>
+            Levelkarte
+        </strong>
+
+        <span>
+            Stages und Fortschritt
+        </span>
+
+    </div>
+
+    <img
+        class="menu-card-image"
+        src="assets/ui/levelkarte-bandenkick.png"
+        alt="Levelkarte und Fortschritt"
+        draggable="false">
+
+</button>
+
+        <button
+    id="openRankingButton"
+    class="menu-card has-image">
+
+    <div class="menu-card-text">
+
+        <strong>
+            Ranking
+        </strong>
+
+        <span>
+            Demo der späteren API
+        </span>
+
+    </div>
+
+    <img
+        class="menu-card-image"
+        src="assets/ui/ranking-bandenkick.png"
+        alt="Ranking und Bestenliste"
+        draggable="false">
+
+</button>
+        <button
+    id="openShopButton"
+    class="menu-card has-image">
+
+    <div class="menu-card-text">
+
+        <strong>
+            Shooter-Shop
+        </strong>
+
+        <span>
+            Items und Extras entdecken
+        </span>
+
+    </div>
+
+    <img
+        class="menu-card-image"
+        src="assets/ui/shop-bandenkick.png"
+        alt="Shooter-Shop mit Items und Extras"
+        draggable="false">
+
+</button>
+
+<button
+    id="openWheelButton"
+    class="menu-card has-image">
+
+    <div class="menu-card-text">
+
+        <strong>
+            Glücksrad
+        </strong>
+
+        <span>
+            1× täglich kostenlos drehen
+        </span>
+
+    </div>
+
+    <img
+        class="menu-card-image"
+        src="assets/ui/gluecksrad-bandenkick.png"
+        alt="Glücksrad – täglicher Bonus"
+        draggable="false">
+
+</button>
+
+
+<button id="openWorldMap2Button" class="menu-card has-image">
+
+  <div class="menu-card-text">
+
+    <strong>
+      Endlos-Levelkarte
+    </strong>
+
+    <span>
+      Test · neue Hauptlevel-Strecke
+    </span>
+
+  </div>
+
+  <div
+    class="world2-menu-icon"
+    aria-hidden="true">
+  </div>
+
+</button>
+
+      
+
+<button
+    id="openEpisodesButton"
+    class="menu-card has-image episode-menu-card">
+
+    <div class="menu-card-text">
+        <strong>Episodenrennen</strong>
+        <span id="episodeHomeStatus">Zeitlich begrenzte Spezialstrecken</span>
+    </div>
+
+    <div class="episode-menu-icon" aria-hidden="true">🏁</div>
+</button>
+
+        <button
+    id="openSettingsButton"
+    class="menu-card has-image">
+
+    <div class="menu-card-text">
+
+        <strong>
+            Einstellungen
+        </strong>
+
+        <span>
+            Sound und Darstellung
+        </span>
+
+    </div>
+
+    <img
+        class="menu-card-image"
+        src="assets/ui/einstellungen-bandenkick.png"
+        alt="Einstellungen"
+        draggable="false">
+
+</button>
+      </div>
+    </section>
+
+    <section id="mapScreen" class="screen hidden">
+      <div class="screen-toolbar">
+        <button class="back-button" data-back="home">← Start</button>
+        <div>
+          <span class="eyebrow">FORTSCHRITT</span>
+          <h2 id="stageTitle">Stage 1</h2>
+        </div>
+        <span id="starCounter">0 ⭐</span>
+      </div>
+
+      <div id="stageBanner" class="stage-banner">
+        <button id="previousStage" aria-label="Vorherige Stage">‹</button>
+        <div>
+          <strong id="stageName">Bandenkick Arena</strong>
+          <span id="stageRange">Level 1–10</span>
+        </div>
+        <button id="nextStage" aria-label="Nächste Stage">›</button>
+      </div>
+
+      <div class="progress-card">
+        <div class="progress-labels">
+          <span id="progressText">0 von 10 abgeschlossen</span>
+          <span id="progressPercent">0 %</span>
+        </div>
+        <div class="progress-track">
+          <div id="progressFill"></div>
+        </div>
+      </div>
+
+      <div id="levelMap" class="level-map"></div>
+    </section>
+
+<!-- =========================================================
+     ENDLOS-LEVELKARTE 2 – TESTSYSTEM
+     ========================================================= -->
+
+<section id="worldMap2Screen" class="screen hidden">
+
+  <div class="world2-shell">
+
+    <div class="world2-toolbar">
+
+      <button
+        id="worldMap2BackButton"
+        class="world2-back"
+        type="button">
+        ← Start
+      </button>
+
+      <div class="world2-title">
+
+        <strong id="worldMap2StageLabel">
+          Endlos-Levelkarte
+        </strong>
+
+        <span id="worldMap2ProgressLabel">
+          Fortschritt wird geladen
+        </span>
+
+      </div>
+
+      <button
+        id="worldMap2ToCurrent"
+        class="world2-current"
+        type="button">
+        Aktuelles Level
+      </button>
+
+    </div>
+
+    <div id="worldMap2Viewport">
+
+      <div id="worldMap2World"></div>
+
+    </div>
+
+    <div
+      id="worldMap2Hint"
+      class="world2-hint">
+    </div>
+
+  </div>
+
+</section>
+
+    <section id="levelScreen" class="screen hidden">
+      <div class="screen-toolbar">
+        <button id="levelBackButton" class="back-button" data-back="map">← Karte</button>
+        <div>
+          <span class="eyebrow">LEVELVORSCHAU</span>
+          <h2 id="selectedLevelTitle">Level 1</h2>
+        </div>
+        <span id="selectedStageBadge">Stage 1</span>
+      </div>
+
+      <div class="level-preview-card">
+        <div id="levelPreviewGraphic" class="level-preview-graphic">
+          <h3 id="levelGoalTitle">Ziel</h3>
+          <p id="levelGoalText">Erreiche 1.0000 Punkte</p>
+         <div id="previewBubbles" class="preview-bubbles"></div>
+        <div class="level-data">
+
+    <div class="level-stat">
+        <span>Farben</span>
+        <strong id="levelColors">3</strong>
+    </div>
+
+    <div class="level-stat">
+        <span>Zielpunkte</span>
+        <strong id="levelTarget">1.000</strong>
+    </div>
+
+    <div class="level-stat">
+        <span>Beste Sterne</span>
+        <strong id="levelBest">–</strong>
+    </div>
+
+</div>
+
+        <button id="startLevelButton" class="primary-button">
+          Level starten
+        </button>
+      </div>
+    </section>
+
+    <section id="playScreen" class="screen hidden">
+      <div class="screen-toolbar">
+        <button id="leaveGameButton" class="back-button">← Level</button>
+        <div>
+          <span class="eyebrow">BUBBLE ENGINE</span>
+          <h2 id="playLevelTitle">Level 1</h2>
+        </div>
+        <div class="play-toolbar-actions">
+
+    <span id="playScore">
+        0 Punkte
+    </span>
+
+    <button
+        id="settingsItemButton"
+        class="play-settings-button"
+        type="button"
+        aria-label="Einstellungen öffnen"
+        title="Einstellungen">
+        &#9881;
+    </button>
+
+</div>
+      </div>
+
+      <div class="game-hud">
+        <div><span>Ziel</span><strong id="targetScoreDisplay">1.000</strong></div>
+        <div><span>Schüsse</span><strong id="shotsDisplay">0</strong></div>
+        <div><span>Farben</span><strong id="colorsDisplay">3</strong></div>
+      </div>
+
+    <div id="gameContainer" class="game-container">
+        <canvas id="gameCanvas" width="480" height="700"></canvas>
+    
+    
+    
+
+<div class="item-bar-wrapper">
+
+    <div class="item-bar">
+
+        <button
+            id="switchItemButton"
+            class="item-bar-button switch-item locked-item"
+            type="button"
+            disabled
+            aria-label="Ball Switch – gesperrt bis Level 5">
+            <img src="assets/ui/ballswitch.png" alt="Ball Switch">
+            <span class="item-info-button" data-item="ballswitch">
+                i
+            </span>
+            <span class="item-count">3</span>
+            <span class="item-lock-icon" aria-hidden="true">🔒</span>
+        </button>
+
+        <button
+            id="rainbowItemButton"
+            class="item-bar-button rainbow-item locked-item"
+            type="button"
+            disabled
+            aria-label="Regenbogenball – gesperrt bis Level 15">
+            <img src="assets/ui/rainbow-ball.png" alt="Regenbogenball">
+            <span class="item-info-button" data-item="rainbow">
+                i
+            </span>
+            <span class="item-count">3</span>
+            <span class="item-lock-icon" aria-hidden="true">🔒</span>
+        </button>
+
+        <button
+            id="aimItemButton"
+            class="item-bar-button aim-item locked-item"
+            type="button"
+            disabled
+            aria-label="Zielhilfe – gesperrt bis Level 25">
+            <img src="assets/ui/lupe.png" alt="Zielhilfe">
+            <span class="item-info-button" data-item="aim">
+                i
+            </span>
+            <span class="item-count">3</span>
+            <span class="item-lock-icon" aria-hidden="true">🔒</span>
+        </button>
+
+        <button
+            id="bombItemButton"
+            class="item-bar-button bomb-item locked-item"
+            type="button"
+            disabled
+            aria-label="Bombenball – gesperrt bis Level 35">
+            <img src="assets/ui/bomb-ball.png" alt="Bombenball">
+            <span class="item-info-button" data-item="bomb">
+                i
+            </span>
+            <span class="item-count">3</span>
+            <span class="item-lock-icon" aria-hidden="true">🔒</span>
+        </button>
+
+        <button
+            id="thunderItemButton"
+            class="item-bar-button thunder-item locked-item"
+            type="button"
+            disabled
+            aria-label="Thunder Ball – gesperrt bis Level 45">
+            <img src="assets/ui/thunder-ball.png" alt="Thunder Ball">
+            <span class="item-info-button" data-item="thunder">
+                i
+            </span>
+            <span class="item-count">3</span>
+            <span class="item-lock-icon" aria-hidden="true">🔒</span>
+        </button>
+
+    </div>
+
+</div>
+
+</div>
+ <div
+    id="winResultOverlay"
+    class="game-result-overlay victory-impact-overlay hidden">
+
+    <div
+        class="victory-impact-flash"
+        aria-hidden="true">
+    </div>
+
+    <div
+        class="victory-impact-particles"
+        aria-hidden="true">
+
+        <span style="--x:-180px; --y:-130px; --r:-130deg; --delay:0.04s;"></span>
+        <span style="--x:-105px; --y:-190px; --r:90deg; --delay:0.10s;"></span>
+        <span style="--x:-30px; --y:-215px; --r:160deg; --delay:0.02s;"></span>
+        <span style="--x:75px; --y:-195px; --r:220deg; --delay:0.13s;"></span>
+        <span style="--x:165px; --y:-125px; --r:280deg; --delay:0.07s;"></span>
+        <span style="--x:205px; --y:-25px; --r:350deg; --delay:0.16s;"></span>
+        <span style="--x:175px; --y:105px; --r:430deg; --delay:0.05s;"></span>
+        <span style="--x:85px; --y:175px; --r:500deg; --delay:0.12s;"></span>
+        <span style="--x:0px; --y:210px; --r:570deg; --delay:0.02s;"></span>
+        <span style="--x:-95px; --y:175px; --r:640deg; --delay:0.15s;"></span>
+        <span style="--x:-175px; --y:100px; --r:710deg; --delay:0.08s;"></span>
+        <span style="--x:-210px; --y:-15px; --r:780deg; --delay:0.18s;"></span>
+
+    </div>
+
+    <div class="game-result-card victory-impact-card">
+
+        <span class="eyebrow victory-impact-eyebrow">
+            ERGEBNIS
+        </span>
+
+        <div
+            id="itemUnlockReward"
+            class="item-unlock-reward hidden"
+            aria-live="polite">
+
+            <span class="item-unlock-title">
+                ITEM FREIGESCHALTET!
+            </span>
+
+            <div class="item-unlock-image-wrapper">
+
+                <span
+                    class="item-unlock-glow"
+                    aria-hidden="true">
+                </span>
+
+                <img
+                    id="itemUnlockImage"
+                    class="item-unlock-image"
+                    alt="">
+
+            </div>
+
+            <strong id="itemUnlockName"></strong>
+
+        </div>
+
+        <div
+            class="victory-impact-symbol"
+            aria-hidden="true">
+            ✓
+        </div>
+
+        <h3
+            id="winResultTitle"
+            class="victory-impact-title">
+            Level geschafft!
+        </h3>
+
+        <div
+            id="winResultStars"
+            class="result-stars victory-impact-stars"
+            aria-live="polite">
+        </div>
+
+        <p
+            id="winResultText"
+            class="victory-impact-text">
+        </p>
+
+        <div class="result-actions victory-impact-actions">
+
+            <button
+                id="retryLevelButton"
+                class="secondary-button">
+                Wiederholen
+            </button>
+
+            <button
+                id="resultMapButton"
+                class="primary-button">
+                Zur Karte
+            </button>
+
+            <button
+                id="nextLevelButton"
+                class="primary-button">
+                Nächstes Level
+            </button>
+
+        </div>
+
+    </div>
+
+</div>
+
+      <div id="loseShotsOverlay" class="game-result-overlay hidden">
+    <div class="game-result-card">
+        <span class="eyebrow">ERGEBNIS</span>
+        <h3 id="loseShotsTitle">Leider verloren!</h3>
+
+        <div id="loseShotsStars" class="result-stars"></div>
+
+        <p id="loseShotsText">
+            Zu viele Schüsse verbraucht.
+        </p>
+
+        <div class="result-actions">
+            <button id="retryShotsButton" class="secondary-button">
+                Wiederholen
+            </button>
+
+            <button id="shotsMapButton" class="primary-button">
+                Zur Karte
+            </button>
+        </div>
+    </div>
+</div>
+
+
+<div id="loseBoundaryOverlay" class="game-result-overlay hidden">
+    <div class="game-result-card">
+        <span class="eyebrow">ERGEBNIS</span>
+        <h3 id="loseBoundaryTitle">Leider verloren!</h3>
+
+        <div class="result-stars"></div>
+
+        <p id="loseBoundaryText">
+            Die Kugeln haben die untere Spielfeldgrenze erreicht.
+        </p>
+
+        <div class="result-actions">
+            <button id="retryBoundaryButton" class="secondary-button">
+                Wiederholen
+            </button>
+
+            <button id="boundaryMapButton" class="primary-button">
+                Zur Karte
+            </button>
+        </div>
+    </div>
+</div>
+
+      <div id="stageCompleteOverlay" class="hidden">
+
+    <div class="stage-complete-card">
+
+        <div class="stage-confetti">
+            🎉
+        </div>
+
+        <div class="stage-trophy">
+            🏆
+        </div>
+
+        <h2>Glückwunsch!</h2>
+
+        <h3 id="stageCompleteName">
+            Stage geschafft!
+        </h3>
+
+        <p id="stageCompleteText">
+            Du hast diese Themenwelt gemeistert!
+        </p>
+
+        <div class="stage-stars" id="stageCompleteStars">
+            ⭐⭐⭐
+        </div>
+
+        <button id="stageCompleteButton">
+            Weiter
+        </button>
+
+    </div>
+
+    </div>
+
+      <!--
+    
+      <p class="info-note">
+        Mit Maus oder Finger zielen und zum Schießen tippen. Mindestens
+        drei gleichfarbige Kugeln entfernen sich.
+      </p>
+      
+      -->
+    </section>
+
+    <section id="themesScreen" class="screen hidden">
+      <div class="screen-toolbar">
+        <button class="back-button" data-back="home">← Start</button>
+        <div>
+          <span class="eyebrow">DESIGN</span>
+          <h2>Themes</h2>
+        </div>
+        <span id="activeThemeLabel">Arena</span>
+      </div>
+
+      <div id="themeList" class="theme-list"></div>
+
+      <div class="config-help">
+        <h3>Eigene Grafiken</h3>
+        <p>
+          Später trägst du in der JavaScript-Datei unter
+          <code>GAME_CONFIG.assets</code> nur die URLs deiner Bilder ein.
+        </p>
+      </div>
+    </section>
+
+
+
+    <section id="episodesScreen" class="screen hidden">
+      <div class="screen-toolbar">
+        <button class="back-button" data-back="home">← Start</button>
+        <div>
+          <span class="eyebrow">ZEITLICH BEGRENZT</span>
+          <h2>Episodenrennen</h2>
+        </div>
+        <span id="episodeScreenBadge">🏁</span>
+      </div>
+
+      <div id="episodeList" class="episode-list"></div>
+    </section>
+
+    <section id="rankingScreen" class="screen hidden">
+      <div class="screen-toolbar">
+        <button class="back-button" data-back="home">← Start</button>
+        <div>
+          <span class="eyebrow">BANDENKICK</span>
+          <h2>Ranking-Demo</h2>
+        </div>
+        <span>Top 10</span>
+      </div>
+
+      <div id="rankingList" class="ranking-list"></div>
+
+      <p class="info-note">
+        Aktuell sind dies Demodaten. Später kommen sie über die
+        Bandenkick-API aus eurer Datenbank.
+      </p>
+    </section>
+
+    <section id="shopScreen" class="screen hidden">
+
+    <div class="screen-toolbar">
+
+        <button
+            class="back-button"
+            data-back="home">
+            ← Start
+        </button>
+
+        <div>
+            <span class="eyebrow">BANDENKICK</span>
+            <h2>Shooter-Shop</h2>
+        </div>
+
+        <span>SHOP</span>
+
+</div>
+
+<div
+    id="shopOffers"
+    class="shop-offers">
+</div>
+
+</section>
+
+    <section id="wheelScreen" class="screen hidden">
+      <div class="screen-toolbar">
+        <button class="back-button" data-back="home">← Start</button>
+        <div>
+          <span class="eyebrow">TÄGLICHER BONUS</span>
+          <h2>Glücksrad</h2>
+        </div>
+        <span>1× GRATIS</span>
+      </div>
+
+<div class="wheel-card">
+
+    <p
+        id="wheelStatus"
+        class="wheel-status">
+    </p>
+
+
+    <div class="wheel-stage">
+
+        <div
+            class="wheel-pointer"
+            aria-hidden="true">
+        </div>
+
+
+        <div
+            id="wheelDisc"
+            class="wheel-disc">
+
+            <div
+                id="wheelSegments"
+                class="wheel-segments">
+            </div>
+
+            <div class="wheel-hub">
+                BK
+            </div>
+
+        </div>
+
+
+        <!-- GEWINN DIREKT ÜBER DEM RAD -->
+        <div
+            id="wheelReward"
+            class="wheel-reward hidden"
+            aria-live="polite">
+
+            <span class="wheel-reward-kicker">
+                TÄGLICHER GEWINN
+            </span>
+
+            <div class="wheel-reward-image-wrap">
+
+                <img
+                    id="wheelRewardImage"
+                    alt="Gewonnenes Item">
+
+            </div>
+
+            <h3 id="wheelRewardTitle">
+                GEWONNEN!
+            </h3>
+
+            <p id="wheelRewardText"></p>
+
+            <div
+                id="wheelRewardItems"
+                class="wheel-reward-items">
+            </div>
+
+        </div>
+
+    </div>
+
+
+    <button
+        id="wheelSpinButton"
+        class="primary-button wheel-spin-button"
+        type="button">
+
+        JETZT DREHEN
+
+    </button>
+
+
+    <p class="wheel-note">
+        Jeden Kalendertag steht dir ein kostenloser Dreh zur Verfügung.
+    </p>
+
+</div>
+    </section>
+
+    <section id="settingsScreen" class="screen hidden">
+      <div class="screen-toolbar">
+        <button class="back-button" data-back="home">← Start</button>
+        <div>
+          <span class="eyebrow">OPTIONEN</span>
+          <h2>Einstellungen</h2>
+        </div>
+        <span>lokal</span>
+      </div>
+
+      <div class="settings-card">
+        <label>
+          <span>Musik</span>
+          <input id="musicSetting" type="checkbox">
+        </label>
+
+        <label>
+          <span>Soundeffekte</span>
+          <input id="soundSetting" type="checkbox">
+        </label>
+
+        <label>
+          <span>Zielhilfe</span>
+          <input id="aimSetting" type="checkbox">
+        </label>
+        <div class="setting-row">
+              <div class="speed-option" data-speed="slow">Langsam</div>
+              <div class="speed-option active" data-speed="normal">Normal</div>
+              <div class="speed-option" data-speed="fast">Schnell</div>
+        </div>
+
+        <button id="resetProgressButton" class="danger-button">
+          Spielstand zurücksetzen
+        </button>
+      </div>
+    </section>
+  </main>
+
+  <div id="itemInfoPopup" class="item-info-popup hidden">
+
+    <div class="item-info-card">
+
+        <button id="closeItemInfo">
+            ✕
+        </button>
+
+
+        <img id="itemInfoImage">
+
+
+        <h2 id="itemInfoTitle">
+            Ball Switch
+        </h2>
+
+
+        <p id="itemInfoText">
+            Tausche deine aktuelle Kugel mit der nächsten Kugel.
+        </p>
+    </div>
+
+</div>
+
+  <div id="toast" class="toast hidden"></div>
+</div>
+
+<script type="module" src="./script.js"></script>
+<script type="module" src="./js/main.js"></script>
+<script type="module" src="./js/worldmap/worldMap2.js"></script>
+
+</body>
+</html>

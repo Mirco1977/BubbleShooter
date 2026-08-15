@@ -1,6 +1,5 @@
 import { WORLD_MAP_CONFIG_2 as CONFIG } from "../config/worldMapConfig2.js";
 
-
 const $ = (id) => document.getElementById(id);
 
 function clamp(value, min, max) {
@@ -42,7 +41,6 @@ const WorldMap2 = {
   world: null,
   currentLevel: 1,
   initialized: false,
-  totalLevels: CONFIG.totalLevels,
   progressAnimating: false,
   assetReadyPromise: null,
 
@@ -647,9 +645,7 @@ marker.style.bottom =
 
     // Einen kurzen sichtbaren Stillstand am Startpunkt erzwingen.
     await new Promise(resolve => requestAnimationFrame(resolve));
-    window.setTimeout(() => {
-      this.startProgressMover(prepared);
-    }, 350);
+    window.setTimeout(() => this.startProgressMover(prepared), 350);
   },
 
   lockProgressScreen() {
@@ -661,7 +657,7 @@ marker.style.bottom =
     lock.setAttribute("aria-hidden", "true");
 
     // Lock liegt ueber Toolbar UND Karte. Keine Maus-, Touch- oder Scroll-Eingabe
-    // kann die Geometrie waehrend der Fahrt veraendern.
+    // kann die Geometrie waehrend der Testfahrt veraendern.
     this.screen.appendChild(lock);
     this.animationLock = lock;
 
@@ -739,22 +735,9 @@ marker.style.bottom =
     mover.style.left = `${startX}px`;
     mover.style.top = `${startY}px`;
 
-    // FIX 8: Der Marker darf NICHT im scrollenden Viewport liegen.
-    // Ein absolut positioniertes Kind von #worldMap2Viewport wird durch scrollTop
-    // mitverschoben. Bei z.B. scrollTop 1831 und top 502 lag der Marker bei -1329px
-    // und war deshalb unsichtbar, obwohl requestAnimationFrame korrekt lief.
-    //
-    // .world2-shell ist position:relative und selbst NICHT gescrollt. Da der Viewport
-    // inset:0 in dieser Shell liegt, koennen die bereits gemessenen viewport-relativen
-    // Koordinaten 1:1 fuer die Shell verwendet werden.
-    const shell = this.screen.querySelector(".world2-shell");
-    if (!shell) {
-      toNode.style.visibility = "";
-      toNode.style.pointerEvents = "";
-      return null;
-    }
-
-    shell.appendChild(mover);
+    // Der Marker liegt innerhalb des Viewports, nicht innerhalb der langen Welt.
+    // Dadurch kann Scroll-/Stage-Geometrie seine Flugbahn nicht beeinflussen.
+    this.viewport.appendChild(mover);
 
     this.lockProgressScreen();
 
@@ -763,6 +746,16 @@ marker.style.bottom =
     mover.style.zIndex = "1002";
 
     const distance = Math.hypot(endX - startX, endY - startY);
+
+    console.info("[WorldMap2] SLOW TEST", {
+      fromLevel,
+      toLevel,
+      startX,
+      startY,
+      endX,
+      endY,
+      distance
+    });
 
     return {
       fromLevel,
@@ -777,7 +770,6 @@ marker.style.bottom =
   },
 
   startProgressMover(prepared) {
-
     if (!prepared?.mover || !prepared?.toNode) {
       this.finishProgressMover(prepared);
       return;
@@ -785,16 +777,17 @@ marker.style.bottom =
 
     const { mover, startX, startY, endX, endY } = prepared;
 
-    // Produktionsgeschwindigkeit der Kartenfahrt.
-    const duration = 2200;
+    // ABSICHTLICH SEHR LANGSAM zum Testen.
+    // Spaeter kann nur diese Zahl reduziert werden, z.B. 1600 oder 2200 ms.
+    const duration = 8000;
     const startedAt = performance.now();
 
     this.preparedProgress = prepared;
 
     const easeInOut = (t) =>
       t < 0.5
-        ? 4 * t * t * t
-        : 1 - Math.pow(-2 * t + 2, 3) / 2;
+        ? 2 * t * t
+        : 1 - Math.pow(-2 * t + 2, 2) / 2;
 
     const tick = (now) => {
       if (!this.progressAnimating || this.preparedProgress !== prepared) return;
@@ -836,11 +829,6 @@ marker.style.bottom =
       // Erst JETZT beginnt wieder der normale Puls des echten aktuellen Levels.
       const orb = data.toNode.querySelector(".world2-level-orb");
       if (orb) orb.style.animation = "";
-
-      data.toNode.classList.add("world2-arrival");
-      window.setTimeout(() => {
-        data.toNode?.classList.remove("world2-arrival");
-      }, 700);
     }
 
     this.preparedProgress = null;

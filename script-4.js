@@ -8,7 +8,10 @@
 
   (() => {
   "use strict";
-/*
+
+  console.log("%c[BK DEBUG] FIX 6 DEBUG script.js GELADEN", "background:#167000;color:#fff;font-weight:bold;padding:4px 8px");
+
+  /*
    * =========================================================
    * BANDENKICK BUBBLE CHALLENGE – VERSION 0.2
    * =========================================================
@@ -4068,6 +4071,16 @@ dom.shotsMapButton.onclick = () => {
       // vom gerade geschafften Level zum neu freigeschalteten Level bewegen.
       dom.nextLevelButton.textContent = cameFromWorldMap2 ? "Weiter" : "Nächstes Level";
       dom.nextLevelButton.onclick = async () => {
+        console.group("[BK DEBUG] WEITER/NÄCHSTES LEVEL");
+        console.log("[BK DEBUG] Button geklickt", {
+          level,
+          cameFromWorldMap2,
+          BK_levelOrigin: window.BK_levelOrigin,
+          WorldMap2Vorhanden: !!window.WorldMap2,
+          openAfterLevelWinTyp: typeof window.WorldMap2?.openAfterLevelWin,
+          unlockedVorher: state.progress.unlockedLevel
+        });
+        console.groupEnd();
 
         state.progress.unlockedLevel = Math.max(state.progress.unlockedLevel, level + 1);
         SaveManager.saveProgress(state.progress);
@@ -4078,22 +4091,24 @@ dom.shotsMapButton.onclick = () => {
           // dann um. Dadurch verschwindet der blaue/leere Zwischenframe.
           BubbleGame.stop();
 
-          // WICHTIG: Die Endloskarte hat eine eigene Levelanzahl.
-          // NICHT mehr die alte Standardkarten-Grenze
-          // GAME_CONFIG.totalStages * GAME_CONFIG.levelsPerStage verwenden
-          // (aktuell 5 * 10 = 50), sonst würde z.B. 60 -> 50 animiert.
-          const worldMapMaxLevel = Number(
-            window.WorldMap2?.totalLevels || state.progress.unlockedLevel || (level + 1)
-          );
-
           const nextLevel = Math.min(
             level + 1,
-            worldMapMaxLevel
+            GAME_CONFIG.totalStages * GAME_CONFIG.levelsPerStage
           );
+
+          console.log("[BK DEBUG] Endloskarten-Weiter", {
+            fromLevel: level,
+            nextLevel,
+            unlockedJetzt: state.progress.unlockedLevel,
+            totalStages: GAME_CONFIG.totalStages,
+            levelsPerStage: GAME_CONFIG.levelsPerStage
+          });
 
           if (window.WorldMap2?.openAfterLevelWin) {
             try {
+              console.log("[BK DEBUG] rufe openAfterLevelWin auf ...");
               await window.WorldMap2.openAfterLevelWin(level, nextLevel);
+              console.log("[BK DEBUG] openAfterLevelWin Promise zurückgekehrt");
             } catch (error) {
               console.error("[WorldMap2] Fortschrittsanimation fehlgeschlagen:", error);
               window.WorldMap2?.open?.();

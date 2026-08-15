@@ -1,5 +1,7 @@
 import { WORLD_MAP_CONFIG_2 as CONFIG } from "../config/worldMapConfig2.js";
 
+console.log("%c[BK DEBUG] FIX 8 SHELL-MOVER worldMap2.js GELADEN", "background:#860000;color:#fff;font-weight:bold;padding:4px 8px");
+console.log("[BK DEBUG] FIX 8 worldMap2 timestamp", new Date().toISOString());
 
 const $ = (id) => document.getElementById(id);
 
@@ -610,10 +612,19 @@ marker.style.bottom =
     const from = clamp(Number(fromLevel || 1), 1, CONFIG.totalLevels);
     const to = clamp(Number(toLevel || from), 1, CONFIG.totalLevels);
 
+    console.group("[BK DEBUG] openAfterLevelWin");
+    console.log("[BK DEBUG] START", { fromLevel, toLevel, from, to });
+    console.log("[BK DEBUG] screen vorhanden", !!this.screen, "viewport", !!this.viewport, "world", !!this.world);
+    console.log("[BK DEBUG] progress vor Animation", getProgress());
+    console.groupEnd();
+
     this.progressAnimating = true;
 
     // Erst alle Kartenassets laden, solange das Ergebnis-Popup noch sichtbar ist.
+    console.time("[BK DEBUG] preloadMapAssets");
     await this.preloadMapAssets();
+    console.timeEnd("[BK DEBUG] preloadMapAssets");
+    console.log("[BK DEBUG] Kartenassets vorgeladen");
 
     document.querySelector(".app-header")?.classList.add("world2-header-hidden");
 
@@ -624,11 +635,13 @@ marker.style.bottom =
 
     this.currentLevel = to;
     this.render();
+    console.log("[BK DEBUG] render() fertig", { currentLevel: this.currentLevel, levelNodes: this.world.querySelectorAll(".world2-level").length });
 
     // WICHTIG: Karte bleibt waehrend der kompletten Punktfahrt FEST stehen.
     // Wir positionieren sie einmal auf dem geschafften Level und scrollen danach
     // bis zum Ende der Animation keinen einzigen Pixel mehr.
     this.scrollToLevel(from, false);
+    console.log("[BK DEBUG] Karte auf FROM-Level positioniert", { from, scrollTop: this.viewport.scrollTop });
 
     await new Promise(resolve =>
       requestAnimationFrame(() => requestAnimationFrame(resolve))
@@ -639,6 +652,7 @@ marker.style.bottom =
     });
 
     const prepared = this.prepareProgressMover(from, to);
+    console.log("[BK DEBUG] prepareProgressMover RESULT", prepared);
 
     this.screen.style.visibility = "visible";
 
@@ -647,7 +661,9 @@ marker.style.bottom =
 
     // Einen kurzen sichtbaren Stillstand am Startpunkt erzwingen.
     await new Promise(resolve => requestAnimationFrame(resolve));
+    console.log("[BK DEBUG] Karte sichtbar; Animation wird in 350ms gestartet");
     window.setTimeout(() => {
+      console.log("[BK DEBUG] 350ms TIMER ausgelöst -> startProgressMover");
       this.startProgressMover(prepared);
     }, 350);
   },
@@ -661,7 +677,7 @@ marker.style.bottom =
     lock.setAttribute("aria-hidden", "true");
 
     // Lock liegt ueber Toolbar UND Karte. Keine Maus-, Touch- oder Scroll-Eingabe
-    // kann die Geometrie waehrend der Fahrt veraendern.
+    // kann die Geometrie waehrend der Testfahrt veraendern.
     this.screen.appendChild(lock);
     this.animationLock = lock;
 
@@ -698,6 +714,7 @@ marker.style.bottom =
   },
 
   prepareProgressMover(fromLevel, toLevel) {
+    console.log("[BK DEBUG] prepareProgressMover START", { fromLevel, toLevel });
     const fromNode = this.world.querySelector(
       `.world2-level[data-level="${fromLevel}"]`
     );
@@ -705,7 +722,16 @@ marker.style.bottom =
       `.world2-level[data-level="${toLevel}"]`
     );
 
+    console.log("[BK DEBUG] LEVELPUNKTE gefunden", {
+      fromLevel,
+      fromNodeGefunden: !!fromNode,
+      toLevel,
+      toNodeGefunden: !!toNode,
+      gleichesLevel: fromLevel === toLevel
+    });
+
     if (!fromNode || !toNode || fromLevel === toLevel) {
+      console.error("[BK DEBUG] prepareProgressMover ABBRUCH", { fromNode, toNode, fromLevel, toLevel });
       return null;
     }
 
@@ -722,6 +748,14 @@ marker.style.bottom =
     const startY = fromRect.top + fromRect.height / 2 - viewportRect.top;
     const endX = toRect.left + toRect.width / 2 - viewportRect.left;
     const endY = toRect.top + toRect.height / 2 - viewportRect.top;
+
+    console.log("[BK DEBUG] GEMESSENE KOORDINATEN", {
+      viewportRect: { left: viewportRect.left, top: viewportRect.top, width: viewportRect.width, height: viewportRect.height },
+      fromRect: { left: fromRect.left, top: fromRect.top, width: fromRect.width, height: fromRect.height },
+      toRect: { left: toRect.left, top: toRect.top, width: toRect.width, height: toRect.height },
+      startX, startY, endX, endY,
+      deltaX: endX - startX, deltaY: endY - startY
+    });
 
     // Der echte neue rote Punkt darf waehrend der Fahrt NICHT sichtbar sein.
     // So existiert visuell garantiert nur genau EIN roter Punkt.
@@ -749,20 +783,40 @@ marker.style.bottom =
     // Koordinaten 1:1 fuer die Shell verwendet werden.
     const shell = this.screen.querySelector(".world2-shell");
     if (!shell) {
+      console.error("[BK DEBUG] FIX 8 ABBRUCH: .world2-shell fehlt");
       toNode.style.visibility = "";
       toNode.style.pointerEvents = "";
       return null;
     }
 
     shell.appendChild(mover);
+    console.log("[BK DEBUG] FIX 8 MOVER IN FESTER SHELL", {
+      connected: mover.isConnected,
+      parent: mover.parentElement?.className,
+      viewportScrollTop: this.viewport.scrollTop,
+      left: mover.style.left,
+      top: mover.style.top,
+      className: mover.className
+    });
 
     this.lockProgressScreen();
+    console.log("[BK DEBUG] SCREEN LOCK aktiv", { lockConnected: !!this.animationLock?.isConnected, viewportOverflowY: this.viewport.style.overflowY });
 
     // Der Lock wurde nach dem Mover eingefuegt und liegt normal darueber.
     // Mover bewusst auf hoehere Ebene setzen.
     mover.style.zIndex = "1002";
 
     const distance = Math.hypot(endX - startX, endY - startY);
+
+    console.info("[WorldMap2] SLOW TEST", {
+      fromLevel,
+      toLevel,
+      startX,
+      startY,
+      endX,
+      endY,
+      distance
+    });
 
     return {
       fromLevel,
@@ -777,24 +831,40 @@ marker.style.bottom =
   },
 
   startProgressMover(prepared) {
+    console.log("[BK DEBUG] startProgressMover AUFGERUFEN", {
+      preparedVorhanden: !!prepared,
+      moverVorhanden: !!prepared?.mover,
+      moverConnected: !!prepared?.mover?.isConnected,
+      toNodeVorhanden: !!prepared?.toNode,
+      progressAnimating: this.progressAnimating
+    });
 
     if (!prepared?.mover || !prepared?.toNode) {
+      console.error("[BK DEBUG] ANIMATION KANN NICHT STARTEN", prepared);
       this.finishProgressMover(prepared);
       return;
     }
 
     const { mover, startX, startY, endX, endY } = prepared;
 
-    // Produktionsgeschwindigkeit der Kartenfahrt.
-    const duration = 2200;
+    // ABSICHTLICH SEHR LANGSAM zum Testen.
+    // Spaeter kann nur diese Zahl reduziert werden, z.B. 1600 oder 2200 ms.
+    const duration = 8000;
     const startedAt = performance.now();
 
+    console.log("[BK DEBUG] ANIMATION START", {
+      fromLevel: prepared.fromLevel,
+      toLevel: prepared.toLevel,
+      startX, startY, endX, endY, duration, startedAt
+    });
+
     this.preparedProgress = prepared;
+    let debugQuarter = -1;
 
     const easeInOut = (t) =>
       t < 0.5
-        ? 4 * t * t * t
-        : 1 - Math.pow(-2 * t + 2, 3) / 2;
+        ? 2 * t * t
+        : 1 - Math.pow(-2 * t + 2, 2) / 2;
 
     const tick = (now) => {
       if (!this.progressAnimating || this.preparedProgress !== prepared) return;
@@ -808,6 +878,12 @@ marker.style.bottom =
       mover.style.left = `${x}px`;
       mover.style.top = `${y}px`;
 
+      const quarter = Math.min(4, Math.floor(raw * 4));
+      if (quarter !== debugQuarter) {
+        debugQuarter = quarter;
+        console.log(`[BK DEBUG] RAF ${quarter * 25}%`, { raw, eased, x, y, connected: mover.isConnected, visibility: getComputedStyle(mover).visibility, display: getComputedStyle(mover).display, opacity: getComputedStyle(mover).opacity });
+      }
+
       if (raw < 1) {
         this.progressRaf = requestAnimationFrame(tick);
       } else {
@@ -819,6 +895,11 @@ marker.style.bottom =
   },
 
   finishProgressMover(prepared) {
+    console.log("[BK DEBUG] finishProgressMover AUFGERUFEN", {
+      preparedVorhanden: !!prepared,
+      currentLevel: this.currentLevel,
+      progressAnimating: this.progressAnimating
+    });
     if (this.progressRaf) {
       cancelAnimationFrame(this.progressRaf);
       this.progressRaf = null;
@@ -836,11 +917,6 @@ marker.style.bottom =
       // Erst JETZT beginnt wieder der normale Puls des echten aktuellen Levels.
       const orb = data.toNode.querySelector(".world2-level-orb");
       if (orb) orb.style.animation = "";
-
-      data.toNode.classList.add("world2-arrival");
-      window.setTimeout(() => {
-        data.toNode?.classList.remove("world2-arrival");
-      }, 700);
     }
 
     this.preparedProgress = null;
