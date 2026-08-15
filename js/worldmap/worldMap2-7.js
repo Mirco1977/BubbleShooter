@@ -783,80 +783,13 @@ marker.style.bottom =
       return;
     }
 
-    this.preparedProgress = prepared;
+    const { mover, startX, startY, endX, endY } = prepared;
 
-    // Bei einem Stagewechsel (10 -> 11, 20 -> 21, ...) wird die Fahrt
-    // bewusst am Finish-Tor unterbrochen. Dort findet die Stage-Celebration
-    // statt; danach faehrt derselbe rote Punkt weiter zum neuen Level.
-    if (this.isStageFinishTransition(prepared.fromLevel, prepared.toLevel)) {
-      this.startStageFinishSequence(prepared);
-      return;
-    }
-
-    this.animateProgressSegment(
-      prepared,
-      prepared.startX,
-      prepared.startY,
-      prepared.endX,
-      prepared.endY,
-      2200,
-      () => this.finishProgressMover(prepared)
-    );
-  },
-
-  isStageFinishTransition(fromLevel, toLevel) {
-    const perStage = Number(CONFIG.levelsPerStage || 10);
-    return (
-      fromLevel > 0 &&
-      fromLevel % perStage === 0 &&
-      toLevel === fromLevel + 1
-    );
-  },
-
-  getStageFinishPoint(prepared) {
-    const scale = this.getMapScale();
-    const fromBottom = this.yForLevel(prepared.fromLevel);
-    const toBottom = this.yForLevel(prepared.toLevel);
-    const nextStageIndex = Math.floor((prepared.toLevel - 1) / CONFIG.levelsPerStage);
-
-    // Die Finish-Grenze ist exakt die Unterkante des naechsten Stage-Bildes.
-    // Stage 1 besitzt ein eigenes Geruest, danach folgen Standard-Gerueste.
-    const boundaryUnscaled = nextStageIndex <= 0
-      ? CONFIG.stageLayouts.first.height
-      : CONFIG.stageLayouts.first.height +
-        ((nextStageIndex - 1) * CONFIG.stageLayouts.standard.height);
-
-    const boundaryBottom = boundaryUnscaled * scale;
-    const denominator = toBottom - fromBottom;
-
-    let t = denominator !== 0
-      ? (boundaryBottom - fromBottom) / denominator
-      : 0.58;
-
-    // Sicherheitsnetz fuer kuenftige Layoutaenderungen.
-    t = clamp(t, 0.35, 0.78);
-
-    return {
-      x: prepared.startX + (prepared.endX - prepared.startX) * t,
-      y: prepared.startY + (prepared.endY - prepared.startY) * t,
-      t
-    };
-  },
-
-  animateProgressSegment(prepared, startX, startY, endX, endY, duration, onDone) {
-    const mover = prepared?.mover;
-
-    if (!mover || !this.progressAnimating || this.preparedProgress !== prepared) {
-      onDone?.();
-      return;
-    }
-
-    if (this.progressRaf) {
-      cancelAnimationFrame(this.progressRaf);
-      this.progressRaf = null;
-    }
-
+    // Produktionsgeschwindigkeit der Kartenfahrt.
+    const duration = 2200;
     const startedAt = performance.now();
+
+    this.preparedProgress = prepared;
 
     const easeInOut = (t) =>
       t < 0.5
@@ -869,122 +802,20 @@ marker.style.bottom =
       const raw = clamp((now - startedAt) / duration, 0, 1);
       const eased = easeInOut(raw);
 
-      mover.style.left = `${startX + (endX - startX) * eased}px`;
-      mover.style.top = `${startY + (endY - startY) * eased}px`;
+      const x = startX + (endX - startX) * eased;
+      const y = startY + (endY - startY) * eased;
+
+      mover.style.left = `${x}px`;
+      mover.style.top = `${y}px`;
 
       if (raw < 1) {
         this.progressRaf = requestAnimationFrame(tick);
       } else {
-        this.progressRaf = null;
-        onDone?.();
+        this.finishProgressMover(prepared);
       }
     };
 
     this.progressRaf = requestAnimationFrame(tick);
-  },
-
-  startStageFinishSequence(prepared) {
-    const gate = this.getStageFinishPoint(prepared);
-
-    // Etwas schneller bis zum Tor, damit die Celebration der eigentliche
-    // Hoehepunkt bleibt.
-    this.animateProgressSegment(
-      prepared,
-      prepared.startX,
-      prepared.startY,
-      gate.x,
-      gate.y,
-      1250,
-      () => {
-        if (!this.progressAnimating || this.preparedProgress !== prepared) return;
-
-        prepared.mover.classList.add("world2-at-finish");
-
-        this.showStageFinishCelebration(prepared, gate, () => {
-          if (!this.progressAnimating || this.preparedProgress !== prepared) return;
-
-          prepared.mover.classList.remove("world2-at-finish");
-
-          this.animateProgressSegment(
-            prepared,
-            gate.x,
-            gate.y,
-            prepared.endX,
-            prepared.endY,
-            1400,
-            () => this.finishProgressMover(prepared)
-          );
-        });
-      }
-    );
-  },
-
-  showStageFinishCelebration(prepared, gate, onDone) {
-    this.removeStageFinishCelebration();
-
-    const shell = this.screen?.querySelector(".world2-shell");
-    if (!shell) {
-      onDone?.();
-      return;
-    }
-
-    const finishedStageNo = Math.ceil(prepared.fromLevel / CONFIG.levelsPerStage);
-    const stage = getStage(prepared.fromLevel);
-
-    const celebration = document.createElement("div");
-    celebration.className = "world2-stage-finish-celebration";
-    celebration.setAttribute("aria-hidden", "true");
-    celebration.style.left = `${gate.x}px`;
-    celebration.style.top = `${gate.y}px`;
-    celebration.style.setProperty("--stage-accent", stage.accent || "#860000");
-
-    const particleAngles = [-78,-62,-46,-30,-14,14,30,46,62,78,105,128,152,208,232,255];
-    const particles = particleAngles.map((angle, index) => {
-      const distance = 76 + (index % 4) * 18;
-      return `<i class="world2-stage-particle" style="--a:${angle}deg;--d:${distance}px;--delay:${(index % 5) * 45}ms"></i>`;
-    }).join("");
-
-    celebration.innerHTML = `
-      <div class="world2-stage-finish-burst"></div>
-      <div class="world2-stage-particles">${particles}</div>
-      <div class="world2-stage-finish-card">
-        <div class="world2-stage-finish-crown" aria-hidden="true">
-          <span></span><span></span><span></span>
-        </div>
-        <span class="world2-stage-finish-kicker">STAGE ${finishedStageNo}</span>
-        <strong>GESCHAFFT!</strong>
-        <span class="world2-stage-finish-name">${stage.name || `Stage ${finishedStageNo}`}</span>
-        <div class="world2-stage-finish-shine"></div>
-      </div>
-    `;
-
-    shell.appendChild(celebration);
-    this.stageFinishCelebration = celebration;
-
-    requestAnimationFrame(() => {
-      celebration.classList.add("show");
-    });
-
-    // Celebration bewusst kurz stehen lassen, damit sie als Stage-Abschluss
-    // wahrgenommen wird. Danach geht die Kartenfahrt automatisch weiter.
-    this.stageFinishTimer = window.setTimeout(() => {
-      celebration.classList.add("leave");
-
-      this.stageFinishTimer = window.setTimeout(() => {
-        this.removeStageFinishCelebration();
-        onDone?.();
-      }, 430);
-    }, 2450);
-  },
-
-  removeStageFinishCelebration() {
-    if (this.stageFinishTimer) {
-      clearTimeout(this.stageFinishTimer);
-      this.stageFinishTimer = null;
-    }
-
-    this.stageFinishCelebration?.remove();
-    this.stageFinishCelebration = null;
   },
 
   finishProgressMover(prepared) {
@@ -996,7 +827,6 @@ marker.style.bottom =
     const data = prepared || this.preparedProgress;
     const level = data?.toLevel || this.currentLevel;
 
-    this.removeStageFinishCelebration();
     data?.mover?.remove();
 
     if (data?.toNode) {

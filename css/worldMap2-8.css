@@ -1135,34 +1135,3 @@ body:has(#levelScreen.world2-level-overlay:not(.hidden)) {
     animation-iteration-count: 1 !important;
   }
 }
-
-
-/* =========================================================
-   ENDLOSKARTE – ANIMATIONSPUNKT KLEINER
-   Normaler Levelwechsel + Stagewechsel
-   ========================================================= */
-.world2-progress-mover,
-.world2-progress-mover .world2-level-orb {
-  width: 64px !important;
-  height: 64px !important;
-}
-
-.world2-progress-mover {
-  transform: translate(-50%, -50%) scale(1.06) !important;
-}
-
-.world2-progress-mover .world2-level-number {
-  font-size: 20px !important;
-}
-
-@media (max-width: 600px) {
-  .world2-progress-mover,
-  .world2-progress-mover .world2-level-orb {
-    width: 58px !important;
-    height: 58px !important;
-  }
-
-  .world2-progress-mover .world2-level-number {
-    font-size: 19px !important;
-  }
-}
