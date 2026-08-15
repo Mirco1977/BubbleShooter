@@ -1173,30 +1173,3 @@ body:has(#levelScreen.world2-level-overlay:not(.hidden)) {
     transform: scale(.6902); /* .68 × 1.015 */
   }
 }
-
-
-/* =========================================================
-   ENDLOSKARTE – SAUBERER UEBERGANG BEI ENGEN LEVELPUNKTEN
-   ========================================================= */
-
-/* Der wandernde rote Punkt liegt immer eindeutig ueber Leveln,
-   Schloessern, Sternen und Stage-Dekoration. */
-.world2-progress-mover {
-  z-index: 1004 !important;
-  pointer-events: none !important;
-  will-change: left, top;
-}
-
-/* Ziellevel bleibt waehrend der Fahrt unter dem roten Punkt.
-   Das JS blendet es erst in den letzten 20 % weich aus. */
-.world2-level.world2-animation-target {
-  z-index: 11 !important;
-  transition: opacity .18s linear;
-}
-
-/* Abgeschlossene Level duerfen durch den Animationszustand
-   niemals unsichtbar werden. */
-.world2-level.completed:not(.world2-animation-target) {
-  visibility: visible !important;
-  opacity: 1;
-}

@@ -870,64 +870,8 @@ marker.style.bottom =
       const raw = clamp((now - startedAt) / duration, 0, 1);
       const eased = easeInOut(raw);
 
-      // Leicht geschwungene Bahn statt einer starren Geraden.
-      // Dadurch laeuft der Statuspunkt bei engen Levelpositionen
-      // optisch sauberer und nicht mitten durch Schloss/Levelpunkte.
-      const dx = endX - startX;
-      const dy = endY - startY;
-      const distance = Math.hypot(dx, dy) || 1;
-
-      const normalX = -dy / distance;
-      const normalY = dx / distance;
-
-      // Dezente Kurve; bei kurzen Wegen kleiner, bei langen Wegen etwas staerker.
-      const curveStrength = Math.min(
-        30,
-        Math.max(10, distance * 0.13)
-      );
-
-      // Kurvenrichtung stabil anhand der horizontalen Bewegungsrichtung.
-      const curveDirection = dx >= 0 ? 1 : -1;
-
-      const controlX =
-        (startX + endX) / 2 +
-        normalX * curveStrength * curveDirection;
-
-      const controlY =
-        (startY + endY) / 2 +
-        normalY * curveStrength * curveDirection;
-
-      const inv = 1 - eased;
-
-      const currentX =
-        (inv * inv * startX) +
-        (2 * inv * eased * controlX) +
-        (eased * eased * endX);
-
-      const currentY =
-        (inv * inv * startY) +
-        (2 * inv * eased * controlY) +
-        (eased * eased * endY);
-
-      mover.style.left = `${currentX}px`;
-      mover.style.top = `${currentY}px`;
-
-      // Das Ziel-Schloss bleibt bis kurz vor Ankunft sichtbar.
-      // In den letzten 20 % blendet es weich aus, damit der rote Punkt
-      // sauber "darauf landet" und kein optisches Uebereinander entsteht.
-      if (prepared.toNode) {
-        const fadeStart = 0.80;
-
-        if (raw >= fadeStart) {
-          const fadeProgress =
-            (raw - fadeStart) / (1 - fadeStart);
-
-          prepared.toNode.style.opacity =
-            String(Math.max(0, 1 - fadeProgress));
-        } else {
-          prepared.toNode.style.opacity = "";
-        }
-      }
+      mover.style.left = `${startX + (endX - startX) * eased}px`;
+      mover.style.top = `${startY + (endY - startY) * eased}px`;
 
       if (raw < 1) {
         this.progressRaf = requestAnimationFrame(tick);
@@ -1059,7 +1003,6 @@ marker.style.bottom =
     if (data?.toNode) {
       data.toNode.style.visibility = "";
       data.toNode.style.pointerEvents = "";
-      data.toNode.style.opacity = "";
 
       // WICHTIG:
       // Das Ziellevel wurde waehrend der Fahrt absichtlich mit
