@@ -780,8 +780,6 @@ body:has(#levelScreen.world2-level-overlay:not(.hidden)) {
   margin-top: -32px;
   pointer-events: none;
   will-change: left, top;
-  transform: scale(.792); /* normal .78 × 1.015 = +1.5 % */
-  transform-origin: center center;
   filter: drop-shadow(0 9px 13px rgba(0,0,0,.48));
 }
 
@@ -1138,38 +1136,33 @@ body:has(#levelScreen.world2-level-overlay:not(.hidden)) {
   }
 }
 
+
 /* =========================================================
-   ENDLOSKARTE – ZIELLEVEL BLEIBT SICHTBAR
+   ENDLOSKARTE – ANIMATIONSPUNKT KLEINER
+   Normaler Levelwechsel + Stagewechsel
    ========================================================= */
-.world2-level.world2-animation-target .world2-level-orb {
-  filter: grayscale(.75);
-  background: linear-gradient(#59606c, #313741) !important;
-  box-shadow:
-    0 7px 0 #242832,
-    0 10px 18px rgba(0,0,0,.35),
-    inset 0 2px 4px rgba(255,255,255,.22) !important;
-  outline: none !important;
-  animation: none !important;
+.world2-progress-mover,
+.world2-progress-mover .world2-level-orb {
+  width: 64px !important;
+  height: 64px !important;
 }
 
-.world2-level.world2-animation-target .world2-level-number {
-  font-size: 0 !important;
+.world2-progress-mover {
+  transform: translate(-50%, -50%) scale(1.06) !important;
 }
 
-.world2-level.world2-animation-target .world2-level-number::after {
-  content: "🔒";
-  font-size: 20px;
-  line-height: 1;
+.world2-progress-mover .world2-level-number {
+  font-size: 20px !important;
 }
 
-.world2-level.world2-animation-target .world2-stars {
-  visibility: hidden;
-}
+@media (max-width: 600px) {
+  .world2-progress-mover,
+  .world2-progress-mover .world2-level-orb {
+    width: 58px !important;
+    height: 58px !important;
+  }
 
-/* Handy: normale Levelpunkte laufen dort mit scale(.68).
-   Der Wanderpunkt ist auch hier nur ca. 1,5 % groesser. */
-@media (max-width: 420px) {
-  .world2-progress-mover {
-    transform: scale(.6902); /* .68 × 1.015 */
+  .world2-progress-mover .world2-level-number {
+    font-size: 19px !important;
   }
 }

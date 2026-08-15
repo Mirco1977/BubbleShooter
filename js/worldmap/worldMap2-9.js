@@ -723,10 +723,9 @@ marker.style.bottom =
     const endX = toRect.left + toRect.width / 2 - viewportRect.left;
     const endY = toRect.top + toRect.height / 2 - viewportRect.top;
 
-    // Das Ziellevel bleibt waehrend der Fahrt sichtbar.
-    // Es wird bis zur Ankunft optisch wieder als gesperrtes Level dargestellt.
-    // So bleibt die Karte vollstaendig und der rote Punkt setzt sich sichtbar darauf.
-    toNode.classList.add("world2-animation-target");
+    // Der echte neue rote Punkt darf waehrend der Fahrt NICHT sichtbar sein.
+    // So existiert visuell garantiert nur genau EIN roter Punkt.
+    toNode.style.visibility = "hidden";
     toNode.style.pointerEvents = "none";
 
     const mover = document.createElement("div");
@@ -750,7 +749,7 @@ marker.style.bottom =
     // Koordinaten 1:1 fuer die Shell verwendet werden.
     const shell = this.screen.querySelector(".world2-shell");
     if (!shell) {
-      toNode.classList.remove("world2-animation-target");
+      toNode.style.visibility = "";
       toNode.style.pointerEvents = "";
       return null;
     }
