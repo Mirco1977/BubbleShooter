@@ -1004,15 +1004,6 @@ marker.style.bottom =
       data.toNode.style.visibility = "";
       data.toNode.style.pointerEvents = "";
 
-      // WICHTIG:
-      // Das Ziellevel wurde waehrend der Fahrt absichtlich mit
-      // "world2-animation-target" als Schloss dargestellt.
-      // Bei Ankunft muss diese Hilfsklasse SOFORT entfernt werden,
-      // damit der bereits vorhandene "current"-Status wieder sichtbar
-      // wird und der rote Statuspunkt nicht bis zum Reload verschwindet.
-      data.toNode.classList.remove("world2-animation-target");
-      data.toNode.classList.add("current");
-
       // Erst JETZT beginnt wieder der normale Puls des echten aktuellen Levels.
       const orb = data.toNode.querySelector(".world2-level-orb");
       if (orb) orb.style.animation = "";
