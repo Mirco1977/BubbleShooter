@@ -614,7 +614,7 @@ body:has(#levelScreen.world2-level-overlay:not(.hidden)) {
   }
 
   .world2-stage-marker.right {
-    right: -15%;
+    right: -10%;
   }
 }
 
@@ -737,12 +737,13 @@ body:has(#levelScreen.world2-level-overlay:not(.hidden)) {
     .world2-stage-marker.fixed.right {
         left: auto !important;
         right: 6% !important;
+        transform: translateV(20px) scale(1.00) !important;
     }
 
 }
 
 #worldMap2Screen::after {
-  content: "UPDATE TEST Version 39";
+  content: "UPDATE TEST Version 40";
   position: fixed;
   top: 5px;
   left: 50%;
