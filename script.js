@@ -4412,7 +4412,25 @@ const Shop = {
 
   document.querySelectorAll("[data-back]").forEach((button) => {
     button.addEventListener("click", () => {
-      Navigation.show(button.dataset.back);
+
+        const target = button.dataset.back;
+
+        // Zurück aus Levelvorschau zur Endloskarte
+        if (target === "worldMap2") {
+
+            document
+                .getElementById("levelScreen")
+                ?.classList.remove("world2-level-overlay");
+
+            if (window.WorldMap2) {
+                window.WorldMap2.open();
+            }
+
+            return;
+        }
+
+        // Normale Navigation
+        Navigation.show(target);
     });
   });
 
