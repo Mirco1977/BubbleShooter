@@ -309,6 +309,9 @@ xForLevel(level) {
 
       const marker = document.createElement("div");
       marker.className = "world2-stage-marker";
+      if (stageNo === 1) {
+        marker.classList.add("stage-1");
+      }
 
       const scale = this.getMapScale();
 
