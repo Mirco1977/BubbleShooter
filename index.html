@@ -42,160 +42,101 @@
       </div>
 
       <div class="home-grid">
+
+        <!-- 1. HAUPTSPIEL: bisherige Endloskarte -->
+        <button id="openWorldMap2Button" class="menu-card has-image">
+          <div class="menu-card-text">
+            <strong>Levelkarte</strong>
+            <span>Stages und Fortschritt</span>
+          </div>
+          <img
+            class="menu-card-image"
+            src="assets/ui/levelkarte-bandenkick.png"
+            alt="Levelkarte und Fortschritt"
+            draggable="false">
+        </button>
+
+        <!-- 2. Episodenrennen -->
         <button
-    id="openMapButton"
-    class="menu-card has-image">
+          id="openEpisodesButton"
+          class="menu-card has-image episode-menu-card">
+          <div class="menu-card-text">
+            <strong>Episodenrennen</strong>
+            <span id="episodeHomeStatus">Zeitlich begrenzte Spezialstrecken</span>
+          </div>
+          <div class="episode-menu-icon" aria-hidden="true">🏁</div>
+        </button>
 
-    <div class="menu-card-text">
+        <!-- 3. Glücksrad -->
+        <button id="openWheelButton" class="menu-card has-image">
+          <div class="menu-card-text">
+            <strong>Glücksrad</strong>
+            <span>1× täglich kostenlos drehen</span>
+          </div>
+          <img
+            class="menu-card-image"
+            src="assets/ui/gluecksrad-bandenkick.png"
+            alt="Glücksrad – täglicher Bonus"
+            draggable="false">
+        </button>
 
-        <strong>
-            Levelkarte
-        </strong>
+        <!-- 4. Shooter-Shop -->
+        <button id="openShopButton" class="menu-card has-image">
+          <div class="menu-card-text">
+            <strong>Shooter-Shop</strong>
+            <span>Items und Extras entdecken</span>
+          </div>
+          <img
+            class="menu-card-image"
+            src="assets/ui/shop-bandenkick.png"
+            alt="Shooter-Shop mit Items und Extras"
+            draggable="false">
+        </button>
 
-        <span>
-            Stages und Fortschritt
-        </span>
+        <!-- 5. Ranking -->
+        <button id="openRankingButton" class="menu-card has-image">
+          <div class="menu-card-text">
+            <strong>Ranking</strong>
+            <span>Demo der späteren API</span>
+          </div>
+          <img
+            class="menu-card-image"
+            src="assets/ui/ranking-bandenkick.png"
+            alt="Ranking und Bestenliste"
+            draggable="false">
+        </button>
 
-    </div>
-
-    <img
-        class="menu-card-image"
-        src="assets/ui/levelkarte-bandenkick.png"
-        alt="Levelkarte und Fortschritt"
-        draggable="false">
-
-</button>
-
+        <!-- 6. ALTE LEVELKARTE: bewusst deaktiviert, aber NICHT gelöscht -->
         <button
-    id="openRankingButton"
-    class="menu-card has-image">
+          id="openMapButton"
+          class="menu-card has-image legacy-map-card"
+          type="button"
+          disabled
+          aria-hidden="true"
+          tabindex="-1">
+          <div class="menu-card-text">
+            <strong>Alte Levelkarte</strong>
+            <span>Deaktiviert</span>
+          </div>
+          <img
+            class="menu-card-image"
+            src="assets/ui/levelkarte-bandenkick.png"
+            alt=""
+            draggable="false">
+        </button>
 
-    <div class="menu-card-text">
-
-        <strong>
-            Ranking
-        </strong>
-
-        <span>
-            Demo der späteren API
-        </span>
-
-    </div>
-
-    <img
-        class="menu-card-image"
-        src="assets/ui/ranking-bandenkick.png"
-        alt="Ranking und Bestenliste"
-        draggable="false">
-
-</button>
-        <button
-    id="openShopButton"
-    class="menu-card has-image">
-
-    <div class="menu-card-text">
-
-        <strong>
-            Shooter-Shop
-        </strong>
-
-        <span>
-            Items und Extras entdecken
-        </span>
-
-    </div>
-
-    <img
-        class="menu-card-image"
-        src="assets/ui/shop-bandenkick.png"
-        alt="Shooter-Shop mit Items und Extras"
-        draggable="false">
-
-</button>
-
-<button
-    id="openWheelButton"
-    class="menu-card has-image">
-
-    <div class="menu-card-text">
-
-        <strong>
-            Glücksrad
-        </strong>
-
-        <span>
-            1× täglich kostenlos drehen
-        </span>
-
-    </div>
-
-    <img
-        class="menu-card-image"
-        src="assets/ui/gluecksrad-bandenkick.png"
-        alt="Glücksrad – täglicher Bonus"
-        draggable="false">
-
-</button>
-
-
-<button id="openWorldMap2Button" class="menu-card has-image">
-
-  <div class="menu-card-text">
-
-    <strong>
-      Endlos-Levelkarte
-    </strong>
-
-    <span>
-      Test · neue Hauptlevel-Strecke
-    </span>
-
-  </div>
-
-  <div
-    class="world2-menu-icon"
-    aria-hidden="true">
-  </div>
-
-</button>
-
-      
-
-<button
-    id="openEpisodesButton"
-    class="menu-card has-image episode-menu-card">
-
-    <div class="menu-card-text">
-        <strong>Episodenrennen</strong>
-        <span id="episodeHomeStatus">Zeitlich begrenzte Spezialstrecken</span>
-    </div>
-
-    <div class="episode-menu-icon" aria-hidden="true">🏁</div>
-</button>
-
-        <button
-    id="openSettingsButton"
-    class="menu-card has-image">
-
-    <div class="menu-card-text">
-
-        <strong>
-            Einstellungen
-        </strong>
-
-        <span>
-            Sound und Darstellung
-        </span>
-
-    </div>
-
-    <img
-        class="menu-card-image"
-        src="assets/ui/einstellungen-bandenkick.png"
-        alt="Einstellungen"
-        draggable="false">
-
-</button>
+        <!-- 7. Einstellungen -->
+        <button id="openSettingsButton" class="menu-card has-image">
+          <div class="menu-card-text">
+            <strong>Einstellungen</strong>
+            <span>Sound und Darstellung</span>
+          </div>
+          <img
+            class="menu-card-image"
+            src="assets/ui/einstellungen-bandenkick.png"
+            alt="Einstellungen"
+            draggable="false">
+        </button>
       </div>
     </section>
 
@@ -232,7 +173,7 @@
     </section>
 
 <!-- =========================================================
-     ENDLOS-LEVELKARTE 2 – TESTSYSTEM
+     LEVELKARTE – HAUPTSPIEL
      ========================================================= -->
 
 <section id="worldMap2Screen" class="screen hidden">
@@ -251,7 +192,7 @@
       <div class="world2-title">
 
         <strong id="worldMap2StageLabel">
-          Endlos-Levelkarte
+          Levelkarte
         </strong>
 
         <span id="worldMap2ProgressLabel">

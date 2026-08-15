@@ -3086,3 +3086,19 @@ font-weight:900;
     font-size: 22px;
   }
 }
+
+
+/* =========================================================
+   ALTE LEVELKARTE – DEAKTIVIERT, NICHT GELÖSCHT
+   ========================================================= */
+#openMapButton.legacy-map-card {
+  display: none !important;
+}
+
+/* =========================================================
+   ALTE LEVELKARTE
+   Im System behalten, aber auf der Startseite nicht anzeigen.
+   ========================================================= */
+#openMapButton.legacy-map-card {
+  display: none !important;
+}

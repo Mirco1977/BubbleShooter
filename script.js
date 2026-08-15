@@ -1799,7 +1799,7 @@ window.BK_openMainLevel = (levelNumber) => {
     dom.levelBackButton.dataset.back = "worldMap2";
 
     dom.levelBackButton.textContent =
-      "← Endloskarte";
+      "← Levelkarte";
 
   }
 
@@ -4351,7 +4351,11 @@ const Shop = {
       getStageForLevel(state.progress.unlockedLevel);
 
     SaveManager.saveProgress(state.progress);
-    Navigation.show("map");
+
+    // Die neue Levelkarte ist jetzt das Hauptspiel.
+    if (window.WorldMap2) {
+      window.WorldMap2.open();
+    }
   });
 
   dom.newGameButton.addEventListener("click", () => {
@@ -4372,7 +4376,10 @@ const Shop = {
     showToast("Neuer Spielstand wurde angelegt.");
   });
 
-  dom.openMapButton.addEventListener("click", () => Navigation.show("map"));
+  // Alte Stage-Levelkarte bleibt im Projekt, ist auf der Startseite aber deaktiviert.
+  dom.openMapButton?.addEventListener("click", (event) => {
+    event.preventDefault();
+  });
  
   dom.openRankingButton.addEventListener("click", () => Navigation.show("ranking"));
 
@@ -4415,7 +4422,7 @@ const Shop = {
 
         const target = button.dataset.back;
 
-        // Zurück aus Levelvorschau zur Endloskarte
+        // Zurück aus Levelvorschau zur Levelkarte
         if (target === "worldMap2") {
 
             document
