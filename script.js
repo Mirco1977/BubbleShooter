@@ -766,11 +766,9 @@ const PreLevelLoadout = {
 };
 
 function showUnlockedItemReward(levelNumber, wasAlreadyCompleted) {
-  const unlockedEntry = wasAlreadyCompleted
-    ? null
-    : Object.entries(ITEM_UNLOCKS).find(
-        ([, item]) => item.unlockLevel === Number(levelNumber)
-      );
+  const unlockedEntry = Object.entries(ITEM_UNLOCKS).find(
+    ([, item]) => item.unlockLevel === Number(levelNumber)
+  );
 
   if (!unlockedEntry) {
     dom.itemUnlockReward.classList.add("hidden");
@@ -784,18 +782,52 @@ function showUnlockedItemReward(levelNumber, wasAlreadyCompleted) {
 
   ensureItemInventory();
 
+  // Merkt sich separat, ob die Freischalt-Animation bereits gezeigt wurde.
+  // Das ist besonders für nachträglich eingebaute Items wichtig: Ein Spieler
+  // kann Level 55/65 schon vor der Einführung des Items geschafft haben.
+  // In diesem Fall darf ein vorhandenes altes Level-Ergebnis die neue
+  // Freischalt-Animation nicht unterdrücken.
+  if (!state.progress.itemUnlockAnimationsShown ||
+      typeof state.progress.itemUnlockAnimationsShown !== "object") {
+    state.progress.itemUnlockAnimationsShown = {};
+  }
+
+  const retroactiveItems = new Set(["colorbomb", "hourglass"]);
+  const animationAlreadyShown = Boolean(
+    state.progress.itemUnlockAnimationsShown[itemKey]
+  );
+
+  // Für die bisherigen Items bleibt das alte Verhalten erhalten.
+  // Farbbombe und Sanduhr dürfen dagegen einmalig auch bei einem bereits
+  // früher absolvierten Level ihre Freischalt-Animation nachholen.
+  if (animationAlreadyShown || (wasAlreadyCompleted && !retroactiveItems.has(itemKey))) {
+    dom.itemUnlockReward.classList.add("hidden");
+    dom.itemUnlockImage.removeAttribute("src");
+    dom.itemUnlockImage.alt = "";
+    dom.itemUnlockName.textContent = "";
+    return;
+  }
+
   const alreadyGranted = Boolean(state.progress.itemStarterRewards[itemKey]);
 
   if (!alreadyGranted) {
     state.progress.inventory[itemKey] = getItemAmount(itemKey) + ITEM_START_AMOUNT;
     state.progress.itemStarterRewards[itemKey] = true;
-    SaveManager.saveProgress(state.progress);
   }
+
+  state.progress.itemUnlockAnimationsShown[itemKey] = true;
+  SaveManager.saveProgress(state.progress);
 
   dom.itemUnlockImage.src = unlockedItem.image;
   dom.itemUnlockImage.alt = unlockedItem.label;
   dom.itemUnlockName.textContent = `${unlockedItem.label} ×${ITEM_START_AMOUNT}`;
   dom.itemUnlockReward.classList.remove("hidden");
+
+  // Animation auch dann zuverlässig neu starten, wenn das Ergebnis-Popup
+  // bereits zuvor im selben Browser-Lauf geöffnet war.
+  dom.itemUnlockReward.classList.remove("item-unlock-replay");
+  void dom.itemUnlockReward.offsetWidth;
+  dom.itemUnlockReward.classList.add("item-unlock-replay");
 
   updateItemBarLocks();
 }
