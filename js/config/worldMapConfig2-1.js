@@ -120,8 +120,6 @@ stageLayouts: {
     { level: 15, type: "item", icon: "🌈", label: "Regenbogenball" },
     { level: 25, type: "item", icon: "🔍", label: "Zielhilfe" },
     { level: 35, type: "item", icon: "💣", label: "Bombenball" },
-    { level: 45, type: "item", icon: "⚡", label: "Thunder Ball" },
-    { level: 55, type: "item", icon: "🎨", label: "Farbbombe" },
-    { level: 65, type: "item", icon: "⌛", label: "Sanduhr" }
+    { level: 45, type: "item", icon: "⚡", label: "Thunder Ball" }
   ]
 };

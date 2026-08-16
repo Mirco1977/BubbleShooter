@@ -259,28 +259,6 @@
 
 </div>
 
-        <div id="preLevelLoadout" class="prelevel-loadout" aria-label="Items für dieses Level auswählen">
-          <div class="prelevel-loadout-header">
-            <span class="prelevel-loadout-eyebrow">DEIN LOADOUT</span>
-            <strong>Wähle bis zu 4 Items</strong>
-            <small>Tippe ein Item an, um es mitzunehmen.</small>
-          </div>
-
-          <div id="preLevelLoadoutSlots" class="prelevel-loadout-slots" aria-label="Ausgewählte Items">
-            <button class="prelevel-loadout-slot" type="button" data-slot="0" aria-label="Slot 1"></button>
-            <button class="prelevel-loadout-slot" type="button" data-slot="1" aria-label="Slot 2"></button>
-            <button class="prelevel-loadout-slot" type="button" data-slot="2" aria-label="Slot 3"></button>
-            <button class="prelevel-loadout-slot" type="button" data-slot="3" aria-label="Slot 4"></button>
-          </div>
-
-          <div class="prelevel-loadout-items-wrap">
-            <button id="preLevelLoadoutPrev" class="prelevel-loadout-scroll-arrow prelevel-loadout-scroll-arrow-left" type="button" aria-label="Items nach links scrollen">‹</button>
-            <div id="preLevelLoadoutItems" class="prelevel-loadout-items"></div>
-            <button id="preLevelLoadoutNext" class="prelevel-loadout-scroll-arrow prelevel-loadout-scroll-arrow-right" type="button" aria-label="Items nach rechts scrollen">›</button>
-          </div>
-          <div id="preLevelLoadoutHint" class="prelevel-loadout-hint" aria-live="polite"></div>
-        </div>
-
         <button id="startLevelButton" class="primary-button">
           Level starten
         </button>
@@ -315,14 +293,10 @@
         <div><span>Ziel</span><strong id="targetScoreDisplay">1.000</strong></div>
         <div><span>Schüsse</span><strong id="shotsDisplay">0</strong></div>
         <div><span>Farben</span><strong id="colorsDisplay">3</strong></div>
-        <div id="speedTimerHud" class="speed-timer-hud hidden"><span>Zeit</span><strong id="speedTimerDisplay">0</strong></div>
       </div>
 
     <div id="gameContainer" class="game-container">
         <canvas id="gameCanvas" width="480" height="700"></canvas>
-        <div id="speedCountdownOverlay" class="speed-countdown-overlay hidden" aria-live="assertive">
-          <span id="speedCountdownText">3</span>
-        </div>
     
     
     
@@ -395,34 +369,6 @@
             aria-label="Thunder Ball – gesperrt bis Level 45">
             <img src="assets/ui/thunder-ball.png" alt="Thunder Ball">
             <span class="item-info-button" data-item="thunder">
-                i
-            </span>
-            <span class="item-count">3</span>
-            <span class="item-lock-icon" aria-hidden="true">🔒</span>
-        </button>
-
-        <button
-            id="colorBombItemButton"
-            class="item-bar-button color-bomb-item locked-item"
-            type="button"
-            disabled
-            aria-label="Farbbombe – gesperrt bis Level 55">
-            <img src="assets/ui/color-bomb.png" alt="Farbbombe">
-            <span class="item-info-button" data-item="colorbomb">
-                i
-            </span>
-            <span class="item-count">3</span>
-            <span class="item-lock-icon" aria-hidden="true">🔒</span>
-        </button>
-
-        <button
-            id="hourglassItemButton"
-            class="item-bar-button hourglass-item locked-item"
-            type="button"
-            disabled
-            aria-label="Sanduhr – gesperrt bis Level 65">
-            <img src="assets/ui/hourglass.svg" alt="Sanduhr">
-            <span class="item-info-button" data-item="hourglass">
                 i
             </span>
             <span class="item-count">3</span>

@@ -320,8 +320,6 @@ const THEME_PATH = [
     bombItemButton: $("bombItemButton"),
     thunderItemButton: $("thunderItemButton"),
     rainbowItemButton: $("rainbowItemButton"),
-    colorBombItemButton: $("colorBombItemButton"),
-    hourglassItemButton: $("hourglassItemButton"),
     switchItemButton: $("switchItemButton"),
     aimItemButton: $("aimItemButton"),
     settingsItemButton: $("settingsItemButton"),
@@ -345,12 +343,6 @@ const THEME_PATH = [
     levelColors: $("levelColors"),
     levelTarget: $("levelTarget"),
     levelBest: $("levelBest"),
-    preLevelLoadout: $("preLevelLoadout"),
-    preLevelLoadoutSlots: $("preLevelLoadoutSlots"),
-    preLevelLoadoutItems: $("preLevelLoadoutItems"),
-    preLevelLoadoutPrev: $("preLevelLoadoutPrev"),
-    preLevelLoadoutNext: $("preLevelLoadoutNext"),
-    preLevelLoadoutHint: $("preLevelLoadoutHint"),
     startLevelButton: $("startLevelButton"),
 
     playLevelTitle: $("playLevelTitle"),
@@ -359,10 +351,6 @@ const THEME_PATH = [
     targetScoreDisplay: $("targetScoreDisplay"),
     shotsDisplay: $("shotsDisplay"),
     colorsDisplay: $("colorsDisplay"),
-    speedTimerHud: $("speedTimerHud"),
-    speedTimerDisplay: $("speedTimerDisplay"),
-    speedCountdownOverlay: $("speedCountdownOverlay"),
-    speedCountdownText: $("speedCountdownText"),
     gameCanvas: $("gameCanvas"),
   
     stageCompleteOverlay: $("stageCompleteOverlay"),
@@ -468,20 +456,6 @@ const ITEM_UNLOCKS = {
     unlockLevel: 45,
     label: "Thunder Ball",
     image: "assets/ui/thunder-ball.png"
-  },
-
-  colorbomb: {
-    button: dom.colorBombItemButton,
-    unlockLevel: 55,
-    label: "Farbbombe",
-    image: "assets/ui/color-bomb.png"
-  },
-
-  hourglass: {
-    button: dom.hourglassItemButton,
-    unlockLevel: 65,
-    label: "Sanduhr",
-    image: "assets/ui/hourglass.svg"
   }
 
 };
@@ -583,12 +557,6 @@ function updateItemBarLocks() {
     const unlocked = isItemUnlocked(itemKey);
     const amount = getItemAmount(itemKey);
     const empty = unlocked && amount <= 0;
-    const speedOnlyUnavailable =
-      itemKey === "hourglass" &&
-      (!BubbleGame.speedMode || !BubbleGame.running || BubbleGame.levelFinished);
-    const notEquipped =
-      Boolean(BubbleGame.running) &&
-      !BubbleGame.equippedItems?.has(itemKey);
     const countElement = item.button.querySelector(".item-count");
 
     if (countElement) {
@@ -596,9 +564,7 @@ function updateItemBarLocks() {
     }
 
     item.button.classList.toggle("locked-item", !unlocked);
-    item.button.classList.toggle("item-mode-disabled", unlocked && speedOnlyUnavailable);
-    item.button.classList.toggle("item-not-equipped", unlocked && notEquipped);
-    item.button.disabled = !unlocked || empty || speedOnlyUnavailable || notEquipped;
+    item.button.disabled = !unlocked || empty;
 
     if (!unlocked) {
       item.button.setAttribute(
@@ -609,161 +575,12 @@ function updateItemBarLocks() {
     } else if (empty) {
       item.button.setAttribute("aria-label", `${item.label} – Bestand 0`);
       item.button.title = `${item.label}: 0 verfügbar`;
-    } else if (notEquipped) {
-      item.button.setAttribute("aria-label", `${item.label} – nicht für dieses Level ausgewählt`);
-      item.button.title = `${item.label}: nicht im Loadout`;
-    } else if (speedOnlyUnavailable) {
-      item.button.setAttribute("aria-label", `${item.label} – nur im Speedgame nutzbar`);
-      item.button.title = `${item.label}: nur im Speedgame nutzbar`;
     } else {
       item.button.setAttribute("aria-label", `${item.label} – ${amount} verfügbar`);
       item.button.title = `${item.label}: ${amount} verfügbar`;
     }
   });
 }
-
-const PreLevelLoadout = {
-  maxItems: 4,
-  selected: [],
-  levelConfig: null,
-
-  open(levelConfig) {
-    this.levelConfig = levelConfig || {};
-    this.selected = [];
-    this.render();
-  },
-
-  isSpeedGame() {
-    return this.levelConfig?.mode === "speed";
-  },
-
-  isAvailable(itemKey) {
-    if (!isItemUnlocked(itemKey)) return false;
-    if (getItemAmount(itemKey) <= 0) return false;
-    if (itemKey === "hourglass" && !this.isSpeedGame()) return false;
-    return true;
-  },
-
-  toggle(itemKey) {
-    if (!this.isAvailable(itemKey)) return;
-
-    const index = this.selected.indexOf(itemKey);
-    if (index >= 0) {
-      this.selected.splice(index, 1);
-      this.render();
-      return;
-    }
-
-    if (this.selected.length >= this.maxItems) {
-      if (dom.preLevelLoadoutHint) {
-        dom.preLevelLoadoutHint.textContent = "Maximal 4 Items pro Level.";
-        dom.preLevelLoadoutHint.classList.add("show");
-        setTimeout(() => dom.preLevelLoadoutHint?.classList.remove("show"), 1200);
-      }
-      return;
-    }
-
-    this.selected.push(itemKey);
-    this.render();
-  },
-
-  removeAt(slotIndex) {
-    if (slotIndex < 0 || slotIndex >= this.selected.length) return;
-    this.selected.splice(slotIndex, 1);
-    this.render();
-  },
-
-  getSelected() {
-    return [...this.selected];
-  },
-
-  scrollItems(direction) {
-    if (!dom.preLevelLoadoutItems) return;
-    const amount = Math.max(120, Math.round(dom.preLevelLoadoutItems.clientWidth * 0.72));
-    dom.preLevelLoadoutItems.scrollBy({ left: direction * amount, behavior: "smooth" });
-  },
-
-  updateScrollArrows() {
-    const scroller = dom.preLevelLoadoutItems;
-    if (!scroller) return;
-
-    const maxScroll = Math.max(0, scroller.scrollWidth - scroller.clientWidth);
-    const hasOverflow = maxScroll > 2;
-    const atStart = scroller.scrollLeft <= 2;
-    const atEnd = scroller.scrollLeft >= maxScroll - 2;
-
-    if (dom.preLevelLoadoutPrev) {
-      dom.preLevelLoadoutPrev.hidden = !hasOverflow;
-      dom.preLevelLoadoutPrev.disabled = !hasOverflow || atStart;
-    }
-    if (dom.preLevelLoadoutNext) {
-      dom.preLevelLoadoutNext.hidden = !hasOverflow;
-      dom.preLevelLoadoutNext.disabled = !hasOverflow || atEnd;
-    }
-  },
-
-  render() {
-    if (!dom.preLevelLoadoutItems || !dom.preLevelLoadoutSlots) return;
-
-    ensureItemInventory();
-
-    const slots = [...dom.preLevelLoadoutSlots.querySelectorAll(".prelevel-loadout-slot")];
-    slots.forEach((slot, index) => {
-      const itemKey = this.selected[index];
-      const item = itemKey ? ITEM_UNLOCKS[itemKey] : null;
-      slot.innerHTML = item
-        ? `<img src="${item.image}" alt="${item.label}"><span class="prelevel-slot-remove" aria-hidden="true">×</span>`
-        : `<span class="prelevel-slot-plus" aria-hidden="true">+</span>`;
-      slot.classList.toggle("filled", Boolean(item));
-      slot.title = item ? `${item.label} entfernen` : `Freier Item-Slot ${index + 1}`;
-    });
-
-    dom.preLevelLoadoutItems.innerHTML = "";
-
-    Object.entries(ITEM_UNLOCKS).forEach(([itemKey, item]) => {
-      if (!isItemUnlocked(itemKey)) return;
-
-      const amount = getItemAmount(itemKey);
-      const selected = this.selected.includes(itemKey);
-      const speedBlocked = itemKey === "hourglass" && !this.isSpeedGame();
-      const empty = amount <= 0;
-      const button = document.createElement("button");
-      button.type = "button";
-      button.className = "prelevel-item-button";
-      button.classList.toggle("selected", selected);
-      button.classList.toggle("mode-disabled", speedBlocked);
-      button.classList.toggle("empty", empty);
-      button.disabled = speedBlocked || empty;
-      button.dataset.itemKey = itemKey;
-      button.innerHTML = `
-        <img src="${item.image}" alt="${item.label}">
-        <span class="prelevel-item-count">${amount}</span>
-        <span class="prelevel-item-name">${item.label}</span>
-        ${selected ? '<span class="prelevel-item-check">✓</span>' : ""}
-      `;
-
-      if (speedBlocked) {
-        button.title = "Nur im Speedgame auswählbar";
-        button.setAttribute("aria-label", `${item.label} – nur im Speedgame auswählbar`);
-      } else if (empty) {
-        button.title = `${item.label}: kein Bestand`;
-        button.setAttribute("aria-label", `${item.label} – kein Bestand`);
-      } else {
-        button.title = selected ? `${item.label} abwählen` : `${item.label} auswählen`;
-        button.setAttribute("aria-label", `${item.label} – Bestand ${amount}`);
-      }
-
-      button.addEventListener("click", () => this.toggle(itemKey));
-      dom.preLevelLoadoutItems.appendChild(button);
-    });
-
-    requestAnimationFrame(() => this.updateScrollArrows());
-
-    if (dom.preLevelLoadoutHint && !dom.preLevelLoadoutHint.classList.contains("show")) {
-      dom.preLevelLoadoutHint.textContent = `${this.selected.length}/${this.maxItems} Items ausgewählt`;
-    }
-  }
-};
 
 function showUnlockedItemReward(levelNumber, wasAlreadyCompleted) {
   const unlockedEntry = wasAlreadyCompleted
@@ -1329,7 +1146,6 @@ function startVictoryImpact(stars) {
       dom.levelTarget.textContent = target.toLocaleString("de-DE");
       dom.levelBest.textContent = result ? `${result.stars} ⭐` : "–";
       renderPreviewBallsForConfig(config, stage);
-      PreLevelLoadout.open(config);
       Navigation.show("level");
     },
 
@@ -1935,9 +1751,6 @@ this.showReward(segment);
         };
         dom.levelGoalText.textContent =
         `Sammle ${levelConfig.need} ${colorNames[levelConfig.only_color]} Bälle`;
-      } else if (levelConfig.mode === "speed") {
-          dom.levelGoalText.textContent =
-          `Erreiche ${target.toLocaleString("de-DE")} Punkte in ${Number(levelConfig.time) || 0} Sekunden`;
       } else {
           dom.levelGoalText.textContent =
           `Erreiche mindestens ${target.toLocaleString("de-DE")} Punkte`;
@@ -1948,7 +1761,6 @@ this.showReward(segment);
       dom.levelBest.textContent = result ? `${result.stars} ⭐` : "–";
     
       renderPreviewBalls(levelNumber);
-      PreLevelLoadout.open(levelConfig);
       Navigation.show("level");
     }
   };
@@ -1995,7 +1807,6 @@ window.BK_openMainLevel = (levelNumber) => {
 
 
   const BubbleGame = {
-    equippedItems: new Set(),
     canvas: null,
     ctx: null,
     width: 480,
@@ -2027,16 +1838,6 @@ window.BK_openMainLevel = (levelNumber) => {
     running: false,
     levelFinished: false,
 
-    // SPEEDGAME
-    speedMode: false,
-    speedCountdownActive: false,
-    speedCountdownStartedAt: 0,
-    speedTimerStartedAt: 0,
-    speedTimeLimit: 0,
-    speedTimeRemaining: 0,
-    speedLastCountdownLabel: "",
-    speedBonusSeconds: 0,
-
     activateBombBall() {
         if (
           !isItemUnlocked("bomb") ||
@@ -2050,7 +1851,6 @@ window.BK_openMainLevel = (levelNumber) => {
         this.shooter.isBomb = true;
         this.shooter.isThunder = false;
         this.shooter.isRainbow = false;
-        this.shooter.isColorBomb = false;
         return true;
     },
 
@@ -2066,7 +1866,6 @@ window.BK_openMainLevel = (levelNumber) => {
 
         this.shooter.isBomb = false;
         this.shooter.isRainbow = false;
-        this.shooter.isColorBomb = false;
         this.shooter.isThunder = true;
         return true;
     },
@@ -2083,61 +1882,7 @@ window.BK_openMainLevel = (levelNumber) => {
 
         this.shooter.isBomb = false;
         this.shooter.isThunder = false;
-        this.shooter.isColorBomb = false;
         this.shooter.isRainbow = true;
-        return true;
-    },
-
-    activateColorBomb() {
-        if (
-          !isItemUnlocked("colorbomb") ||
-          !this.shooter ||
-          this.shooter.moving
-        ) return false;
-
-        if (this.shooter.isColorBomb) return false;
-        if (!consumeItem("colorbomb")) return false;
-
-        this.shooter.isBomb = false;
-        this.shooter.isThunder = false;
-        this.shooter.isRainbow = false;
-        this.shooter.isColorBomb = true;
-        return true;
-    },
-
-    activateHourglass() {
-        // Nur im Speedgame: sofort +10 Sekunden auf die aktuelle Restzeit.
-        // Funktioniert auch bereits während des 3-2-1-START-Countdowns.
-        if (
-          !isItemUnlocked("hourglass") ||
-          !this.speedMode ||
-          !this.running ||
-          this.levelFinished
-        ) return false;
-
-        if (!consumeItem("hourglass")) return false;
-
-        const bonus = 10;
-        this.speedBonusSeconds += bonus;
-        this.speedTimeLimit += bonus;
-        this.speedTimeRemaining += bonus;
-
-        if (dom.speedTimerDisplay) {
-          dom.speedTimerDisplay.textContent = String(
-            Math.max(0, Math.ceil(this.speedTimeRemaining))
-          );
-        }
-
-        dom.speedTimerHud?.classList.remove("speed-warning");
-        dom.speedTimerHud?.classList.remove("speed-time-bonus");
-        if (dom.speedTimerHud) {
-          void dom.speedTimerHud.offsetWidth;
-          dom.speedTimerHud.classList.add("speed-time-bonus");
-          setTimeout(() => dom.speedTimerHud?.classList.remove("speed-time-bonus"), 650);
-        }
-
-        showToast("Sanduhr: +10 Sekunden");
-        updateItemBarLocks();
         return true;
     },
 
@@ -2280,9 +2025,6 @@ window.BK_openMainLevel = (levelNumber) => {
       this.rainbowImage = new Image();
       this.rainbowImage.src = "assets/ui/rainbow-ball.png";
 
-      this.colorBombImage = new Image();
-      this.colorBombImage.src = "assets/ui/color-bomb.png";
-
       this.aimImage = new Image();
       this.aimImage.src = "assets/ui/lupe.png";
 
@@ -2411,38 +2153,6 @@ window.BK_openMainLevel = (levelNumber) => {
     }
       
       this.targetScore = levelConfig?.targetScore ?? 1000;
-
-      // SPEEDGAME vorbereiten. Der eigentliche Timer startet erst
-      // nach 3, 2, 1 und dem kurzen START-Aufblinken.
-      this.speedMode = levelConfig?.mode === "speed";
-      this.speedTimeLimit = Math.max(1, Number(levelConfig?.time) || 60);
-      this.speedTimeRemaining = this.speedTimeLimit;
-      this.speedCountdownActive = this.speedMode;
-      this.speedCountdownStartedAt = this.speedMode ? performance.now() : 0;
-      this.speedTimerStartedAt = 0;
-      this.speedLastCountdownLabel = "";
-      this.speedBonusSeconds = 0;
-
-      const gameHud = dom.gameCanvas?.closest("#playScreen")?.querySelector(".game-hud");
-      gameHud?.classList.toggle("speedgame-active", this.speedMode);
-      dom.speedTimerHud?.classList.toggle("hidden", !this.speedMode);
-      dom.speedTimerHud?.classList.remove("speed-warning");
-
-      if (dom.speedTimerDisplay) {
-          dom.speedTimerDisplay.textContent = String(this.speedTimeLimit);
-      }
-
-      if (dom.speedCountdownOverlay) {
-          dom.speedCountdownOverlay.classList.toggle("hidden", !this.speedMode);
-          dom.speedCountdownOverlay.classList.remove("start-flash");
-      }
-
-      if (dom.speedCountdownText && this.speedMode) {
-          dom.speedCountdownText.textContent = "3";
-      }
-
-      // Sanduhr nur im aktuell laufenden Speedgame freigeben.
-      updateItemBarLocks();
 
       dom.playLevelTitle.textContent = state.gameMode === "episode"
         ? `${EpisodeRace.getActiveEpisode()?.name || "Episode"} – Level ${levelNumber}`
@@ -2984,7 +2694,6 @@ createShooter() {
         isBomb: false,
         isThunder: false,
         isRainbow: false,
-        isColorBomb: false,
         isAim: false,
         color: color,
         image: color.image || null
@@ -3012,7 +2721,6 @@ createShooter() {
       if (
         !this.running ||
         this.levelFinished ||
-        this.speedCountdownActive ||
         !this.shooter ||
         this.shooter.moving
       ) return;
@@ -3040,72 +2748,7 @@ createShooter() {
       }*/
     },
 
-    updateSpeedGame(currentTime = performance.now()) {
-      if (!this.speedMode || this.levelFinished || !this.running) return;
-
-      // Während der Sieg-Animation bleibt die erreichte Zeit eingefroren.
-      if (this.victoryAnimation) return;
-
-      if (this.speedCountdownActive) {
-        const elapsed = currentTime - this.speedCountdownStartedAt;
-        let label = "";
-        let startFlash = false;
-
-        if (elapsed < 1000) label = "3";
-        else if (elapsed < 2000) label = "2";
-        else if (elapsed < 3000) label = "1";
-        else if (elapsed < 3700) {
-          label = "START";
-          startFlash = true;
-        } else {
-          this.speedCountdownActive = false;
-          this.speedTimerStartedAt = currentTime;
-          dom.speedCountdownOverlay?.classList.add("hidden");
-          dom.speedCountdownOverlay?.classList.remove("start-flash");
-          return;
-        }
-
-        if (label !== this.speedLastCountdownLabel) {
-          this.speedLastCountdownLabel = label;
-          if (dom.speedCountdownText) dom.speedCountdownText.textContent = label;
-
-          // Animation bei jeder neuen Zahl neu triggern.
-          if (dom.speedCountdownOverlay) {
-            dom.speedCountdownOverlay.classList.toggle("start-flash", startFlash);
-            const text = dom.speedCountdownText;
-            if (text) {
-              text.style.animation = "none";
-              void text.offsetWidth;
-              text.style.animation = "";
-            }
-          }
-        }
-        return;
-      }
-
-      if (!this.speedTimerStartedAt) {
-        this.speedTimerStartedAt = currentTime;
-      }
-
-      const elapsedSeconds = (currentTime - this.speedTimerStartedAt) / 1000;
-      this.speedTimeRemaining = Math.max(0, this.speedTimeLimit - elapsedSeconds);
-      const shownSeconds = Math.max(0, Math.ceil(this.speedTimeRemaining));
-
-      if (dom.speedTimerDisplay) {
-        dom.speedTimerDisplay.textContent = String(shownSeconds);
-      }
-      dom.speedTimerHud?.classList.toggle("speed-warning", shownSeconds <= 10);
-
-      if (this.speedTimeRemaining <= 0) {
-        this.speedTimeRemaining = 0;
-        if (dom.speedTimerDisplay) dom.speedTimerDisplay.textContent = "0";
-        this.finish(false, "Zeit abgelaufen! Zielpunktzahl nicht erreicht.");
-      }
-    },
-
     update(deltaTime = 1) {
-      this.updateSpeedGame(performance.now());
-      if (this.levelFinished || !this.running) return;
       let speedMultiplier = 1;
 
       switch (state.settings.gameSpeed) {
@@ -3198,10 +2841,6 @@ createShooter() {
 
     this.removeFloatingBubbles();
 
-    dom.playScore.textContent =
-        `${this.score.toLocaleString("de-DE")} Punkte`;
-    this.checkObjectiveWin();
-
     thunder.currentTarget++;
     thunder.hitTimer = 25;
 }
@@ -3257,13 +2896,10 @@ createShooter() {
           this.attachShooter();
 
           // Max Schüsse prüfen nach abgeschlossenem Schuss
-          const activeConfig = getActiveLevelConfig(state.selectedLevel);
-          const maxShots = Number(activeConfig?.maxShots);
+          const maxShots =
+              getActiveLevelConfig(state.selectedLevel).maxShots;
 
           if (
-              activeConfig?.mode !== "speed" &&
-              Number.isFinite(maxShots) &&
-              maxShots > 0 &&
               !this.levelFinished &&
               this.shots >= maxShots
           ) {
@@ -3284,12 +2920,6 @@ createShooter() {
       if (this.shooter.isThunder) {
         
         this.explodeThunder();
-        this.createShooter();
-        return;
-      }
-
-      if (this.shooter.isColorBomb) {
-        this.explodeColorBomb();
         this.createShooter();
         return;
       }
@@ -3411,13 +3041,7 @@ createShooter() {
 
       const levelConfig = getActiveLevelConfig(state.selectedLevel);
 
-      // Beim SPEEDGAME hat die erreichte Zielpunktzahl Vorrang vor
-      // allen nachfolgenden Verlustprüfungen dieses Schusses.
-      if (levelConfig?.mode === "speed" && this.victoryAnimation) {
-          return;
-      }
-
-      if (!levelConfig || !["colors", "speed"].includes(levelConfig.mode)) {
+      if (!levelConfig || levelConfig.mode !== "colors") {
 
           if (this.score >= this.targetScore) {
               this.victoryAnimation = true;
@@ -3451,14 +3075,6 @@ checkObjectiveWin() {
 
   const levelConfig = getActiveLevelConfig(state.selectedLevel);
 
-
-  // SPEEDGAME: Zielpunktzahl innerhalb der laufenden Zeit erreicht.
-  if (levelConfig?.mode === "speed") {
-      if (this.score >= this.targetScore && !this.speedCountdownActive) {
-          this.victoryAnimation = true;
-      }
-      return;
-  }
 
   // Spezialmodus: Farben sammeln
   if (levelConfig?.mode === "colors") {
@@ -3528,64 +3144,6 @@ this.checkObjectiveWin();
   });
 
   this.removeFloatingBubbles();
-
-  // Wichtig für SPEEDGAME: Auch Punkte durch anschließend fallende Bälle
-  // können die Zielpunktzahl erreichen.
-  dom.playScore.textContent =
-      `${this.score.toLocaleString("de-DE")} Punkte`;
-  this.checkObjectiveWin();
-},
-
-explodeColorBomb() {
-    // Die Farbbombe übernimmt NICHT die Farbe des Shooter-Balls,
-    // sondern exakt die Farbe der tatsächlich getroffenen Kugel.
-    const hitBubble = this.lastHitBubble;
-    const targetColorId = hitBubble?.color?.id;
-
-    // Wurde nur die Decke getroffen, gibt es keine Ziel-Farbe.
-    if (!targetColorId) return;
-
-    Audio.playEffect("hit");
-
-    const removedByColorBomb = this.bubbles.filter(
-        (bubble) => bubble?.color?.id === targetColorId
-    );
-
-    if (removedByColorBomb.length === 0) return;
-
-    removedByColorBomb.forEach((bubble) => {
-        this.createPopEffect(bubble.x, bubble.y, bubble.color);
-
-        if (!this.collectedColors[targetColorId]) {
-            this.collectedColors[targetColorId] = 0;
-        }
-        this.collectedColors[targetColorId]++;
-    });
-
-    const removalSet = new Set(removedByColorBomb);
-    this.bubbles = this.bubbles.filter(
-        (bubble) => !removalSet.has(bubble)
-    );
-
-    // Direkt zerstörte Kugeln zählen wie normale Treffer.
-    this.score += removedByColorBomb.length * 100;
-
-    // Vorhandene Fall-Logik bleibt erhalten:
-    // lose Kugeln fallen, zählen für Farbziele und geben 150 Punkte.
-    this.removeFloatingBubbles();
-
-    dom.playScore.textContent =
-        `${this.score.toLocaleString("de-DE")} Punkte`;
-
-    const levelConfig = getActiveLevelConfig(state.selectedLevel);
-    if (levelConfig?.mode === "colors") {
-        const current =
-            this.collectedColors[levelConfig.only_color] ?? 0;
-        dom.targetScoreDisplay.textContent =
-            `${current}/${levelConfig.need}`;
-    }
-
-    this.checkObjectiveWin();
 },
 
 explodeThunder() {
@@ -3967,20 +3525,7 @@ if (floating.length > 0) {
 },
 
 drawBubble(bubble) {
-
-    // Farbbombe
-    if (bubble.isColorBomb && this.colorBombImage?.complete) {
-        const size = this.radius * 2;
-        this.ctx.drawImage(
-            this.colorBombImage,
-            bubble.x - this.radius,
-            bubble.y - this.radius,
-            size,
-            size
-        );
-        return;
-    }
-
+    
     // Bombenkugel
     if (bubble.isBomb && this.bombImage?.complete) {
 
@@ -4368,10 +3913,7 @@ drawAimGuide() {
       },
     stop() {
       this.running = false;
-      this.speedCountdownActive = false;
       cancelAnimationFrame(this.animationFrame);
-      dom.speedCountdownOverlay?.classList.add("hidden");
-      dom.speedCountdownOverlay?.classList.remove("start-flash");
     },
 
 showLoseShotsPopup(text) {
@@ -4397,16 +3939,14 @@ dom.shotsMapButton.onclick = () => {
     dom.loseShotsPopup.classList.add("hidden");
     if (state.gameMode === "episode") {
         EpisodeRace.exitToEpisodes();
-    } else if (window.WorldMap2?.open) {
-        window.WorldMap2.open();
     } else {
-        Navigation.show("home");
+        Navigation.show("map");
     }
 };
 },
 
 
-    async finish(won, loseMessage = "Level verloren!") {
+    async finish(won) {
       this.explosions = [];
       this.particles = [];
 
@@ -4414,7 +3954,7 @@ dom.shotsMapButton.onclick = () => {
       this.stop();
 
       if (!won) {
-        this.showLoseShotsPopup(loseMessage);
+        this.showLoseShotsPopup("Level verloren!");
         return;
       }
 
@@ -4477,14 +4017,8 @@ dom.shotsMapButton.onclick = () => {
       const oldResult = (state.progress.results || {})[level];
       showUnlockedItemReward(level, Boolean(oldResult));
 
-      if (levelConfig?.mode === "speed") {
-        const usedTime = Math.max(0, this.speedTimeLimit - this.speedTimeRemaining);
-        dom.winResultText.textContent =
-          `${this.score.toLocaleString("de-DE")} Punkte in ${usedTime.toFixed(1).replace(".", ",")} Sekunden.`;
-      } else {
-        dom.winResultText.textContent =
-          `${this.score.toLocaleString("de-DE")} Punkte mit ${this.shots} Schüssen.`;
-      }
+      dom.winResultText.textContent =
+        `${this.score.toLocaleString("de-DE")} Punkte mit ${this.shots} Schüssen.`;
       startVictoryImpact(stars);
 
       if (!oldResult || stars > oldResult.stars || this.score > oldResult.score) {
@@ -4583,14 +4117,7 @@ dom.shotsMapButton.onclick = () => {
           BubbleGame.stop();
           state.progress.selectedStage = getStageForLevel(state.selectedLevel);
           SaveManager.saveProgress(state.progress);
-
-          // Die alte Stage-Karte ist deaktiviert. Standardlevel kehren immer
-          // auf die neue Endloskarte zurück.
-          if (window.WorldMap2?.open) {
-            window.WorldMap2.open();
-          } else {
-            Navigation.show("home");
-          }
+          Navigation.show("map");
         };
       }
 
@@ -4884,25 +4411,6 @@ const Shop = {
     BubbleGame.activateAimItem();
   });
 
-  dom.colorBombItemButton.addEventListener("click", () => {
-    BubbleGame.activateColorBomb();
-  });
-
-  dom.hourglassItemButton.addEventListener("click", () => {
-    BubbleGame.activateHourglass();
-  });
-
-  dom.preLevelLoadoutSlots?.querySelectorAll(".prelevel-loadout-slot").forEach((slot) => {
-    slot.addEventListener("click", () => {
-      PreLevelLoadout.removeAt(Number(slot.dataset.slot));
-    });
-  });
-
-  dom.preLevelLoadoutPrev?.addEventListener("click", () => PreLevelLoadout.scrollItems(-1));
-  dom.preLevelLoadoutNext?.addEventListener("click", () => PreLevelLoadout.scrollItems(1));
-  dom.preLevelLoadoutItems?.addEventListener("scroll", () => PreLevelLoadout.updateScrollArrows(), { passive: true });
-  window.addEventListener("resize", () => PreLevelLoadout.updateScrollArrows());
-
   dom.settingsItemButton.addEventListener("click", () => {
       Navigation.show("settings");
   });
@@ -5024,7 +4532,6 @@ const Shop = {
     });
   }
 
-  BubbleGame.equippedItems = new Set(PreLevelLoadout.getSelected());
   BubbleGame.start(state.selectedLevel);
 
   // Die alte Scrollanimation nur noch bei der alten Levelkarte
@@ -5059,11 +4566,7 @@ const Shop = {
     BubbleGame.stop();
     state.progress.selectedStage = getStageForLevel(state.selectedLevel);
     SaveManager.saveProgress(state.progress);
-    if (window.WorldMap2?.open) {
-      window.WorldMap2.open();
-    } else {
-      Navigation.show("home");
-    }
+    Navigation.show("map");
   });
 
   dom.stageCompleteButton.addEventListener("click", () => {
@@ -5173,16 +4676,6 @@ const ITEM_INFO = {
     aim: {
         title: "Zielhilfe",
         text: "Die Zielhilfe zeigt dir die Flugbahn deiner Kugel und unterstützt dich bei präzisen Treffern."
-    },
-
-    colorbomb: {
-        title: "Farbbombe",
-        text: "Die Farbbombe zerstört alle Kugeln der aktuell abgeschossenen Farbe. Dadurch freigewordene Kugeln fallen wie gewohnt herunter und werden ebenfalls als Punkte gewertet."
-    },
-
-    hourglass: {
-        title: "Sanduhr",
-        text: "Die Sanduhr ist ein Speedgame-Item. Jeder Einsatz schreibt dir sofort 10 Sekunden auf die aktuelle Restzeit gut. Sie kann während des gesamten Speedgames eingesetzt werden."
     }
 
 };

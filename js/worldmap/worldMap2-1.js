@@ -487,9 +487,7 @@ xForLevel(level) {
     15: "assets/ui/rainbow-ball.png",
     25: "assets/ui/lupe.png",
     35: "assets/ui/bomb-ball.png",
-    45: "assets/ui/thunder-ball.png",
-    55: "assets/ui/color-bomb.png",
-    65: "assets/ui/hourglass.svg"
+    45: "assets/ui/thunder-ball.png"
   };
 
   return images[level] || "";

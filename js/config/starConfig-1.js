@@ -1053,65 +1053,64 @@ const STAR_CONFIG = {
         oneStar: 30
     }
 },
-
-71: {
-    // SPEEDGAME-BEISPIEL
-    // Ziel: targetScore innerhalb von time Sekunden erreichen.
-    ballTypes: 5,
-    addRowAfterShot: "y",
-    rows: 6,
-    targetScore: 5000,
-    mode: "speed",
-    time: 60,
-
-    // Sterne werden ausschließlich über die erreichte Punktzahl vergeben.
-    points: {
-        threeStars: 6500,
-        twoStars: 5750,
-        oneStar: 5000
-    }
-},
 };
 
 export function calculateStars(level, stats){
 
     const config = STAR_CONFIG[level];
 
-    if (!config) {
+    if(!config){
         return 1;
     }
 
-    switch (config.mode) {
 
-        case "speed": {
-            const score = Number(stats.score) || 0;
-            const oneStar = Number(config.points?.oneStar ?? config.targetScore ?? 0);
-            const twoStars = Number(config.points?.twoStars ?? oneStar);
-            const threeStars = Number(config.points?.threeStars ?? twoStars);
+    switch(config.mode){
 
-            if (score >= threeStars) return 3;
-            if (score >= twoStars) return 2;
-            if (score >= oneStar) return 1;
-            return 0;
-        }
 
         case "shots":
-        default: {
-            if (config.maxShots && stats.shots > config.maxShots) {
-                return 0;
-            }
 
-            if (stats.shots <= config.shots?.threeStars) {
+            if(stats.shots <= config.shots.threeStars){
                 return 3;
             }
 
-            if (stats.shots <= config.shots?.twoStars) {
+
+            if(stats.shots <= config.shots.twoStars){
                 return 2;
             }
 
-            return 1;
-        }
+
+            if(stats.shots > config.maxShots){
+            return 0;
+            }
+                return 1;
+
+    case "shots":
+
+    if(
+        config.maxShots &&
+        stats.shots > config.maxShots
+    ){
+        return 0;
     }
+
+
+    if(stats.shots <= config.shots.threeStars){
+        return 3;
+    }
+
+
+    if(stats.shots <= config.shots.twoStars){
+        return 2;
+    }
+
+
+    return 1;
+
+        default:
+            return 1;
+
+    }
+
 }
 
 export { STAR_CONFIG };
