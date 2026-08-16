@@ -4069,7 +4069,7 @@ dom.shotsMapButton.onclick = () => {
       dom.nextLevelButton.textContent = cameFromWorldMap2 ? "Weiter" : "Nächstes Level";
       dom.nextLevelButton.onclick = async () => {
 
-        state.progress.unlockedLevel = Math.max(state.progress.unlockedLevel, level + 1);
+            state.progress.unlockedLevel = Math.max(state.progress.unlockedLevel, level + 1);
         SaveManager.saveProgress(state.progress);
 
         if (cameFromWorldMap2) {
@@ -4121,14 +4121,12 @@ dom.shotsMapButton.onclick = () => {
         };
       }
 
-      // Auf der Endloskarte führt "Weiter" direkt in die neue
-      // Karten-Fortschrittsanimation. Das alte Stage-Popup würde sonst
-      // zeitversetzt über diese Animation springen.
-      if (
-        level % GAME_CONFIG.levelsPerStage === 0 &&
-        window.BK_levelOrigin !== "worldMap2"
-      ) {
+      // ALTE LEVELKARTE: Das historische weiße Stage-Popup bleibt erhalten.
+      // ENDLOSKARTE: Dort übernimmt ausschließlich die moderne Stage-Animation
+      // direkt auf der Karte (WorldMap2).
+      if (!cameFromWorldMap2 && level % GAME_CONFIG.levelsPerStage === 0) {
         const finishedStage = getStageForLevel(level);
+
         setTimeout(() => {
           dom.stageCompleteOverlay.classList.remove("hidden");
           dom.stageCompleteName.textContent = `Stage ${finishedStage} geschafft!`;

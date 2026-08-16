@@ -1200,3 +1200,164 @@ body:has(#levelScreen.world2-level-overlay:not(.hidden)) {
   visibility: visible !important;
   opacity: 1;
 }
+
+/* =========================================================
+   STAGEWECHSEL – NEUE STAGE FREIGESCHALTET
+   Erweiterung der MODERNEN WorldMap2-Stage-Celebration.
+   ========================================================= */
+.world2-stage-unlock-card {
+  position: absolute;
+  left: 0;
+  top: -82px;
+  z-index: 3;
+  width: min(310px, 82vw);
+  min-height: 142px;
+  padding: 18px 20px 16px;
+  overflow: hidden;
+  border: 2px solid rgba(255, 220, 91, .96);
+  border-radius: 22px;
+  color: #fff;
+  text-align: center;
+  background:
+    radial-gradient(circle at 50% -10%, rgba(255,220,91,.24), transparent 45%),
+    linear-gradient(155deg, rgba(25,16,17,.98), rgba(80,0,0,.98) 58%, rgba(28,13,15,.98));
+  box-shadow:
+    0 15px 38px rgba(0,0,0,.55),
+    0 0 24px color-mix(in srgb, var(--stage-accent) 42%, transparent),
+    inset 0 1px 0 rgba(255,255,255,.22);
+  opacity: 0;
+  transform: translate(-50%, -190%) scale(.72);
+  transform-origin: 50% 100%;
+}
+
+.world2-stage-unlock-card::before {
+  content: "";
+  position: absolute;
+  inset: -55%;
+  pointer-events: none;
+  opacity: .15;
+  background: repeating-conic-gradient(
+    rgba(255,220,91,.32) 0deg 7deg,
+    transparent 7deg 20deg
+  );
+}
+
+.world2-stage-unlock-card > * {
+  position: relative;
+  z-index: 1;
+}
+
+.world2-stage-unlock-kicker,
+.world2-stage-unlock-name,
+.world2-stage-unlock-number {
+  display: block;
+}
+
+.world2-stage-unlock-kicker {
+  margin-bottom: 8px;
+  color: #ffd95e;
+  font-size: 10px;
+  font-weight: 1000;
+  letter-spacing: 1.45px;
+  text-shadow: 0 2px 5px rgba(0,0,0,.6);
+}
+
+.world2-stage-unlock-logo-wrap {
+  width: 64px;
+  height: 64px;
+  display: grid;
+  place-items: center;
+  margin: 0 auto 7px;
+  border: 2px solid rgba(255,220,91,.9);
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(255,255,255,.18), rgba(0,0,0,.1) 72%);
+  box-shadow: 0 0 17px color-mix(in srgb, var(--stage-accent) 45%, transparent);
+}
+
+.world2-stage-unlock-logo {
+  width: 55px;
+  height: 55px;
+  object-fit: contain;
+  filter: drop-shadow(0 4px 5px rgba(0,0,0,.55));
+}
+
+.world2-stage-unlock-name {
+  font-size: 18px;
+  font-weight: 1000;
+  line-height: 1.05;
+  text-transform: uppercase;
+  text-shadow: 0 3px 5px rgba(0,0,0,.7);
+}
+
+.world2-stage-unlock-number {
+  margin-top: 4px;
+  color: rgba(255,255,255,.72);
+  font-size: 9px;
+  font-weight: 900;
+  letter-spacing: 1.8px;
+}
+
+/* Beide Karten werden beim Einblenden als gemeinsames Paar verschoben.
+   JS berechnet den Wert pro Endgeraet so, dass der Mittelpunkt des
+   Zwischenraums exakt in der sichtbaren Bildschirmmitte liegt. */
+.world2-stage-finish-card,
+.world2-stage-unlock-card {
+  margin-top: 0;
+  transition: margin-top .7s cubic-bezier(.18,.9,.24,1.16);
+}
+
+/* Erst nachdem Stage geschafft sauber aufgeploppt ist. */
+.world2-stage-finish-celebration.unlock-show .world2-stage-finish-card,
+.world2-stage-finish-celebration.unlock-show .world2-stage-unlock-card {
+  margin-top: var(--world2-stage-pair-shift, 0px);
+}
+
+.world2-stage-finish-celebration.unlock-show .world2-stage-finish-card {
+  animation: world2StageCardShiftDown .7s cubic-bezier(.18,.9,.24,1.16) both;
+}
+
+.world2-stage-finish-celebration.unlock-show .world2-stage-unlock-card {
+  animation: world2StageUnlockCardIn .72s cubic-bezier(.18,.9,.24,1.24) both;
+}
+
+.world2-stage-finish-celebration.unlock-show .world2-stage-unlock-card::before {
+  animation: world2StageUnlockRays 8s linear infinite;
+}
+
+@keyframes world2StageCardShiftDown {
+  from { transform: translate(-50%, -100%) scale(1); opacity: 1; }
+  to   { transform: translate(-50%, -20%) scale(.94); opacity: 1; }
+}
+
+@keyframes world2StageUnlockCardIn {
+  0%   { opacity: 0; transform: translate(-50%, -150%) scale(.58); }
+  62%  { opacity: 1; transform: translate(-50%, -194%) scale(1.07); }
+  82%  { opacity: 1; transform: translate(-50%, -188%) scale(.97); }
+  100% { opacity: 1; transform: translate(-50%, -190%) scale(1); }
+}
+
+@keyframes world2StageUnlockRays {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+
+@media (max-width: 430px) {
+  .world2-stage-unlock-card {
+    width: min(292px, 84vw);
+    min-height: 132px;
+    padding: 15px 16px 13px;
+  }
+  .world2-stage-unlock-logo-wrap { width: 58px; height: 58px; }
+  .world2-stage-unlock-logo { width: 49px; height: 49px; }
+  .world2-stage-unlock-name { font-size: 17px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .world2-stage-finish-celebration.unlock-show .world2-stage-finish-card,
+  .world2-stage-finish-celebration.unlock-show .world2-stage-unlock-card,
+  .world2-stage-finish-celebration.unlock-show .world2-stage-unlock-card::before {
+    animation-duration: .01ms !important;
+    animation-iteration-count: 1 !important;
+  }
+}
+
