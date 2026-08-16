@@ -1471,7 +1471,12 @@ function startVictoryImpact(stars) {
 
   const LuckyWheel = {
     spinning: false,
+    stopping: false,
     rotation: 0,
+    spinFrameId: 0,
+    lastFrameTime: 0,
+    stopTimerId: 0,
+    autoStopTimerId: 0,
 
     getTodayKey() {
       const now = new Date();
@@ -1486,7 +1491,6 @@ function startVictoryImpact(stars) {
         state.progress.dailyWheel = { lastSpinDate: "" };
       }
     },
-
 
     canSpinToday() {
 
@@ -1504,7 +1508,6 @@ function startVictoryImpact(stars) {
     =========================================================
     */
 
-
     /*
      * DEMO-MODUS
      *
@@ -1513,268 +1516,400 @@ function startVictoryImpact(stars) {
 
     return true;
 
-},
+    },
 
-renderSegments() {
+    isHourglassOnWheel() {
+      /*
+       * Nach Gewinn von Level 65 ist Level 66 freigeschaltet.
+       * Ab diesem Zeitpunkt ersetzt die Sanduhr das zweite ×3-Zufallsfeld.
+       */
+      return (Number(state.progress.unlockedLevel) || 1) >= 66;
+    },
 
-    if (!dom.wheelSegments) {
-        return;
-    }
+    getSegments() {
+      const hourglassAvailable = this.isHourglassOnWheel();
 
+      return WHEEL_CONFIG.segments.map((segment) => {
+        if (segment.type !== "hourglass-or-random") {
+          return { ...segment };
+        }
 
-    const total =
-        WHEEL_CONFIG.segments.length;
+        if (hourglassAvailable) {
+          return {
+            id: segment.id,
+            type: "item",
+            category: "normal",
+            itemKey: "hourglass",
+            amount: 1
+          };
+        }
 
+        return {
+          id: segment.id,
+          type: "random",
+          category: "random",
+          amount: 3
+        };
+      });
+    },
 
-    dom.wheelSegments.innerHTML =
-        WHEEL_CONFIG.segments
-            .map((segment, index) => {
+    getJackpotItemKeys() {
+      const keys = [...WHEEL_CONFIG.randomItemKeys];
 
-                /*
-                 * Mittelpunkt des jeweiligen
-                 * Glücksrad-Feldes.
-                 */
+      if (this.isHourglassOnWheel()) {
+        keys.push("hourglass");
+      }
 
-                const angle =
-                    (360 / total) * index +
-                    (180 / total);
+      return keys;
+    },
 
+    getRandomRewardItemKey() {
+      const keys = WHEEL_CONFIG.randomItemKeys.filter((key) => ITEM_UNLOCKS[key]);
+      if (!keys.length) return "ballswitch";
+      return keys[Math.floor(Math.random() * keys.length)];
+    },
 
-                const isJackpot =
-                    segment.type === "jackpot";
+    renderSegments() {
+      if (!dom.wheelSegments) return;
 
+      const segments = this.getSegments();
+      const total = segments.length;
 
-                const image =
-                    isJackpot
-                        ? "assets/ui/shop-bandenkick.png"
-                        : ITEM_UNLOCKS[
-                            segment.itemKey
-                          ]?.image;
+      dom.wheelSegments.innerHTML = segments
+        .map((segment, index) => {
+          const angle = (360 / total) * index + (180 / total);
+          const isJackpot = segment.type === "jackpot";
+          const isRandom = segment.type === "random";
+          const item = segment.itemKey ? ITEM_UNLOCKS[segment.itemKey] : null;
 
+          let content = "";
 
-                return `
+          if (isJackpot) {
+            content = `
+              <strong class="wheel-jackpot-label">JACKPOT</strong>
+              <img src="assets/ui/shop-bandenkick.png" alt="Jackpot">
+            `;
+          } else if (isRandom) {
+            content = `
+              <strong class="wheel-item-amount">×3</strong>
+              <span class="wheel-random-mark" aria-label="Zufallsitem">?</span>
+            `;
+          } else {
+            content = `
+              <strong class="wheel-item-amount">×${segment.amount || 1}</strong>
+              <img src="${item?.image || ""}" alt="${item?.label || "Item"}">
+            `;
+          }
 
-                    <div
-                        class="wheel-segment-label"
-                        style="
-                            --segment-angle:${angle}deg;
-                        ">
-
-
-                        <div
-                            class="wheel-segment-content">
-
-
-                            ${
-                                isJackpot
-                                    ? `
-                                        <strong
-                                            class="wheel-jackpot-label">
-                                            JACKPOT
-                                        </strong>
-                                      `
-                                    : `
-                                        <strong
-                                            class="wheel-item-amount">
-                                            ×${segment.amount}
-                                        </strong>
-                                      `
-                            }
-
-
-                            <img
-                                src="${image}"
-                                alt="">
-
-
-                        </div>
-
-                    </div>
-
-                `;
-
-            })
-            .join("");
-
-},
+          return `
+            <div
+              class="wheel-segment-label"
+              data-wheel-type="${segment.category || segment.type}"
+              style="--segment-angle:${angle}deg;">
+              <div class="wheel-segment-content">
+                ${content}
+              </div>
+            </div>
+          `;
+        })
+        .join("");
+    },
 
     render() {
       this.ensureState();
       this.renderSegments();
+
       const available = this.canSpinToday();
+
+      if (this.spinning) {
+        dom.wheelStatus.textContent = this.stopping
+          ? "Das Rad wird langsamer …"
+          : "Drücke STOPP, wenn du das Rad anhalten möchtest.";
+        dom.wheelSpinButton.disabled = this.stopping;
+        dom.wheelSpinButton.textContent = this.stopping ? "RAD STOPPT …" : "STOPP";
+        return;
+      }
+
       dom.wheelStatus.textContent = available
         ? "Dein kostenloser Dreh für heute ist bereit."
         : "Heute bereits gedreht – morgen gibt es den nächsten Gratis-Dreh.";
-      dom.wheelSpinButton.disabled = !available || this.spinning;
+
+      dom.wheelSpinButton.disabled = !available;
       dom.wheelSpinButton.textContent = available ? "JETZT DREHEN" : "HEUTE VERBRAUCHT";
-      if (available && !this.spinning) {
+
+      if (available) {
         dom.wheelReward.classList.add("hidden");
       }
     },
 
     chooseSegmentIndex() {
-      const totalWeight = WHEEL_CONFIG.segments.reduce(
-        (sum, segment) => sum + Math.max(0, Number(segment.weight) || 0), 0
-      );
-      let roll = Math.random() * totalWeight;
-      for (let index = 0; index < WHEEL_CONFIG.segments.length; index++) {
-        roll -= Math.max(0, Number(WHEEL_CONFIG.segments[index].weight) || 0);
-        if (roll <= 0) return index;
+      const segments = this.getSegments();
+      const probabilities = WHEEL_CONFIG.probabilities;
+      const categoryRoll = Math.random() * 100;
+
+      let category = "normal";
+      const normalLimit = Math.max(0, Number(probabilities.normal) || 0);
+      const randomLimit = normalLimit + Math.max(0, Number(probabilities.random) || 0);
+
+      if (categoryRoll < normalLimit) {
+        category = "normal";
+      } else if (categoryRoll < randomLimit) {
+        category = "random";
+      } else {
+        category = "jackpot";
       }
-      return WHEEL_CONFIG.segments.length - 1;
+
+      const candidateIndexes = segments
+        .map((segment, index) => segment.category === category ? index : -1)
+        .filter((index) => index >= 0);
+
+      if (!candidateIndexes.length) {
+        return Math.floor(Math.random() * segments.length);
+      }
+
+      return candidateIndexes[Math.floor(Math.random() * candidateIndexes.length)];
+    },
+
+    resolveReward(segment) {
+      if (segment.type !== "random") {
+        return { ...segment };
+      }
+
+      return {
+        ...segment,
+        rewardItemKey: this.getRandomRewardItemKey(),
+        amount: 3
+      };
     },
 
     grantReward(segment) {
       if (segment.type === "jackpot") {
-        Object.keys(ITEM_UNLOCKS).forEach((itemKey) => addItemAmount(itemKey, 1, false));
+        this.getJackpotItemKeys().forEach((itemKey) => {
+          addItemAmount(itemKey, 1, false);
+        });
         SaveManager.saveProgress(state.progress);
         updateItemBarLocks();
         return;
       }
-      addItemAmount(segment.itemKey, segment.amount || 1);
+
+      const rewardKey = segment.type === "random"
+        ? segment.rewardItemKey
+        : segment.itemKey;
+
+      if (!rewardKey) return;
+      addItemAmount(rewardKey, segment.amount || 1);
     },
 
-   showReward(segment) {
+    showReward(segment) {
+      dom.wheelReward.classList.remove("hidden");
+      dom.wheelReward.classList.remove("wheel-reward-active");
+      void dom.wheelReward.offsetWidth;
+      dom.wheelReward.classList.add("wheel-reward-active");
+      dom.wheelRewardItems.innerHTML = "";
 
-    dom.wheelReward.classList.remove("hidden");
+      if (segment.type === "jackpot") {
+        const jackpotKeys = this.getJackpotItemKeys();
 
-    dom.wheelReward.classList.remove(
-        "wheel-reward-active"
-    );
+        dom.wheelRewardImage.src = "assets/ui/shop-bandenkick.png";
+        dom.wheelRewardTitle.textContent = "JACKPOT!";
+        dom.wheelRewardText.innerHTML = `
+          Von jedem verfügbaren Glücksrad-Item 1× gewonnen
+          <span class="wheel-inventory-note">
+            Gewinn wurde deinem Bestand hinzugefügt.
+          </span>
+        `;
 
-    void dom.wheelReward.offsetWidth;
-
-    dom.wheelReward.classList.add(
-        "wheel-reward-active"
-    );
-
-    dom.wheelRewardItems.innerHTML = "";
-
-
-    if (segment.type === "jackpot") {
-
-        dom.wheelRewardImage.src =
-            "assets/ui/shop-bandenkick.png";
-
-        dom.wheelRewardTitle.textContent =
-            "JACKPOT!";
-
-        dom.wheelRewardText.innerHTML =
-            `
-                Von jedem Item 1× gewonnen
-                <span class="wheel-inventory-note">
-                    Gewinn wurde deinem Bestand hinzugefügt.
-                </span>
+        dom.wheelRewardItems.innerHTML = jackpotKeys
+          .map((key) => {
+            const item = ITEM_UNLOCKS[key];
+            return `
+              <div class="wheel-jackpot-item">
+                <img src="${item.image}" alt="${item.label}">
+                <span>1×</span>
+              </div>
             `;
+          })
+          .join("");
 
+        return;
+      }
 
-        dom.wheelRewardItems.innerHTML =
-            Object.entries(ITEM_UNLOCKS)
-                .map(([key, item]) => `
+      const rewardKey = segment.type === "random"
+        ? segment.rewardItemKey
+        : segment.itemKey;
+      const item = ITEM_UNLOCKS[rewardKey];
 
-                    <div class="wheel-jackpot-item">
+      if (!item) return;
 
-                        <img
-                            src="${item.image}"
-                            alt="${item.label}">
+      dom.wheelRewardImage.src = item.image;
+      dom.wheelRewardTitle.textContent = segment.type === "random"
+        ? "ZUFALLSGEWINN!"
+        : "GEWONNEN!";
+      dom.wheelRewardText.innerHTML = `
+        ${segment.amount || 1}× ${item.label}
+        <span class="wheel-inventory-note">
+          Gewinn wurde deinem Bestand hinzugefügt.
+        </span>
+      `;
+    },
 
-                        <span>
-                            1×
-                        </span>
-
-                    </div>
-
-                `)
-                .join("");
-
-    } else {
-
-        const item =
-            ITEM_UNLOCKS[segment.itemKey];
-
-
-        dom.wheelRewardImage.src =
-            item.image;
-
-
-        dom.wheelRewardTitle.textContent =
-            "GEWONNEN!";
-
-
-        dom.wheelRewardText.innerHTML =
-            `
-                ${segment.amount}× ${item.label}
-
-                <span class="wheel-inventory-note">
-                    Gewinn wurde deinem Bestand hinzugefügt.
-                </span>
-            `;
-
-    }
-
-},
-
-    spin() {
-      if (this.spinning || !this.canSpinToday()) return;
+    startFreeSpin() {
       this.spinning = true;
-      dom.wheelSpinButton.disabled = true;
+      this.stopping = false;
+      this.lastFrameTime = performance.now();
       dom.wheelReward.classList.add("hidden");
+      dom.wheelDisc.style.transition = "none";
 
+      window.clearTimeout(this.autoStopTimerId);
+      this.autoStopTimerId = 0;
+
+      this.render();
+
+      const speed = Math.max(60, Number(WHEEL_CONFIG.freeSpinSpeedDegPerSecond) || 180);
+
+      const tick = (now) => {
+        if (!this.spinning || this.stopping) return;
+
+        const deltaSeconds = Math.min(0.05, Math.max(0, (now - this.lastFrameTime) / 1000));
+        this.lastFrameTime = now;
+        this.rotation += speed * deltaSeconds;
+        dom.wheelDisc.style.transform = `rotate(${this.rotation}deg)`;
+        this.spinFrameId = requestAnimationFrame(tick);
+      };
+
+      this.spinFrameId = requestAnimationFrame(tick);
+
+      /*
+       * Sicherheitsende nach spätestens 25 Sekunden. Es wird bewusst dieselbe
+       * stopSpin()-Routine benutzt wie beim manuellen STOPP. Dadurch gibt es
+       * nur EIN Auslaufverhalten und keinen zweiten Anschub.
+       */
+      const maxFreeSpinMs = Math.max(1000, Number(WHEEL_CONFIG.maxFreeSpinMs) || 25000);
+      this.autoStopTimerId = window.setTimeout(() => {
+        this.autoStopTimerId = 0;
+        this.stopSpin();
+      }, maxFreeSpinMs);
+    },
+
+    stopSpin() {
+      if (!this.spinning || this.stopping) return;
+
+      this.stopping = true;
+
+      window.clearTimeout(this.autoStopTimerId);
+      this.autoStopTimerId = 0;
+
+      if (this.spinFrameId) {
+        cancelAnimationFrame(this.spinFrameId);
+        this.spinFrameId = 0;
+      }
+
+      const segments = this.getSegments();
       const index = this.chooseSegmentIndex();
-      const total = WHEEL_CONFIG.segments.length;
+      const segment = this.resolveReward(segments[index]);
+      const total = segments.length;
       const segmentAngle = 360 / total;
       const centerAngle = index * segmentAngle + segmentAngle / 2;
-      const extraTurns = 6 + Math.floor(Math.random() * 3);
       const currentNormalized = ((this.rotation % 360) + 360) % 360;
       const targetNormalized = (360 - centerAngle) % 360;
       const correction = (targetNormalized - currentNormalized + 360) % 360;
-      this.rotation += extraTurns * 360 + correction;
 
-      dom.wheelDisc.style.transform = `rotate(${this.rotation}deg)`;
+      /*
+       * Sanftes Auslaufen OHNE erneuten Schwung:
+       * easeOutCubic hat am Anfang die Geschwindigkeit 3 * Weg / Dauer.
+       * Wir berechnen deshalb die Dauer aus der aktuellen Drehgeschwindigkeit,
+       * sodass die Animation exakt mit der bisherigen Geschwindigkeit beginnt
+       * und danach ausschließlich langsamer wird.
+       */
+      const currentSpeed = Math.max(60, Number(WHEEL_CONFIG.freeSpinSpeedDegPerSecond) || 180);
+      const minDuration = Math.max(1200, Number(WHEEL_CONFIG.minStopDurationMs) || 3200);
+      const maxDuration = Math.max(minDuration, Number(WHEEL_CONFIG.maxStopDurationMs) || 6500);
 
-      window.setTimeout(() => {
-        const segment = WHEEL_CONFIG.segments[index];
+      let extraTurns = 0;
+      let distance = correction;
+      let duration = (3 * distance / currentSpeed) * 1000;
+
+      while (duration < minDuration) {
+        extraTurns += 1;
+        distance = extraTurns * 360 + correction;
+        duration = (3 * distance / currentSpeed) * 1000;
+      }
+
+      /* Falls der Zielweg ungünstig groß wird, eine Umdrehung weniger wählen. */
+      while (extraTurns > 0 && duration > maxDuration) {
+        extraTurns -= 1;
+        distance = extraTurns * 360 + correction;
+        duration = (3 * distance / currentSpeed) * 1000;
+      }
+
+      duration = Math.max(minDuration, Math.min(maxDuration, duration));
+      const startRotation = this.rotation;
+      const targetRotation = startRotation + distance;
+      const startTime = performance.now();
+
+      dom.wheelDisc.style.transition = "none";
+      this.render();
+
+      const easeOutCubic = (t) => 1 - Math.pow(1 - t, 3);
+
+      const decelerate = (now) => {
+        if (!this.spinning || !this.stopping) return;
+
+        const t = Math.min(1, Math.max(0, (now - startTime) / duration));
+        const eased = easeOutCubic(t);
+        this.rotation = startRotation + distance * eased;
+        dom.wheelDisc.style.transform = `rotate(${this.rotation}deg)`;
+
+        if (t < 1) {
+          this.spinFrameId = requestAnimationFrame(decelerate);
+          return;
+        }
+
+        this.rotation = targetRotation;
+        dom.wheelDisc.style.transform = `rotate(${this.rotation}deg)`;
+        this.spinFrameId = 0;
+
         this.grantReward(segment);
-      
+
         /*
-=========================================================
-NORMALBETRIEB – TÄGLICHEN DREH ALS VERBRAUCHT SPEICHERN
+        =========================================================
+        NORMALBETRIEB – TÄGLICHEN DREH ALS VERBRAUCHT SPEICHERN
 
-this.ensureState();
+        this.ensureState();
 
-state.progress.dailyWheel.lastSpinDate =
-    this.getTodayKey();
+        state.progress.dailyWheel.lastSpinDate =
+            this.getTodayKey();
 
-SaveManager.saveProgress(
-    state.progress
-);
+        SaveManager.saveProgress(
+            state.progress
+        );
 
-=========================================================
-*/
+        =========================================================
+        */
 
-
-/*
- * DEMO-MODUS:
- * Kein Datum speichern.
- *
- * Der Item-Gewinn selbst wurde bereits vorher
- * durch grantReward() gespeichert.
- */
+        /* DEMO-MODUS: Kein Datum speichern. */
 
         this.spinning = false;
+        this.stopping = false;
+        dom.wheelDisc.style.transition = "none";
 
-/*
- * Erst Glücksrad-Status und Button aktualisieren.
- */
-this.render();
+        this.render();
+        this.showReward(segment);
+      };
 
-/*
- * Danach Gewinn anzeigen.
- * So kann render() die Gewinnanimation im Demo-Modus
- * nicht direkt wieder verstecken.
- */
-this.showReward(segment);
-      }, WHEEL_CONFIG.spinDurationMs);
+      this.spinFrameId = requestAnimationFrame(decelerate);
+    },
+
+    spin() {
+      if (this.stopping) return;
+
+      if (this.spinning) {
+        this.stopSpin();
+        return;
+      }
+
+      if (!this.canSpinToday()) return;
+      this.startFreeSpin();
     }
   };
 
