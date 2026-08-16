@@ -1361,3 +1361,77 @@ body:has(#levelScreen.world2-level-overlay:not(.hidden)) {
   }
 }
 
+
+/* =========================================================
+   V7 – STAGE-LOGOS: KLEINER + IMMER EXAKT QUADRATISCH
+   Nie breiter als das Fussballfeld, keine ovale Verzerrung.
+   ========================================================= */
+
+.world2-stage-marker.world2-stage-watermark {
+  left: 50% !important;
+  right: auto !important;
+  z-index: 4 !important; /* hinter Levelpunkten / Schloessern */
+
+  min-width: 0 !important;
+  min-height: 0 !important;
+  max-width: 305px !important;
+  max-height: 305px !important;
+
+  display: grid !important;
+  place-items: center !important;
+  transform: translate(-50%, -50%) !important;
+  transform-origin: center center !important;
+  pointer-events: none !important;
+  filter: none !important;
+}
+
+.world2-stage-marker.world2-stage-watermark .world2-stage-logo-wrap {
+  width: 100% !important;
+  height: 100% !important;
+  aspect-ratio: 1 / 1 !important;
+  box-sizing: border-box !important;
+
+  display: grid !important;
+  place-items: center !important;
+
+  border-radius: 50% !important;
+  background: rgba(8, 12, 16, .11) !important;
+  border: 3px solid rgba(255, 255, 255, .28) !important;
+  overflow: hidden !important;
+
+  box-shadow:
+    0 0 0 6px rgba(0, 0, 0, .08),
+    0 9px 28px rgba(0, 0, 0, .16) !important;
+}
+
+.world2-stage-marker.world2-stage-watermark .world2-stage-logo {
+  width: 84% !important;
+  height: 84% !important;
+  max-width: 84% !important;
+  max-height: 84% !important;
+  object-fit: contain !important;
+  object-position: center !important;
+  opacity: .84 !important;
+  filter: drop-shadow(0 7px 11px rgba(0, 0, 0, .34)) !important;
+}
+
+/* Kein Stage-Name und keine Stage-Nummer auf den Spielfeldern. */
+.world2-stage-marker.world2-stage-watermark .world2-stage-copy {
+  display: none !important;
+}
+
+/* Alte responsive Links/Rechts-Regeln duerfen das Wasserzeichen nie verschieben
+   oder sein Seitenverhaeltnis veraendern. Die Pixelgroesse setzt JS anhand
+   der echten Kartenbreite. */
+@media (max-width: 600px) {
+  .world2-stage-marker.world2-stage-watermark,
+  .world2-stage-marker.world2-stage-watermark.fixed,
+  .world2-stage-marker.world2-stage-watermark.fixed.right,
+  .world2-stage-marker.world2-stage-watermark.stage-1 {
+    left: 50% !important;
+    right: auto !important;
+    min-width: 0 !important;
+    min-height: 0 !important;
+    transform: translate(-50%, -50%) !important;
+  }
+}

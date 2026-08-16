@@ -341,62 +341,53 @@ xForLevel(level) {
       Math.ceil(CONFIG.totalLevels / CONFIG.levelsPerStage);
 
     for (let stageIndex = 0; stageIndex < stageCount; stageIndex++) {
-      const stageNo = stageIndex + 1;
       const firstLevel =
         stageIndex * CONFIG.levelsPerStage + 1;
 
       if (firstLevel > CONFIG.totalLevels) break;
 
-      // Stage-Logo + Bezeichnung nur bei NOCH GESPERRTEN Stages anzeigen.
-      // Sobald die Stage freigeschaltet ist (auch die aktuell gespielte),
-      // verschwindet der Marker vollständig von der Levelkarte.
-      const unlockedLevel = clamp(
-        Number(progress?.unlockedLevel || 1),
-        1,
-        CONFIG.totalLevels
-      );
-
-      if (firstLevel <= unlockedLevel) {
-        continue;
-      }
-
       const stage =
         CONFIG.stages[stageIndex % CONFIG.stages.length];
 
+      if (!stage?.logo) continue;
+
       const marker = document.createElement("div");
-      marker.className = "world2-stage-marker";
-      if (stageNo === 1) {
-        marker.classList.add("stage-1");
-      }
+      marker.className = "world2-stage-marker world2-stage-watermark";
+      marker.setAttribute("aria-hidden", "true");
 
       const scale = this.getMapScale();
 
-/*
- * Stage-Logo immer an derselben festen Position
- * innerhalb jedes 10-Level-Bildes.
- */
-marker.classList.add("fixed");
+      // Unterkante des jeweiligen 10-Level-Bildes.
+      let stageBottom;
 
-/*
- * Unterkante des jeweiligen Stage-Bildes bestimmen.
- */
-let stageBottom;
+      if (stageIndex === 0) {
+        stageBottom = 0;
+      } else {
+        stageBottom =
+          (
+            CONFIG.stageLayouts.first.height +
+            ((stageIndex - 1) * CONFIG.stageLayouts.standard.height)
+          ) * scale;
+      }
 
-if (stageIndex === 0) {
-  stageBottom = 0;
-} else {
-  stageBottom =
-    (
-      CONFIG.stageLayouts.first.height +
-      ((stageIndex - 1) * CONFIG.stageLayouts.standard.height)
-    ) * scale;
-}
+      const layout = stageIndex === 0
+        ? CONFIG.stageLayouts.first
+        : CONFIG.stageLayouts.standard;
 
-/*
- * Feste vertikale Position innerhalb des Stage-Bildes.
- */
-marker.style.bottom =
-  `${stageBottom + (180 * scale)}px`;
+      // Das eigentliche Fussballfeld liegt unterhalb des Finish-/
+      // Uebergangsbereichs. 39 % der Bildhoehe trifft deshalb die
+      // optische vertikale Feldmitte deutlich besser als 50 %.
+      // Auf ALLEN Stages wird das Logo angezeigt – auch auf der aktuellen.
+      const fieldCenterRatio = 0.25;
+
+      marker.style.bottom =
+        `${stageBottom + ((layout.height * fieldCenterRatio) * scale)}px`;
+
+      // Logo immer quadratisch halten. Die Groesse orientiert sich an der
+      // echten Kartenbreite und bleibt sicher innerhalb des Fussballfeldes.
+      const logoSize = Math.min(305, Math.max(210, this.world.clientWidth * 0.58));
+      marker.style.setProperty("width", `${logoSize}px`, "important");
+      marker.style.setProperty("height", `${logoSize}px`, "important");
 
       marker.style.setProperty(
         "--stage-accent",
@@ -405,17 +396,10 @@ marker.style.bottom =
 
       marker.innerHTML = `
         <div class="world2-stage-logo-wrap">
-          ${stage.logo
-            ? `<img class="world2-stage-logo"
-                    src="${stage.logo}"
-                    alt="${stage.name}"
-                    draggable="false">`
-            : ""}
-        </div>
-
-        <div class="world2-stage-copy">
-          <span>STAGE ${stageNo}</span>
-          <strong>${stage.name}</strong>
+          <img class="world2-stage-logo"
+               src="${stage.logo}"
+               alt=""
+               draggable="false">
         </div>
       `;
 
