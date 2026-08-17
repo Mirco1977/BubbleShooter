@@ -733,10 +733,15 @@ const PreLevelLoadout = {
       button.classList.toggle("selected", selected);
       button.classList.toggle("mode-disabled", speedBlocked);
       button.classList.toggle("empty", empty);
-      button.disabled = speedBlocked || empty;
+      // Nicht nativ deaktivieren: Das Info-i soll auch bei gesperrter
+      // Sanduhr bzw. leerem Bestand anklickbar bleiben. Die eigentliche
+      // Auswahl wird weiterhin durch isAvailable() blockiert.
+      button.disabled = false;
+      button.setAttribute("aria-disabled", speedBlocked || empty ? "true" : "false");
       button.dataset.itemKey = itemKey;
       button.innerHTML = `
         <img src="${item.image}" alt="${item.label}">
+        <span class="item-info-button prelevel-item-info" data-item="${itemKey}" role="button" aria-label="Info zu ${item.label}" tabindex="0">i</span>
         <span class="prelevel-item-count">${amount}</span>
         <span class="prelevel-item-name">${item.label}</span>
         ${selected ? '<span class="prelevel-item-check">✓</span>' : ""}
@@ -753,7 +758,10 @@ const PreLevelLoadout = {
         button.setAttribute("aria-label", `${item.label} – Bestand ${amount}`);
       }
 
-      button.addEventListener("click", () => this.toggle(itemKey));
+      button.addEventListener("click", (event) => {
+        if (event.target.closest(".item-info-button")) return;
+        this.toggle(itemKey);
+      });
       dom.preLevelLoadoutItems.appendChild(button);
     });
 
@@ -5345,43 +5353,70 @@ const ITEM_INFO = {
 
 // ITEM INFO POPUP
 
-const itemInfoButtons = document.querySelectorAll(".item-info-button");
-
 const itemInfoPopup = document.getElementById("itemInfoPopup");
+const itemInfoCard = itemInfoPopup?.querySelector(".item-info-card");
+const itemInfoImage = document.getElementById("itemInfoImage");
+const itemInfoTitle = document.getElementById("itemInfoTitle");
+const itemInfoText = document.getElementById("itemInfoText");
+const closeItemInfoButton = document.getElementById("closeItemInfo");
 
+function openItemInfo(itemKey) {
+    const info = ITEM_INFO[itemKey];
+    const item = ITEM_UNLOCKS[itemKey];
+    if (!info || !itemInfoPopup) return;
 
-itemInfoButtons.forEach(button => {
+    if (itemInfoTitle) itemInfoTitle.textContent = info.title;
+    if (itemInfoText) itemInfoText.textContent = info.text;
 
-    button.addEventListener("click", (event) => {
+    if (itemInfoImage) {
+        if (item?.image) {
+            itemInfoImage.src = item.image;
+            itemInfoImage.alt = info.title;
+            itemInfoImage.hidden = false;
+        } else {
+            itemInfoImage.removeAttribute("src");
+            itemInfoImage.alt = "";
+            itemInfoImage.hidden = true;
+        }
+    }
 
-        event.stopPropagation();
+    itemInfoPopup.classList.remove("hidden");
 
+    // Animation bei jedem Öffnen erneut abspielen.
+    if (itemInfoCard) {
+        itemInfoCard.classList.remove("item-info-card-replay");
+        void itemInfoCard.offsetWidth;
+        itemInfoCard.classList.add("item-info-card-replay");
+    }
+}
 
-        const item = button.dataset.item;
+function closeItemInfoPopup() {
+    itemInfoPopup?.classList.add("hidden");
+}
 
+// Event-Delegation: funktioniert auch für dynamisch erzeugte Info-i
+// in Loadout und Endloskarte.
+document.addEventListener("click", (event) => {
+    const button = event.target.closest(".item-info-button");
+    if (!button) return;
 
-        const info = ITEM_INFO[item];
-
-
-        document.getElementById("itemInfoTitle").textContent =
-        info.title;
-
-
-        document.getElementById("itemInfoText").textContent =
-        info.text;
-
-
-        itemInfoPopup.classList.remove("hidden");
-
-    });
-
+    event.preventDefault();
+    event.stopPropagation();
+    openItemInfo(button.dataset.item);
 });
 
+document.addEventListener("keydown", (event) => {
+    if (event.key !== "Enter" && event.key !== " ") return;
+    const button = event.target.closest?.(".item-info-button");
+    if (!button) return;
+    event.preventDefault();
+    openItemInfo(button.dataset.item);
+});
 
-closeItemInfo.addEventListener("click", () => {
+closeItemInfoButton?.addEventListener("click", closeItemInfoPopup);
 
-    itemInfoPopup.classList.add("hidden");
-
+itemInfoPopup?.addEventListener("click", (event) => {
+    if (event.target === itemInfoPopup) closeItemInfoPopup();
 });
 
 })();

@@ -495,6 +495,20 @@ xForLevel(level) {
   return images[level] || "";
 },
 
+  getMilestoneItemKey(level) {
+  const keys = {
+    5: "ballswitch",
+    15: "rainbow",
+    25: "aim",
+    35: "bomb",
+    45: "thunder",
+    55: "colorbomb",
+    65: "hourglass"
+  };
+
+  return keys[level] || "";
+},
+
   renderMilestones(level, progress) {
 
   const entries =
@@ -585,6 +599,7 @@ xForLevel(level) {
 }
 
     const itemImage = this.getMilestoneImage(level);
+    const itemKey = this.getMilestoneItemKey(level);
 
     el.innerHTML = `
       <span class="world2-milestone-icon">
@@ -593,6 +608,9 @@ xForLevel(level) {
               src="${itemImage}"
               alt="${entry.label || "Item"}"
               draggable="false">`
+          : ""}
+        ${itemKey
+          ? `<span class="item-info-button world2-item-info" data-item="${itemKey}" role="button" tabindex="0" aria-label="Info zu ${entry.label || "Item"}">i</span>`
           : ""}
       </span>
 

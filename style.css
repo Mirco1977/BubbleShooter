@@ -3537,3 +3537,66 @@ font-weight:900;
   .prelevel-item-button { flex-basis: 62px; min-width: 62px; height: 76px; }
   .prelevel-item-button img { width: 44px; height: 44px; }
 }
+
+/* =========================================================
+   ITEM-INFO – LOADOUT + POPUP-ANIMATION
+   ========================================================= */
+.prelevel-item-info {
+  top: -7px;
+  right: -7px;
+  width: 20px;
+  height: 20px;
+  opacity: .92;
+  background: rgba(245,245,245,.96);
+  color: #1a1a1a;
+  border: 1px solid rgba(255,255,255,.75);
+  box-shadow: 0 2px 7px rgba(0,0,0,.45);
+  font-size: 13px;
+  line-height: 1;
+  animation: itemInfoPulse 2.4s ease-in-out infinite;
+}
+
+.prelevel-item-button[aria-disabled="true"] .prelevel-item-info {
+  opacity: 1;
+  filter: none;
+  pointer-events: auto;
+}
+
+.item-info-card-replay {
+  animation: itemInfoCardIn .42s cubic-bezier(.2,.9,.25,1.15) both;
+}
+
+#itemInfoImage {
+  display: block;
+  width: 88px;
+  height: 88px;
+  margin: 2px auto 12px;
+  object-fit: contain;
+  filter: drop-shadow(0 7px 10px rgba(0,0,0,.45));
+  animation: itemInfoImageIn .55s cubic-bezier(.2,.9,.25,1.18) both;
+}
+
+#closeItemInfo {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+}
+
+.item-info-card { position: relative; }
+
+@keyframes itemInfoCardIn {
+  0% { opacity: 0; transform: translateY(18px) scale(.84); }
+  65% { opacity: 1; transform: translateY(-3px) scale(1.025); }
+  100% { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@keyframes itemInfoImageIn {
+  0% { opacity: 0; transform: scale(.55) rotate(-8deg); }
+  70% { opacity: 1; transform: scale(1.08) rotate(2deg); }
+  100% { opacity: 1; transform: scale(1) rotate(0); }
+}
+
+@keyframes itemInfoPulse {
+  0%, 100% { transform: scale(1); box-shadow: 0 2px 7px rgba(0,0,0,.45); }
+  50% { transform: scale(1.12); box-shadow: 0 0 0 4px rgba(255,216,102,.16), 0 2px 8px rgba(0,0,0,.48); }
+}
