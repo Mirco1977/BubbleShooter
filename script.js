@@ -287,8 +287,6 @@ const THEME_PATH = [
     preLevelLoadout: $("preLevelLoadout"),
     preLevelLoadoutSlots: $("preLevelLoadoutSlots"),
     preLevelLoadoutItems: $("preLevelLoadoutItems"),
-    preLevelLoadoutPrev: $("preLevelLoadoutPrev"),
-    preLevelLoadoutNext: $("preLevelLoadoutNext"),
     preLevelLoadoutHint: $("preLevelLoadoutHint"),
     startLevelButton: $("startLevelButton"),
 
@@ -616,31 +614,6 @@ const PreLevelLoadout = {
     return [...this.selected];
   },
 
-  scrollItems(direction) {
-    if (!dom.preLevelLoadoutItems) return;
-    const amount = Math.max(120, Math.round(dom.preLevelLoadoutItems.clientWidth * 0.72));
-    dom.preLevelLoadoutItems.scrollBy({ left: direction * amount, behavior: "smooth" });
-  },
-
-  updateScrollArrows() {
-    const scroller = dom.preLevelLoadoutItems;
-    if (!scroller) return;
-
-    const maxScroll = Math.max(0, scroller.scrollWidth - scroller.clientWidth);
-    const hasOverflow = maxScroll > 2;
-    const atStart = scroller.scrollLeft <= 2;
-    const atEnd = scroller.scrollLeft >= maxScroll - 2;
-
-    if (dom.preLevelLoadoutPrev) {
-      dom.preLevelLoadoutPrev.hidden = !hasOverflow;
-      dom.preLevelLoadoutPrev.disabled = !hasOverflow || atStart;
-    }
-    if (dom.preLevelLoadoutNext) {
-      dom.preLevelLoadoutNext.hidden = !hasOverflow;
-      dom.preLevelLoadoutNext.disabled = !hasOverflow || atEnd;
-    }
-  },
-
   render() {
     if (!dom.preLevelLoadoutItems || !dom.preLevelLoadoutSlots) return;
 
@@ -659,34 +632,39 @@ const PreLevelLoadout = {
 
     dom.preLevelLoadoutItems.innerHTML = "";
 
+    // Statische 3x3-Auswahl: alle sieben existierenden Items bleiben immer
+    // sichtbar. Noch nicht freigeschaltete Items sind abgedunkelt und mit
+    // einem Schloss überlagert. Die Felder 8 und 9 bleiben reserviert.
     Object.entries(ITEM_UNLOCKS).forEach(([itemKey, item]) => {
-      if (!isItemUnlocked(itemKey)) return;
-
+      const unlocked = isItemUnlocked(itemKey);
       const amount = getItemAmount(itemKey);
       const selected = this.selected.includes(itemKey);
-      const speedBlocked = itemKey === "hourglass" && !this.isSpeedGame();
-      const empty = amount <= 0;
+      const speedBlocked = unlocked && itemKey === "hourglass" && !this.isSpeedGame();
+      const empty = unlocked && amount <= 0;
+
       const button = document.createElement("button");
       button.type = "button";
       button.className = "prelevel-item-button";
       button.classList.toggle("selected", selected);
+      button.classList.toggle("locked", !unlocked);
       button.classList.toggle("mode-disabled", speedBlocked);
       button.classList.toggle("empty", empty);
-      // Nicht nativ deaktivieren: Das Info-i soll auch bei gesperrter
-      // Sanduhr bzw. leerem Bestand anklickbar bleiben. Die eigentliche
-      // Auswahl wird weiterhin durch isAvailable() blockiert.
-      button.disabled = false;
-      button.setAttribute("aria-disabled", speedBlocked || empty ? "true" : "false");
+      button.disabled = false; // Info-i bleibt auch bei gesperrten Items anklickbar.
+      button.setAttribute("aria-disabled", !unlocked || speedBlocked || empty ? "true" : "false");
       button.dataset.itemKey = itemKey;
       button.innerHTML = `
         <img src="${item.image}" alt="${item.label}">
         <span class="item-info-button prelevel-item-info" data-item="${itemKey}" role="button" aria-label="Info zu ${item.label}" tabindex="0">i</span>
-        <span class="prelevel-item-count">${amount}</span>
+        <span class="prelevel-item-count">${unlocked ? amount : ""}</span>
         <span class="prelevel-item-name">${item.label}</span>
+        ${!unlocked ? '<span class="prelevel-item-lock" aria-hidden="true">🔒</span>' : ""}
         ${selected ? '<span class="prelevel-item-check">✓</span>' : ""}
       `;
 
-      if (speedBlocked) {
+      if (!unlocked) {
+        button.title = `Wird nach dem Gewinn von Level ${item.unlockLevel} freigeschaltet`;
+        button.setAttribute("aria-label", `${item.label} – gesperrt bis Level ${item.unlockLevel}`);
+      } else if (speedBlocked) {
         button.title = "Nur im Speedgame auswählbar";
         button.setAttribute("aria-label", `${item.label} – nur im Speedgame auswählbar`);
       } else if (empty) {
@@ -704,7 +682,14 @@ const PreLevelLoadout = {
       dom.preLevelLoadoutItems.appendChild(button);
     });
 
-    requestAnimationFrame(() => this.updateScrollArrows());
+    // Zwei feste Reservefelder, bis weitere Items hinzukommen.
+    for (let reserve = 0; reserve < 2; reserve += 1) {
+      const placeholder = document.createElement("div");
+      placeholder.className = "prelevel-item-button prelevel-item-placeholder";
+      placeholder.setAttribute("aria-label", "Noch nicht verfügbares Item");
+      placeholder.innerHTML = '<span class="prelevel-placeholder-lock" aria-hidden="true">🔒</span>';
+      dom.preLevelLoadoutItems.appendChild(placeholder);
+    }
 
     if (dom.preLevelLoadoutHint && !dom.preLevelLoadoutHint.classList.contains("show")) {
       dom.preLevelLoadoutHint.textContent = `${this.selected.length}/${this.maxItems} Items ausgewählt`;
@@ -4907,9 +4892,6 @@ const Shop = {
     });
   });
 
-  dom.preLevelLoadoutPrev?.addEventListener("click", () => PreLevelLoadout.scrollItems(-1));
-  dom.preLevelLoadoutNext?.addEventListener("click", () => PreLevelLoadout.scrollItems(1));
-  dom.preLevelLoadoutItems?.addEventListener("scroll", () => PreLevelLoadout.updateScrollArrows(), { passive: true });
   window.addEventListener("resize", () => PreLevelLoadout.updateScrollArrows());
 
   dom.settingsItemButton.addEventListener("click", () => {
