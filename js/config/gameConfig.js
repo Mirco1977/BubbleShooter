@@ -1,60 +1,24 @@
-export const GAME_CONFIG = Object.freeze({
-    version: "0.2.0",
+import { STAGES, LEVELS_PER_STAGE, TOTAL_STAGES } from "./stageConfig.js";
 
-    levelsPerStage: 10,
-    totalStages: 5,
+const stageBackgrounds = Object.freeze(
+  Object.fromEntries(STAGES.map((stage, index) => [index + 1, stage.background]))
+);
+
+export const GAME_CONFIG = Object.freeze({
+    version: "0.3.0",
+
+    levelsPerStage: LEVELS_PER_STAGE,
+    totalStages: TOTAL_STAGES,
 
     assets: {
         appBackground: "",
         heroBackground: "",
 
-        stageBackgrounds: {
-            1: "assets/backgrounds/Bandenkick-Arena.png",
-            2: "assets/backgrounds/World-Cup.png",
-            3: "assets/backgrounds/Tropical Paradise.png",
-            4: "assets/backgrounds/volcano-stadium.png",
-            5: "assets/backgrounds/pirate-island.png",
-            6: "assets/backgrounds/jungle-arena.png",
-            7: "assets/backgrounds/dragon-fantasy.png",
-            8: "assets/backgrounds/royal-kingdom.png",
-            9: "assets/backgrounds/monster-stadium.png"
-        },
-
-        mapBackgrounds: {
-            1: "assets/backgrounds/Bandenkick-Arena.png",
-            2: "assets/backgrounds/World-Cup.png",
-            3: "assets/backgrounds/Tropical Paradise.png",
-            4: "assets/backgrounds/volcano-stadium.png",
-            5: "assets/backgrounds/pirate-island.png",
-            6: "assets/backgrounds/jungle-arena.png",
-            7: "assets/backgrounds/dragon-fantasy.png",
-            8: "assets/backgrounds/royal-kingdom.png",
-            9: "assets/backgrounds/monster-stadium.png"
-        },
-
-        gameBackgrounds: {
-            1: "assets/backgrounds/Bandenkick-Arena.png",
-            2: "assets/backgrounds/World-Cup.png",
-            3: "assets/backgrounds/Tropical Paradise.png",
-            4: "assets/backgrounds/volcano-stadium.png",
-            5: "assets/backgrounds/pirate-island.png",
-            6: "assets/backgrounds/jungle-arena.png",
-            7: "assets/backgrounds/dragon-fantasy.png",
-            8: "assets/backgrounds/royal-kingdom.png",
-            9: "assets/backgrounds/monster-stadium.png"
-        },
-
-        levelBackgrounds: {
-            1: "assets/backgrounds/Bandenkick-Arena.png",
-            2: "assets/backgrounds/World-Cup.png",
-            3: "assets/backgrounds/Tropical Paradise.png",
-            4: "assets/backgrounds/volcano-stadium.png",
-            5: "assets/backgrounds/pirate-island.png",
-            6: "assets/backgrounds/jungle-arena.png",
-            7: "assets/backgrounds/dragon-fantasy.png",
-            8: "assets/backgrounds/royal-kingdom.png",
-            9: "assets/backgrounds/monster-stadium.png"
-        },
+        // Kompatibilitäts-Aliase: alle vier beziehen ihre Daten zentral aus stageConfig.js.
+        stageBackgrounds,
+        mapBackgrounds: stageBackgrounds,
+        gameBackgrounds: stageBackgrounds,
+        levelBackgrounds: stageBackgrounds,
 
         bubbleImages: {
             red: "",
@@ -69,7 +33,6 @@ export const GAME_CONFIG = Object.freeze({
 
     api: {
         baseUrl: "https://bandenkick.de/api/game",
-
         endpoints: {
             me: "/me",
             ranking: "/ranking",

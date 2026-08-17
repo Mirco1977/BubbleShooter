@@ -1,4 +1,5 @@
   import { GAME_CONFIG } from "./js/config/gameConfig.js";
+  import { STAGES, getStageNumberForLevel } from "./js/config/stageConfig.js";
   import { SHOP_CONFIG } from "./js/config/shopConfig.js";
   import { WHEEL_CONFIG } from "./js/config/wheelConfig.js";
   import { EPISODE_CONFIG, getEpisodeById, getEpisodeStatus, calculateEpisodeStars } from "./js/config/episodeConfig.js";
@@ -222,58 +223,7 @@ const THEME_PATH = [
   { stage: 10, row: 5, col: 2 }
 ];
 
-  const STAGES = [
-    {
-        number: 1,
-        name: "Bandenkick Arena",
-        mapBackground: "assets/backgrounds/Bandenkick-Arena.png"
-    },
-    {
-        number: 2,
-        name: "World Cup",
-        mapBackground: "assets/backgrounds/World-Cup.png"
-    },
-    {
-        number: 3,
-        name: "Tropical Paradise",
-        mapBackground: "assets/backgrounds/Tropical Paradise.png"
-    },
-    {
-        number: 4,
-        name: "Volcano Stadium",
-        mapBackground: "assets/backgrounds/volcano-stadium.png"
-    },
-    {
-        number: 5,
-        name: "Pirate Island",
-        mapBackground: "assets/backgrounds/pirate-island.png"
-    },
-    {
-        number: 6,
-        name: "Jungle Arena",
-        mapBackground: "assets/backgrounds/jungle-arena.png"
-    },
-    {
-        number: 7,
-        name: "Royal Kingdom",
-        mapBackground: "assets/backgrounds/royal-kingdom.png"
-    },
-    {
-        number: 8,
-        name: "Dragon Fantasy",
-        mapBackground: "assets/backgrounds/dragon-fantasy.png"
-    },
-    {
-        number: 9,
-        name: "Crystal Cave",
-        mapBackground: "assets/backgrounds/crystal-cave.png"
-    },
-    {
-        number: 10,
-        name: "Monster Stadium",
-        mapBackground: "assets/backgrounds/monster-stadium.png"
-    }
-  ];
+
 
   const DEMO_RANKING = [
     { username: "RWE_Prinz10x", score: 18450 },
@@ -290,7 +240,6 @@ const THEME_PATH = [
 
     screens: {
       home: $("homeScreen"),
-      map: $("mapScreen"),
       level: $("levelScreen"),
       play: $("playScreen"),
       themes: $("themesScreen"),
@@ -326,17 +275,7 @@ const THEME_PATH = [
     aimItemButton: $("aimItemButton"),
     settingsItemButton: $("settingsItemButton"),
 
-    stageTitle: $("stageTitle"),
-    stageName: $("stageName"),
-    stageRange: $("stageRange"),
-    starCounter: $("starCounter"),
     stageBanner: $("stageBanner"),
-    previousStage: $("previousStage"),
-    nextStage: $("nextStage"),
-    progressText: $("progressText"),
-    progressPercent: $("progressPercent"),
-    progressFill: $("progressFill"),
-    levelMap: $("levelMap"),
 
     selectedLevelTitle: $("selectedLevelTitle"),
     selectedStageBadge: $("selectedStageBadge"),
@@ -984,14 +923,10 @@ function startVictoryImpact(stars) {
     applyStageAssets(stageNumber) {
       const root = document.documentElement;
 
-      const stageBackground =
-        GAME_CONFIG.assets.stageBackgrounds[stageNumber];
-
-      const mapBackground =
-        STAGES[stageNumber - 1]?.mapBackground || GAME_CONFIG.assets.mapBackgrounds[stageNumber];
-
-      const gameBackground =
-        GAME_CONFIG.assets.gameBackgrounds[stageNumber];
+      const stageData = STAGES[stageNumber - 1] || STAGES[0];
+      const stageBackground = stageData?.background;
+      const mapBackground = stageData?.background;
+      const gameBackground = stageData?.background;
 
       root.style.setProperty(
         "--stage-background",
@@ -1011,9 +946,7 @@ function startVictoryImpact(stars) {
 
     applyLevelAsset(levelNumber) {
       const stage = getStageForLevel(levelNumber);
-      const levelBackground =
-        GAME_CONFIG.assets.levelBackgrounds[levelNumber] ||
-        GAME_CONFIG.assets.levelBackgrounds[stage];
+      const levelBackground = STAGES[stage - 1]?.background || null;
 
       document.documentElement.style.setProperty(
         "--level-background",
@@ -1438,7 +1371,6 @@ function startVictoryImpact(stars) {
     });
 
     const headerAusblenden =
-      screenName === "map" ||
       screenName === "level" ||
       screenName === "play";
 
@@ -1446,9 +1378,6 @@ function startVictoryImpact(stars) {
       .querySelector(".app-header")
       ?.classList.toggle("hidden", headerAusblenden);
 
-    if (screenName === "map") {
-      StageMap.render();
-    }
 
     if (screenName === "themes") {
       ThemeManager.renderList();
@@ -1909,92 +1838,7 @@ function startVictoryImpact(stars) {
     }
   };
 
-  const StageMap = {
-    getStageStart(stageNumber) {
-      return (stageNumber - 1) * GAME_CONFIG.levelsPerStage + 1;
-    },
 
-    getStageEnd(stageNumber) {
-      return stageNumber * GAME_CONFIG.levelsPerStage;
-    },
-
-    isStageUnlocked(stageNumber) {
-      return this.getStageStart(stageNumber) <= state.progress.unlockedLevel;
-    },
-
-    render() {
-      const stageNumber = Number(state.progress.selectedStage) || 1;
-      const stage = STAGES.find(s => s.number === stageNumber) || STAGES[0];
-      const startLevel = this.getStageStart(stageNumber);
-      const endLevel = this.getStageEnd(stageNumber);
-
-      ThemeManager.applyStageAssets(stageNumber);
-
-      dom.stageTitle.textContent = `Stage ${stageNumber}`;
-      dom.stageName.textContent = stage.name;
-      dom.stageRange.textContent = `Level ${startLevel}–${endLevel}`;
-      dom.starCounter.textContent = `${getTotalStars()} ⭐`;
-
-      let completed = 0;
-      dom.levelMap.innerHTML = "";
-
-      for (let level = startLevel; level <= endLevel; level++) {
-        const result = (state.progress.results || {})[level];
-        const unlocked = level <= Number(state.progress.unlockedLevel || 1);
-
-        if (result) {
-          completed++;
-        }
-
-        const row = document.createElement("div");
-        row.className = "level-row";
-        row.dataset.level = level;
-
-        const button = document.createElement("button");
-        button.className = "level-button";
-
-        if (result) {
-          button.classList.add("completed");
-          button.innerHTML = `
-            <span class="level-stars">${"★".repeat(result.stars)}</span>
-            ${level}
-          `;
-        } else if (unlocked) {
-          button.textContent = level;
-
-          if (level === state.progress.unlockedLevel) {
-            button.classList.add("current");
-          }
-        } else {
-          button.classList.add("locked");
-          button.disabled = true;
-          button.textContent = "🔒";
-        }
-
-        if (unlocked) {
-          button.addEventListener("click", () => LevelPreview.open(level));
-        }
-
-        row.appendChild(button);
-        dom.levelMap.appendChild(row);
-      }
-
-      const percent = Math.round(
-        completed / GAME_CONFIG.levelsPerStage * 100
-      );
-
-      dom.progressText.textContent =
-        `${completed} von ${GAME_CONFIG.levelsPerStage} abgeschlossen`;
-
-      dom.progressPercent.textContent = `${percent} %`;
-      dom.progressFill.style.width = `${percent}%`;
-
-      dom.previousStage.disabled = stageNumber === 1;
-      dom.nextStage.disabled =
-        stageNumber === GAME_CONFIG.totalStages ||
-        !this.isStageUnlocked(stageNumber + 1);
-    }
-  };
 
   function renderPreviewBalls(levelNumber) {
 
@@ -2094,7 +1938,9 @@ function startVictoryImpact(stars) {
           green: "grüne",
           yellow: "gelbe",
           purple: "lila",
-          blue: "blaue"
+          blue: "blaue",
+          pink: "pinke",
+          black: "schwarze"
         };
         dom.levelGoalText.textContent =
         `Sammle ${levelConfig.need} ${colorNames[levelConfig.only_color]} Bälle`;
@@ -4907,7 +4753,7 @@ const Shop = {
 };
 
   function getStageForLevel(levelNumber) {
-    return Math.ceil(levelNumber / GAME_CONFIG.levelsPerStage);
+    return getStageNumberForLevel(levelNumber);
   }
 
   function getTotalStars() {
@@ -5094,26 +4940,6 @@ const Shop = {
     });
   });
 
-  dom.previousStage.addEventListener("click", () => {
-    if (state.progress.selectedStage > 1) {
-      state.progress.selectedStage--;
-      SaveManager.saveProgress(state.progress);
-      StageMap.render();
-    }
-  });
-
-  dom.nextStage.addEventListener("click", () => {
-    const next = state.progress.selectedStage + 1;
-
-    if (
-      next <= GAME_CONFIG.totalStages &&
-      StageMap.isStageUnlocked(next)
-    ) {
-      state.progress.selectedStage = next;
-      SaveManager.saveProgress(state.progress);
-      StageMap.render();
-    }
-  });
 
   function scrollToGame(speed = "comfortable") {
     const durations = {
@@ -5246,7 +5072,7 @@ const Shop = {
 
 } else {
 
-  Navigation.show("map");
+  window.WorldMap2?.open();
 
 }
 

@@ -1,3 +1,5 @@
+import { STAGES, LEVELS_PER_STAGE, TOTAL_LEVELS } from "./stageConfig.js";
+
 /*
  * =========================================================
  * BANDENKICK BUBBLE CHALLENGE – ENDLOSKARTE 2
@@ -5,14 +7,14 @@
  * =========================================================
  *
  * Nur dieses neue Endloskarten-System wird gesteuert.
- * Die alte StageMap bleibt unangetastet.
+ * Stage-Daten kommen zentral aus stageConfig.js.
  */
 
 export const WORLD_MAP_CONFIG_2 = {
   enabled: true,
 
-  totalLevels: 100,
-  levelsPerStage: 10,
+  totalLevels: TOTAL_LEVELS,
+  levelsPerStage: LEVELS_PER_STAGE,
 
   baseWidth: 530,
 
@@ -57,59 +59,7 @@ stageLayouts: {
   }
 },
 
-  stages: [
-    {
-      name: "Bandenkick Arena",
-      logo: "assets/logos/LigaLogoBordered.png",
-      accent: "#860000"
-    },
-    {
-      name: "World Cup",
-      logo: "assets/logos/WM-Pokal.png",
-      accent: "#d2a62b"
-    },
-    {
-      name: "Tropical Paradise",
-      logo: "assets/logos/Wasser-surfer.png",
-      accent: "#2f8fbd"
-    },
-    {
-      name: "Volcano Stadium",
-      logo: "assets/logos/volcano.png",
-      accent: "#d55428"
-    },
-    {
-      name: "Pirate Island",
-      logo: "assets/logos/pirate.png",
-      accent: "#9a7132"
-    },
-    {
-      name: "Jungle Arena",
-      logo: "assets/logos/dragon.png",
-      accent: "#2e8b57"
-    },
-    {
-      name: "Royal Kingdom",
-      logo: "assets/logos/kingdom.png",
-      accent: "#d4af37"
-    },
-    {
-      name: "Dragon Fantasy",
-      logo: "assets/logos/dragon.png",
-      accent: "#8b0000"
-    },
-    {
-      name: "Crystal Cave",
-      logo: "assets/logos/crystal.png",
-      accent: "#557ee8"
-    },
-    {
-      name: "Monster Stadium",
-      logo: "assets/logos/monster.png",
-      accent: "#6b8e23"
-    }
-
-  ],
+  stages: STAGES,
 
   /*
    * Nur echte Sonderpunkte.
