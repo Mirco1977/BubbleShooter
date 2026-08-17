@@ -1520,10 +1520,10 @@ function startVictoryImpact(stars) {
 
     isHourglassOnWheel() {
       /*
-       * Nach Gewinn von Level 65 ist Level 66 freigeschaltet.
-       * Ab diesem Zeitpunkt ersetzt die Sanduhr das zweite ×3-Zufallsfeld.
+       * Nach dem Gewinn von Level 65 ist die Sanduhr freigeschaltet.
+       * Ab dann ersetzt sie auf Feld 9 das ×3-Zufallsfeld.
        */
-      return (Number(state.progress.unlockedLevel) || 1) >= 66;
+      return isItemUnlocked("hourglass");
     },
 
     getSegments() {
@@ -1765,7 +1765,7 @@ function startVictoryImpact(stars) {
 
       this.render();
 
-      const speed = Math.max(60, Number(WHEEL_CONFIG.freeSpinSpeedDegPerSecond) || 180);
+      const speed = Math.max(60, Number(WHEEL_CONFIG.freeSpinSpeedDegPerSecond) || 216);
 
       const tick = (now) => {
         if (!this.spinning || this.stopping) return;
@@ -1815,49 +1815,37 @@ function startVictoryImpact(stars) {
       const correction = (targetNormalized - currentNormalized + 360) % 360;
 
       /*
-       * Sanftes Auslaufen OHNE erneuten Schwung:
-       * easeOutCubic hat am Anfang die Geschwindigkeit 3 * Weg / Dauer.
-       * Wir berechnen deshalb die Dauer aus der aktuellen Drehgeschwindigkeit,
-       * sodass die Animation exakt mit der bisherigen Geschwindigkeit beginnt
-       * und danach ausschließlich langsamer wird.
+       * Exakt 5 Sekunden sanftes Auslaufen – manuell und automatisch identisch.
+       *
+       * Wichtig: Wir starten mit exakt derselben Geschwindigkeit wie beim freien
+       * Drehen und bremsen von dort kontinuierlich bis 0 ab. Dafür verwenden wir
+       * eine kubische Hermite-Kurve mit Startgeschwindigkeit = freeSpinSpeed und
+       * Endgeschwindigkeit = 0. Der Zielweg ist immer 1 volle Umdrehung plus die
+       * nötige Korrektur zum Gewinnfeld. So entsteht beim STOPP kein neuer Schub.
        */
-      const currentSpeed = Math.max(60, Number(WHEEL_CONFIG.freeSpinSpeedDegPerSecond) || 180);
-      const minDuration = Math.max(1200, Number(WHEEL_CONFIG.minStopDurationMs) || 3200);
-      const maxDuration = Math.max(minDuration, Number(WHEEL_CONFIG.maxStopDurationMs) || 6500);
-
-      let extraTurns = 0;
-      let distance = correction;
-      let duration = (3 * distance / currentSpeed) * 1000;
-
-      while (duration < minDuration) {
-        extraTurns += 1;
-        distance = extraTurns * 360 + correction;
-        duration = (3 * distance / currentSpeed) * 1000;
-      }
-
-      /* Falls der Zielweg ungünstig groß wird, eine Umdrehung weniger wählen. */
-      while (extraTurns > 0 && duration > maxDuration) {
-        extraTurns -= 1;
-        distance = extraTurns * 360 + correction;
-        duration = (3 * distance / currentSpeed) * 1000;
-      }
-
-      duration = Math.max(minDuration, Math.min(maxDuration, duration));
+      const currentSpeed = Math.max(60, Number(WHEEL_CONFIG.freeSpinSpeedDegPerSecond) || 216);
+      const duration = Math.max(1000, Number(WHEEL_CONFIG.stopDurationMs) || 5000);
+      const distance = 360 + correction;
       const startRotation = this.rotation;
       const targetRotation = startRotation + distance;
       const startTime = performance.now();
+      const durationSeconds = duration / 1000;
 
       dom.wheelDisc.style.transition = "none";
       this.render();
-
-      const easeOutCubic = (t) => 1 - Math.pow(1 - t, 3);
 
       const decelerate = (now) => {
         if (!this.spinning || !this.stopping) return;
 
         const t = Math.min(1, Math.max(0, (now - startTime) / duration));
-        const eased = easeOutCubic(t);
-        this.rotation = startRotation + distance * eased;
+
+        // Kubische Hermite-Interpolation:
+        // t=0 -> aktuelle Geschwindigkeit, t=1 -> Geschwindigkeit 0.
+        const h10 = t * t * t - 2 * t * t + t;
+        const h01 = -2 * t * t * t + 3 * t * t;
+        const travelled = h10 * currentSpeed * durationSeconds + h01 * distance;
+
+        this.rotation = startRotation + travelled;
         dom.wheelDisc.style.transform = `rotate(${this.rotation}deg)`;
 
         if (t < 1) {
