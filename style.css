@@ -3600,3 +3600,97 @@ font-weight:900;
   0%, 100% { transform: scale(1); box-shadow: 0 2px 7px rgba(0,0,0,.45); }
   50% { transform: scale(1.12); box-shadow: 0 0 0 4px rgba(255,216,102,.16), 0 2px 8px rgba(0,0,0,.48); }
 }
+
+/* =========================================================
+   MOBILE PAGE OVERFLOW FIX
+   Verhindert horizontales Verschieben der gesamten Seite.
+   Interne horizontale Scroller (z. B. Loadout) bleiben erhalten.
+   ========================================================= */
+html,
+body {
+  width: 100%;
+  max-width: 100%;
+  overflow-x: hidden;
+}
+
+#app,
+main,
+.screen,
+.wheel-card,
+.wheel-stage {
+  min-width: 0;
+  max-width: 100%;
+}
+
+#app {
+  overflow-x: hidden;
+}
+
+.screen {
+  width: 100%;
+}
+
+.screen-toolbar > * {
+  min-width: 0;
+}
+
+#wheelScreen .screen-toolbar {
+  width: 100%;
+  max-width: 100%;
+}
+
+#wheelScreen .screen-toolbar > div {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+#wheelScreen .screen-toolbar h2,
+#wheelScreen .screen-toolbar .eyebrow,
+#wheelScreen .screen-toolbar > span {
+  overflow-wrap: anywhere;
+}
+
+#wheelScreen .wheel-card {
+  width: 100%;
+  overflow: hidden;
+}
+
+#wheelScreen .wheel-stage {
+  width: min(100%, 430px);
+}
+
+@media (max-width: 500px) {
+  #app {
+    width: 100%;
+    padding-left: 10px;
+    padding-right: 10px;
+  }
+
+  #wheelScreen .screen-toolbar {
+    gap: 8px;
+    padding: 12px 10px;
+  }
+
+  #wheelScreen .screen-toolbar .back-button {
+    flex: 0 0 auto;
+    padding-left: 9px;
+    padding-right: 9px;
+    white-space: nowrap;
+  }
+
+  #wheelScreen .screen-toolbar > div {
+    text-align: left;
+  }
+
+  #wheelScreen .screen-toolbar > span {
+    flex: 0 1 68px;
+    font-size: 14px;
+    line-height: 1.15;
+    text-align: right;
+  }
+
+  #wheelScreen .wheel-card {
+    padding-left: 8px;
+    padding-right: 8px;
+  }
+}
