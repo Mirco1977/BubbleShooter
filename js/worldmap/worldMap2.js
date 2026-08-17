@@ -76,6 +76,26 @@ getMapScale() {
       this.scrollToCurrent(true);
     });
 
+    // Info-i der dynamisch erzeugten Item-Meilensteine direkt auf der Karte
+    // behandeln. Dadurch funktioniert es auch auf Touchgeraeten, obwohl der
+    // restliche Milestone absichtlich keine Pointer-Events annimmt.
+    this.world.addEventListener("click", (event) => {
+      const infoButton = event.target.closest?.(".world2-item-info");
+      if (!infoButton) return;
+      event.preventDefault();
+      event.stopPropagation();
+      window.BK_openItemInfo?.(infoButton.dataset.item);
+    });
+
+    this.world.addEventListener("keydown", (event) => {
+      if (event.key !== "Enter" && event.key !== " ") return;
+      const infoButton = event.target.closest?.(".world2-item-info");
+      if (!infoButton) return;
+      event.preventDefault();
+      event.stopPropagation();
+      window.BK_openItemInfo?.(infoButton.dataset.item);
+    });
+
     // Kartenbilder frühzeitig in den Browser-Cache laden. Dadurch gibt es
     // beim Rücksprung aus einem gewonnenen Level keinen blauen Leerzustand.
     this.preloadMapAssets();

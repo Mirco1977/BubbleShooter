@@ -1473,3 +1473,17 @@ body:has(#levelScreen.world2-level-overlay:not(.hidden)) {
   0%, 100% { transform: scale(1); box-shadow: 0 2px 7px rgba(0,0,0,.45); }
   50% { transform: scale(1.12); box-shadow: 0 0 0 4px rgba(255,216,102,.18), 0 2px 8px rgba(0,0,0,.5); }
 }
+
+
+/* FIX: Info-i auf Item-Meilensteinen muss trotz pointer-events:none am
+   Milestone selbst anklickbar/touchbar bleiben. */
+.world2-milestone .world2-milestone-icon {
+  pointer-events: none;
+}
+
+.world2-milestone .world2-item-info {
+  pointer-events: auto !important;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+}

@@ -5394,6 +5394,9 @@ function closeItemInfoPopup() {
     itemInfoPopup?.classList.add("hidden");
 }
 
+// Auch fuer separat geladene Module (z. B. WorldMap2) verfuegbar.
+window.BK_openItemInfo = openItemInfo;
+
 // Event-Delegation: funktioniert auch für dynamisch erzeugte Info-i
 // in Loadout und Endloskarte.
 document.addEventListener("click", (event) => {
