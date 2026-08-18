@@ -4475,3 +4475,58 @@ body.wheel-win-sequence-active {
     .wheel-victory-back-button { min-height: 45px; }
     .wheel-paid-spin-button > strong { min-width: 78px; font-size: 15px; }
 }
+
+/* =========================================================
+   GLÜCKSRAD – VICTORY-GOLD GLANZ (18.08.2026)
+   ========================================================= */
+#wheelScreen .screen-toolbar .eyebrow,
+#wheelScreen .wheel-status {
+  color: #ffd45c;
+  text-shadow:
+    0 0 4px rgba(255,244,174,.95),
+    0 0 9px rgba(255,212,92,.82),
+    0 0 18px rgba(255,170,35,.46),
+    0 2px 3px rgba(0,0,0,.75);
+}
+
+#wheelScreen .wheel-disc {
+  border-color: #ffd45c;
+  box-shadow:
+    0 0 0 3px #9a6510,
+    0 0 8px rgba(255,246,180,.95),
+    0 0 18px rgba(255,212,92,.78),
+    0 0 32px rgba(255,163,32,.38),
+    0 14px 34px rgba(0,0,0,.52),
+    inset 0 0 5px rgba(255,255,220,.82),
+    inset 0 0 30px rgba(0,0,0,.28);
+}
+
+#wheelScreen .wheel-pointer {
+  border-top-color: #ffd45c;
+  filter:
+    drop-shadow(0 0 4px rgba(255,247,185,.95))
+    drop-shadow(0 0 9px rgba(255,212,92,.72))
+    drop-shadow(0 5px 5px rgba(0,0,0,.55));
+}
+
+/* GLÜCKSRAD – dezenter dünner Goldglanz: nur Rad-Rand */
+#wheelScreen .screen-toolbar .eyebrow,
+#wheelScreen .wheel-status {
+  color: #ffd45c;
+  text-shadow: none;
+}
+
+#wheelScreen .wheel-pointer {
+  border-top-color: #ffd45c;
+  filter: drop-shadow(0 5px 5px rgba(0,0,0,.55));
+}
+
+#wheelScreen .wheel-disc {
+  border-color: #e5b83f;
+  box-shadow:
+    0 0 0 2px #9a6510,
+    0 0 5px rgba(255,220,105,.32),
+    0 14px 34px rgba(0,0,0,.52),
+    inset 0 0 2px rgba(255,244,180,.32),
+    inset 0 0 30px rgba(0,0,0,.28);
+}

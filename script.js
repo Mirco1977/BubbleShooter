@@ -4933,7 +4933,6 @@ const Shop = {
     });
   });
 
-  window.addEventListener("resize", () => PreLevelLoadout.updateScrollArrows());
 
   dom.settingsItemButton.addEventListener("click", () => {
       Navigation.show("settings");
