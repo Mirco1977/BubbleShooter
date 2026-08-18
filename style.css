@@ -4215,3 +4215,263 @@ main,
     line-height: 15px !important;
   }
 }
+
+/* =========================================================
+   GLÜCKSRAD – VICTORY OVERLAY NACH DEM GEWINN
+   ========================================================= */
+.wheel-win-lock {
+    position: fixed;
+    inset: 0;
+    z-index: 10000;
+    display: grid;
+    place-items: center;
+    padding: 20px;
+    overflow: hidden;
+    background: transparent;
+    pointer-events: auto;
+    touch-action: none;
+}
+
+.wheel-win-lock::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: rgba(3, 5, 12, 0);
+    backdrop-filter: blur(0);
+    -webkit-backdrop-filter: blur(0);
+    transition: background .34s ease, backdrop-filter .34s ease;
+}
+
+/* Lichtblitz wie bei der Victory-Animation */
+.wheel-win-lock::after {
+    content: "";
+    position: absolute;
+    inset: -25%;
+    opacity: 0;
+    pointer-events: none;
+    background: radial-gradient(circle at 50% 50%, rgba(255,224,115,.55) 0%, rgba(255,170,40,.16) 22%, transparent 52%);
+    transform: scale(.55);
+}
+
+.wheel-victory-card {
+    position: relative;
+    z-index: 2;
+    width: min(88vw, 340px);
+    padding: 20px 18px 18px;
+    overflow: hidden;
+    text-align: center;
+    color: #fff;
+    border: 2px solid #ffd45c;
+    border-radius: 22px;
+    background:
+        radial-gradient(circle at 50% 20%, rgba(255,220,100,.20), transparent 34%),
+        linear-gradient(145deg, #9b2016 0%, #790f0c 48%, #430605 100%);
+    box-shadow: 0 0 30px rgba(255,212,92,.34), 0 24px 55px rgba(0,0,0,.76);
+    opacity: 0;
+    transform: scale(.72) translateY(20px);
+    pointer-events: none;
+    isolation: isolate;
+}
+
+/* rotierende Victory-Strahlen innerhalb der Karte */
+.wheel-victory-card::before {
+    content: "";
+    position: absolute;
+    z-index: -2;
+    width: 520px;
+    height: 520px;
+    left: 50%;
+    top: 42%;
+    transform: translate(-50%, -50%);
+    opacity: .30;
+    background: repeating-conic-gradient(from 0deg, rgba(255,220,102,.20) 0deg 9deg, transparent 9deg 18deg);
+}
+
+/* Glanz-Sweep */
+.wheel-victory-card::after {
+    content: "";
+    position: absolute;
+    z-index: 4;
+    top: -20%;
+    left: -55%;
+    width: 36%;
+    height: 145%;
+    opacity: 0;
+    pointer-events: none;
+    transform: rotate(18deg);
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,.32), transparent);
+}
+
+.wheel-win-lock-show-card::before {
+    background: rgba(3, 5, 12, .72);
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+}
+
+.wheel-win-lock-show-card::after {
+    animation: wheelVictoryFlash .72s ease-out both;
+}
+
+.wheel-win-lock-show-card .wheel-victory-card {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+    pointer-events: auto;
+    animation: wheelVictoryImpact .65s cubic-bezier(.18,1.16,.32,1) both;
+}
+
+.wheel-win-lock-show-card .wheel-victory-card::before {
+    animation: wheelVictoryRays 9s linear infinite;
+}
+
+.wheel-win-lock-show-card .wheel-victory-card::after {
+    animation: wheelVictoryShine .95s ease-out .38s both;
+}
+
+.wheel-victory-kicker {
+    position: relative;
+    z-index: 3;
+    display: block;
+    color: #ffd45c;
+    font-size: 12px;
+    line-height: 1;
+    font-weight: 900;
+    letter-spacing: 1.6px;
+}
+
+.wheel-victory-medal {
+    position: relative;
+    z-index: 3;
+    width: 46px;
+    height: 46px;
+    display: grid;
+    place-items: center;
+    margin: 10px auto 6px;
+    border: 2px solid #ffd45c;
+    border-radius: 50%;
+    color: #ffd45c;
+    font-size: 25px;
+    font-weight: 900;
+    background: rgba(77,0,0,.48);
+    box-shadow: inset 0 0 0 4px rgba(255,212,92,.10), 0 0 18px rgba(255,212,92,.24);
+}
+
+.wheel-victory-card h3 {
+    position: relative;
+    z-index: 3;
+    margin: 4px 0 5px;
+    color: #fff;
+    font-size: 27px;
+    line-height: 1.05;
+    text-shadow: 0 2px 5px rgba(0,0,0,.45);
+}
+
+.wheel-victory-card p {
+    position: relative;
+    z-index: 3;
+    margin: 0 auto 15px;
+    max-width: 270px;
+    color: rgba(255,255,255,.92);
+    font-size: 13px;
+    line-height: 1.35;
+    font-weight: 650;
+}
+
+.wheel-paid-spin-button,
+.wheel-victory-back-button {
+    position: relative;
+    z-index: 5;
+    width: 100%;
+    min-height: 48px;
+    border-radius: 15px;
+    font: inherit;
+    font-weight: 900;
+    -webkit-appearance: none;
+    appearance: none;
+}
+
+/* Kaufbutton bewusst kräftig grün, auch solange er noch deaktiviert ist */
+.wheel-paid-spin-button,
+.wheel-paid-spin-button:disabled {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 7px 8px 7px 16px;
+    border: 2px solid #8dffac;
+    border-radius: 15px;
+    color: #fff !important;
+    background: linear-gradient(180deg, #31d966 0%, #10b447 52%, #078732 100%) !important;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,.36), 0 0 16px rgba(20,210,84,.22), 0 6px 16px rgba(0,0,0,.35);
+    opacity: 1 !important;
+    cursor: default;
+    -webkit-text-fill-color: currentColor;
+}
+
+.wheel-paid-spin-button > span {
+    flex: 1;
+    text-align: left;
+    color: #fff;
+    font-size: 15px;
+    white-space: nowrap;
+}
+
+.wheel-paid-spin-button > strong {
+    flex: 0 0 auto;
+    min-width: 82px;
+    padding: 8px 10px;
+    border: 2px solid rgba(255,255,255,.92);
+    border-radius: 11px;
+    color: #5a3100 !important;
+    background: linear-gradient(180deg, #ffe27a 0%, #f5bf32 55%, #d99a16 100%) !important;
+    font-size: 16px;
+    line-height: 1;
+    white-space: nowrap;
+    opacity: 1 !important;
+    -webkit-text-fill-color: #5a3100;
+}
+
+.wheel-victory-back-button {
+    margin-top: 9px;
+    border: 1px solid rgba(255,255,255,.20);
+    color: #fff;
+    background: linear-gradient(145deg, #860000, #4a0000);
+    box-shadow: 0 5px 14px rgba(0,0,0,.35);
+}
+
+body.wheel-win-sequence-active {
+    overflow: hidden;
+}
+
+@keyframes wheelVictoryImpact {
+    0%   { opacity: 0; transform: scale(.68) translateY(22px); }
+    62%  { opacity: 1; transform: scale(1.055) translateY(-3px); }
+    82%  { transform: scale(.985) translateY(1px); }
+    100% { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+@keyframes wheelVictoryFlash {
+    0%   { opacity: 0; transform: scale(.55); }
+    28%  { opacity: .95; transform: scale(1); }
+    100% { opacity: 0; transform: scale(1.35); }
+}
+
+@keyframes wheelVictoryRays {
+    from { transform: translate(-50%, -50%) rotate(0deg); }
+    to   { transform: translate(-50%, -50%) rotate(360deg); }
+}
+
+@keyframes wheelVictoryShine {
+    0%   { left: -55%; opacity: 0; }
+    28%  { opacity: .62; }
+    100% { left: 125%; opacity: 0; }
+}
+
+@media (max-width: 500px) {
+    .wheel-win-lock { padding: 14px; }
+    .wheel-victory-card { width: min(86vw, 315px); padding: 17px 14px 14px; }
+    .wheel-victory-card h3 { font-size: 24px; }
+    .wheel-victory-card p { font-size: 12px; margin-bottom: 12px; }
+    .wheel-paid-spin-button,
+    .wheel-victory-back-button { min-height: 45px; }
+    .wheel-paid-spin-button > strong { min-width: 78px; font-size: 15px; }
+}

@@ -791,6 +791,24 @@
 
     </div>
 
+    <!-- Sperrt nach dem Gewinn den kompletten Bildschirm.
+         Nach 3 Sekunden wird darin die zweite Victory-Karte eingeblendet. -->
+    <div id="wheelWinLock" class="wheel-win-lock hidden" aria-live="polite">
+        <div id="wheelVictoryCard" class="wheel-victory-card" role="dialog" aria-modal="true" aria-labelledby="wheelVictoryTitle">
+            <span class="wheel-victory-kicker">TÄGLICH GEDREHT</span>
+            <div class="wheel-victory-medal" aria-hidden="true">★</div>
+            <h3 id="wheelVictoryTitle">Glückwunsch!</h3>
+            <p>Dein Gewinn wurde deinem Bestand hinzugefügt.</p>
+
+            <button id="wheelPaidSpinButton" class="wheel-paid-spin-button" type="button" disabled aria-disabled="true">
+                <span>Nochmal drehen</span>
+                <strong>0,99 €</strong>
+            </button>
+
+            <button id="wheelVictoryBackButton" class="wheel-victory-back-button" type="button">Zurück</button>
+        </div>
+    </div>
+
 
     <button
         id="wheelSpinButton"

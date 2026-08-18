@@ -346,6 +346,10 @@ const THEME_PATH = [
     wheelRewardTitle: $("wheelRewardTitle"),
     wheelRewardText: $("wheelRewardText"),
     wheelRewardItems: $("wheelRewardItems"),
+    wheelWinLock: $("wheelWinLock"),
+    wheelVictoryCard: $("wheelVictoryCard"),
+    wheelPaidSpinButton: $("wheelPaidSpinButton"),
+    wheelVictoryBackButton: $("wheelVictoryBackButton"),
 
     musicSetting: $("musicSetting"),
     soundSetting: $("soundSetting"),
@@ -1399,6 +1403,7 @@ function startVictoryImpact(stars) {
     lastFrameTime: 0,
     stopTimerId: 0,
     autoStopTimerId: 0,
+    victoryTimerId: 0,
 
     getTodayKey() {
       const now = new Date();
@@ -1622,7 +1627,32 @@ function startVictoryImpact(stars) {
       addItemAmount(rewardKey, segment.amount || 1);
     },
 
+    beginWinSequence() {
+      window.clearTimeout(this.victoryTimerId);
+      this.victoryTimerId = 0;
+
+      // Ab dem Moment, in dem die Gewinnkarte erscheint, ist der komplette
+      // Bildschirm gesperrt. Die zweite Victory-Karte folgt nach 3 Sekunden.
+      dom.wheelWinLock?.classList.remove("hidden", "wheel-win-lock-show-card");
+      document.body.classList.add("wheel-win-sequence-active");
+
+      this.victoryTimerId = window.setTimeout(() => {
+        this.victoryTimerId = 0;
+        dom.wheelWinLock?.classList.add("wheel-win-lock-show-card");
+      }, 3000);
+    },
+
+    endWinSequence() {
+      window.clearTimeout(this.victoryTimerId);
+      this.victoryTimerId = 0;
+      dom.wheelWinLock?.classList.add("hidden");
+      dom.wheelWinLock?.classList.remove("wheel-win-lock-show-card");
+      document.body.classList.remove("wheel-win-sequence-active");
+      dom.wheelReward?.classList.add("hidden");
+    },
+
     showReward(segment) {
+      this.beginWinSequence();
       dom.wheelReward.classList.remove("hidden");
       dom.wheelReward.classList.remove("wheel-reward-active");
       void dom.wheelReward.offsetWidth;
@@ -1679,6 +1709,7 @@ function startVictoryImpact(stars) {
       this.spinning = true;
       this.stopping = false;
       this.lastFrameTime = performance.now();
+      this.endWinSequence();
       dom.wheelReward.classList.add("hidden");
       dom.wheelDisc.style.transition = "none";
 
@@ -4855,6 +4886,16 @@ const Shop = {
   dom.openEpisodesButton.addEventListener("click", () => Navigation.show("episodes"));
 
   dom.wheelSpinButton.addEventListener("click", () => LuckyWheel.spin());
+
+  dom.wheelVictoryBackButton?.addEventListener("click", () => {
+    LuckyWheel.endWinSequence();
+    Navigation.show("home");
+  });
+
+  // Der 0,99-€-Button ist absichtlich nur vorbereitet und noch ohne Kauffunktion.
+  dom.wheelPaidSpinButton?.addEventListener("click", (event) => {
+    event.preventDefault();
+  });
 
   dom.openSettingsButton.addEventListener("click", () => Navigation.show("settings"));
   
