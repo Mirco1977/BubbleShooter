@@ -15,7 +15,6 @@
   <header class="app-header">
     <div class="brand-block">
       <img src="assets/logos/LigaLogoBordered.png" class="game-logo" alt="Bandenkick Logo">
-      <h1>Bubble Challenge</h1>
     </div>
 
     <div class="profile-block">
@@ -28,8 +27,7 @@
     <section id="homeScreen" class="screen">
       <div class="hero-card">
         <div class="hero-content">
-          <span class="eyebrow">VERSION 0.1</span>
-          <h2>Dein Weg durch die Bandenkick-Welten</h2>
+          <img class="hero-game-logo" src="assets/ui/bandenkick-bubbleshooter-logo.png" alt="Bandenkick Bubbleshooter">
           <p>
             Spiele Level, sammle Sterne und schalte neue Stages frei.
           </p>
@@ -140,6 +138,38 @@
       </div>
     </section>
 
+    <section id="mapScreen" class="screen hidden">
+      <div class="screen-toolbar">
+        <button class="back-button" data-back="home">← Start</button>
+        <div>
+          <span class="eyebrow">FORTSCHRITT</span>
+          <h2 id="stageTitle">Stage 1</h2>
+        </div>
+        <span id="starCounter">0 ⭐</span>
+      </div>
+
+      <div id="stageBanner" class="stage-banner">
+        <button id="previousStage" aria-label="Vorherige Stage">‹</button>
+        <div>
+          <strong id="stageName">Bandenkick Arena</strong>
+          <span id="stageRange">Level 1–10</span>
+        </div>
+        <button id="nextStage" aria-label="Nächste Stage">›</button>
+      </div>
+
+      <div class="progress-card">
+        <div class="progress-labels">
+          <span id="progressText">0 von 10 abgeschlossen</span>
+          <span id="progressPercent">0 %</span>
+        </div>
+        <div class="progress-track">
+          <div id="progressFill"></div>
+        </div>
+      </div>
+
+      <div id="levelMap" class="level-map"></div>
+    </section>
+
 <!-- =========================================================
      LEVELKARTE – HAUPTSPIEL
      ========================================================= -->
@@ -205,28 +235,27 @@
 
       <div class="level-preview-card">
         <div id="levelPreviewGraphic" class="level-preview-graphic">
-          <div class="prelevel-overview-card" aria-label="Levelübersicht">
-            <div id="previewBubbles" class="preview-bubbles"></div>
+          <h3 id="levelGoalTitle">Ziel</h3>
+          <p id="levelGoalText">Erreiche 1.0000 Punkte</p>
+         <div id="previewBubbles" class="preview-bubbles"></div>
+        <div class="level-data">
 
-            <div class="level-data">
-              <div class="level-stat">
-                <span>Farben</span>
-                <strong id="levelColors">3</strong>
-              </div>
+    <div class="level-stat">
+        <span>Farben</span>
+        <strong id="levelColors">3</strong>
+    </div>
 
-              <div class="level-stat">
-                <span>Zielpunkte</span>
-                <strong id="levelTarget">1.000</strong>
-              </div>
+    <div class="level-stat">
+        <span>Zielpunkte</span>
+        <strong id="levelTarget">1.000</strong>
+    </div>
 
-              <div class="level-stat">
-                <span>Beste Sterne</span>
-                <strong id="levelBest">–</strong>
-              </div>
-            </div>
+    <div class="level-stat">
+        <span>Beste Sterne</span>
+        <strong id="levelBest">–</strong>
+    </div>
 
-            <p id="levelGoalText">Erreiche 1.0000 Punkte</p>
-          </div>
+</div>
 
         <div id="preLevelLoadout" class="prelevel-loadout" aria-label="Items für dieses Level auswählen">
           <div class="prelevel-loadout-header">
@@ -243,7 +272,9 @@
           </div>
 
           <div class="prelevel-loadout-items-wrap">
-            <div id="preLevelLoadoutItems" class="prelevel-loadout-items" aria-label="Verfügbare und gesperrte Items"></div>
+            <button id="preLevelLoadoutPrev" class="prelevel-loadout-scroll-arrow prelevel-loadout-scroll-arrow-left" type="button" aria-label="Items nach links scrollen">‹</button>
+            <div id="preLevelLoadoutItems" class="prelevel-loadout-items"></div>
+            <button id="preLevelLoadoutNext" class="prelevel-loadout-scroll-arrow prelevel-loadout-scroll-arrow-right" type="button" aria-label="Items nach rechts scrollen">›</button>
           </div>
           <div id="preLevelLoadoutHint" class="prelevel-loadout-hint" aria-live="polite"></div>
         </div>

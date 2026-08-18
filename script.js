@@ -418,7 +418,7 @@ const ITEM_UNLOCKS = {
     button: dom.hourglassItemButton,
     unlockLevel: 65,
     label: "Sanduhr",
-    image: "assets/ui/hourglass.svg"
+    image: "assets/ui/hourglass.png"
   }
 
 };
