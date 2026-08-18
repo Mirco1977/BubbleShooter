@@ -3702,3 +3702,11 @@ main,
     padding-right: 8px;
   }
 }
+
+/* Startbildschirm: Bandenkick-Bubbleshooter-Logo auf Smartphones kompakter */
+@media (max-width: 500px) {
+  .hero-game-logo {
+    width: 72%;
+    max-width: 300px;
+  }
+}
