@@ -175,10 +175,12 @@ button:disabled {
   min-height: 118px;
   padding: 18px;
   text-align: left;
-  border: 1px solid rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(255, 212, 92, 0.34);
   border-radius: 18px;
   color: #fff;
-  background: var(--card-bg);
+  background:
+    radial-gradient(circle at 88% 50%, rgba(255, 212, 92, 0.18), transparent 34%),
+    linear-gradient(145deg, rgba(92, 0, 0, 0.98), rgba(20, 24, 34, 0.96));
 }
 
 .menu-card strong,
