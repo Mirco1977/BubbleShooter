@@ -18,9 +18,9 @@ export const WHEEL_CONFIG = Object.freeze({
 
   /*
    * Deutlich ruhigere Geschwindigkeit während der freien Drehphase.
-   * 216°/s = 20 % schneller als zuvor (180°/s).
+   * 285,66°/s = nochmals 15 % schneller als 248,4°/s.
    */
-  freeSpinSpeedDegPerSecond: 216,
+  freeSpinSpeedDegPerSecond: 285.66,
 
   /*
    * STOPP und Auto-Stopp laufen immer exakt 5 Sekunden aus.
