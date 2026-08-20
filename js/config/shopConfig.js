@@ -25,7 +25,7 @@ export const SHOP_CONFIG = [
   },
   {
     id: 3,
-    name: "Epische Kraft",
+    name: "Knaller-Set",
     price: "14,99 €",
     cardImage: "assets/shop/offer-gold.png",
     items: [
@@ -37,7 +37,7 @@ export const SHOP_CONFIG = [
   },
   {
     id: 4,
-    name: "Knaller-Set",
+    name: "Epische Kraft",
     price: "19,99 €",
     cardImage: "assets/shop/offer-magenta.png",
     items: [
