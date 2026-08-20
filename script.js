@@ -4727,25 +4727,12 @@ const Shop = {
 
             <article class="shop-offer-card">
 
-                <div class="shop-offer-items">
-
-                    ${offer.items.map((item) => `
-
-                        <div class="shop-offer-item">
-
-                            <img
-                                src="${item.image}"
-                                alt="${escapeHtml(item.name)}"
-                                draggable="false">
-
-                            <strong>
-                                ×${item.amount}
-                            </strong>
-
-                        </div>
-
-                    `).join("")}
-
+                <div class="shop-offer-artwork">
+                    <img
+                        class="shop-offer-pack-image"
+                        src="${offer.cardImage}"
+                        alt="${escapeHtml(offer.name)} Paket"
+                        draggable="false">
                 </div>
 
                 <div class="shop-offer-footer">

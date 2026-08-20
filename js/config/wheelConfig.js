@@ -11,10 +11,10 @@ export const WHEEL_CONFIG = Object.freeze({
   }),
 
   /*
-   * Das Rad darf höchstens 25 Sekunden frei drehen. Danach wird automatisch
+   * Das Rad darf höchstens 10 Sekunden frei drehen. Danach wird automatisch
    * exakt dieselbe sanfte Auslaufphase gestartet wie beim STOPP-Button.
    */
-  maxFreeSpinMs: 25000,
+  maxFreeSpinMs: 10000,
 
   /*
    * Deutlich ruhigere Geschwindigkeit während der freien Drehphase.
