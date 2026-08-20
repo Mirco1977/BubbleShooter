@@ -1963,13 +1963,19 @@ function startVictoryImpact(stars) {
       } else if (levelConfig.mode === "speed") {
           dom.levelGoalText.textContent =
           `Erreiche ${target.toLocaleString("de-DE")} Punkte in ${Number(levelConfig.time) || 0} Sekunden`;
+      } else if (levelConfig.mode === "sword") {
+          dom.levelGoalText.textContent =
+          "Befreie das Schwert – triff den goldenen Ball";
       } else {
           dom.levelGoalText.textContent =
           `Erreiche mindestens ${target.toLocaleString("de-DE")} Punkte`;
       }
 
       dom.levelColors.textContent = String(colors);
-      dom.levelTarget.textContent = target.toLocaleString("de-DE");
+      dom.levelTarget.textContent =
+          levelConfig.mode === "sword"
+              ? "GOLDBALL"
+              : target.toLocaleString("de-DE");
       dom.levelBest.textContent = result ? `${result.stars} ⭐` : "–";
     
       renderPreviewBalls(levelNumber);
@@ -2035,6 +2041,13 @@ window.BK_openMainLevel = (levelNumber) => {
     thunders: [],
     explosions: [],
     collectedColors: {},
+
+    // SCHWERT-FEATURE
+    // Das Schwert ist 5 Ballhöhen hoch und 3 Ballbreiten breit.
+    // Der Griff/Goldball sitzt auf Höhe der 2. Kugel von oben.
+    swordFeature: null,
+    swordReleaseActive: false,
+    swordReleaseStartedAt: 0,
 
     switchBallActive: false,
     aimItemAktive: false,
@@ -2261,6 +2274,9 @@ window.BK_openMainLevel = (levelNumber) => {
       this.particles = [];
       this.lightningHits = [];
       this.collectedColors = {};
+      this.swordFeature = null;
+      this.swordReleaseActive = false;
+      this.swordReleaseStartedAt = 0;
       const stageNumber = getActiveThemeStage(levelNumber);
       this.ballImageCache = {};
 
@@ -2313,6 +2329,12 @@ window.BK_openMainLevel = (levelNumber) => {
 
       this.chainLockImage = new Image();
       this.chainLockImage.src = "assets/ui/chain-lock-overlay.png";
+
+      this.swordImage = new Image();
+      this.swordImage.src = "assets/ui/sword.png";
+
+      this.goldBallImage = new Image();
+      this.goldBallImage.src = "assets/ui/gold-ball.png";
 
       this.canvas = dom.gameCanvas;
       this.ctx = this.canvas.getContext("2d");
@@ -2477,6 +2499,8 @@ window.BK_openMainLevel = (levelNumber) => {
           const current = this.collectedColors?.[levelConfig.only_color] ?? 0;
           dom.targetScoreDisplay.textContent =
           `${current}/${levelConfig.need}`;
+      } else if (levelConfig?.mode === "sword") {
+          dom.targetScoreDisplay.textContent = "GOLDBALL";
       } else {
           dom.targetScoreDisplay.textContent =
           this.targetScore.toLocaleString("de-DE");
@@ -2555,6 +2579,182 @@ window.BK_openMainLevel = (levelNumber) => {
           });
         }
       }
+
+      this.setupSwordFeature(levelConfig);
+    },
+
+    setupSwordFeature(levelConfig) {
+      const swordConfig = levelConfig?.sword;
+
+      if (levelConfig?.mode !== "sword" || !swordConfig) {
+        this.swordFeature = null;
+        return;
+      }
+
+      const row = Math.max(2, Number(swordConfig.row) || 2); // 1-basiert
+      const col = Math.max(1, Number(swordConfig.col) || 7); // 1-basiert
+      const rowIndex = row - 1;
+      const offset = rowIndex % 2 ? this.columnWidth / 2 : 0;
+
+      const lockX = Math.max(
+        this.radius,
+        Math.min(
+          this.width - this.radius,
+          this.gridBaseX + (col - 1) * this.columnWidth + offset
+        )
+      );
+      const lockY = this.radius + rowIndex * this.rowHeight;
+
+      const diameter = this.radius * 2;
+      const swordWidth = diameter * 3;
+      const swordHeight = diameter * 5;
+
+      // Griff / Goldball liegt exakt auf Höhe der 2. Kugel von oben.
+      // Bei unserer Grafik befindet sich der Griff ca. bei 25 % der Schwertlänge.
+      const swordTop = lockY - swordHeight * 0.25;
+      const swordLeft = lockX - swordWidth / 2;
+
+      this.swordFeature = {
+        lockX,
+        lockY,
+        swordLeft,
+        swordTop,
+        swordWidth,
+        swordHeight,
+        released: false,
+        flashStart: 0,
+        flashDuration: 650
+      };
+
+      // Im 3x5-Feld um das Schwert Platz schaffen.
+      this.bubbles = this.bubbles.filter((bubble) => {
+        const insideX = Math.abs(bubble.x - lockX) < swordWidth * 0.46;
+        const insideY =
+          bubble.y > swordTop - this.radius &&
+          bubble.y < swordTop + swordHeight + this.radius;
+
+        return !(insideX && insideY);
+      });
+
+      // Goldener Halteball – nur durch direkten Treffer lösbar.
+      this.bubbles.push({
+        x: lockX,
+        y: lockY,
+        color: { id: "gold", color: "#f6bf23", image: null },
+        image: null,
+        isSwordLock: true,
+        isChained: false
+      });
+    },
+
+    hitSwordLock(lockBubble) {
+      if (
+        !lockBubble?.isSwordLock ||
+        !this.swordFeature ||
+        this.swordFeature.released ||
+        this.swordReleaseActive
+      ) {
+        return false;
+      }
+
+      this.swordReleaseActive = true;
+      this.swordReleaseStartedAt = performance.now();
+
+      // Goldball sofort entfernen.
+      this.bubbles = this.bubbles.filter((bubble) => bubble !== lockBubble);
+
+      this.swordFeature.released = true;
+      this.swordFeature.flashStart = performance.now();
+
+      // Treffer-Effekt um den Goldball.
+      for (let i = 0; i < 24; i++) {
+        const angle = (Math.PI * 2 * i) / 24;
+        const speed = 1.5 + Math.random() * 3.2;
+
+        this.particles.push({
+          x: lockBubble.x,
+          y: lockBubble.y,
+          vx: Math.cos(angle) * speed,
+          vy: Math.sin(angle) * speed,
+          size: 3 + Math.random() * 5,
+          life: 28 + Math.random() * 18,
+          maxLife: 46,
+          color: { color: i % 2 ? "#ffd34d" : "#ffffff" }
+        });
+      }
+
+      this.explosions.push({
+        x: lockBubble.x,
+        y: lockBubble.y,
+        radius: 0,
+        alpha: 1
+      });
+
+      this.screenShake = 7;
+      Audio.playEffect("hit");
+
+      if (this.shooter) {
+        this.shooter.moving = false;
+        this.shooter.vx = 0;
+        this.shooter.vy = 0;
+      }
+
+      // Erst aufblitzen, DANACH normale vorhandene Level-Sieg-Animation.
+      window.setTimeout(() => {
+        if (this.levelFinished) return;
+        this.victoryAnimation = true;
+      }, 650);
+
+      window.setTimeout(() => {
+        if (this.levelFinished) return;
+        this.finish(true);
+      }, 1850);
+
+      return true;
+    },
+
+    drawSwordFeature() {
+      const sword = this.swordFeature;
+      if (!sword) return;
+
+      const now = performance.now();
+      const flashProgress =
+        sword.released && sword.flashStart
+          ? Math.min(1, (now - sword.flashStart) / sword.flashDuration)
+          : 0;
+
+      this.ctx.save();
+
+      if (this.swordImage?.complete && this.swordImage.naturalWidth > 0) {
+        this.ctx.globalAlpha = 1;
+        this.ctx.drawImage(
+          this.swordImage,
+          sword.swordLeft,
+          sword.swordTop,
+          sword.swordWidth,
+          sword.swordHeight
+        );
+      }
+
+      if (sword.released && flashProgress < 1) {
+        const pulse = Math.sin(flashProgress * Math.PI);
+        this.ctx.globalCompositeOperation = "lighter";
+        this.ctx.globalAlpha = 0.35 + pulse * 0.65;
+        this.ctx.shadowColor = "#fff6b3";
+        this.ctx.shadowBlur = 28 + pulse * 30;
+
+        if (this.swordImage?.complete && this.swordImage.naturalWidth > 0) {
+          this.ctx.drawImage(
+            this.swordImage,
+            sword.swordLeft,
+            sword.swordTop,
+            sword.swordWidth,
+            sword.swordHeight
+          );
+        }
+      }
+
+      this.ctx.restore();
     },
 
     addNewTopRow() {
@@ -3038,6 +3238,7 @@ createShooter() {
         !this.running ||
         this.levelFinished ||
         this.speedCountdownActive ||
+        this.swordReleaseActive ||
         !this.shooter ||
         this.shooter.moving
       ) return;
@@ -3279,6 +3480,12 @@ createShooter() {
 
           this.lastHitBubble = hitBubble;
 
+          // Schwert-Level: Goldball wird nur durch direkten Treffer abgeschossen.
+          if (hitBubble?.isSwordLock) {
+              this.hitSwordLock(hitBubble);
+              return;
+          }
+
           this.attachShooter();
 
           // Max Schüsse prüfen nach abgeschlossenem Schuss
@@ -3442,7 +3649,7 @@ createShooter() {
           return;
       }
 
-      if (!levelConfig || !["colors", "speed"].includes(levelConfig.mode)) {
+      if (!levelConfig || !["colors", "speed", "sword"].includes(levelConfig.mode)) {
 
           if (this.score >= this.targetScore) {
               this.victoryAnimation = true;
@@ -3476,6 +3683,11 @@ checkObjectiveWin() {
 
   const levelConfig = getActiveLevelConfig(state.selectedLevel);
 
+
+  // SCHWERT-LEVEL: Sieg ausschließlich durch Befreiung des Schwertes.
+  if (levelConfig?.mode === "sword") {
+      return;
+  }
 
   // SPEEDGAME: Zielpunktzahl innerhalb der laufenden Zeit erreicht.
   if (levelConfig?.mode === "speed") {
@@ -3527,6 +3739,8 @@ explodeBomb() {
   const explosionRadius = this.radius * 3.4;
 
   const removedByBomb = this.bubbles.filter((bubble) => {
+    if (bubble.isSwordLock) return false;
+
     const distance = Math.hypot(
       bubble.x - this.shooter.x,
       bubble.y - this.shooter.y
@@ -3544,6 +3758,8 @@ dom.playScore.textContent =
 this.checkObjectiveWin();
 
   this.bubbles = this.bubbles.filter((bubble) => {
+    if (bubble.isSwordLock) return true;
+
     const distance = Math.hypot(
       bubble.x - this.shooter.x,
       bubble.y - this.shooter.y
@@ -3646,6 +3862,8 @@ findThunderTargets(startX, startY) {
 
     this.bubbles.forEach(bubble => {
 
+        if (bubble.isSwordLock) return;
+
         const distance = Math.hypot(
             bubble.x - startX,
             bubble.y - startY
@@ -3695,7 +3913,7 @@ findThunderTargets(startX, startY) {
         const upperBubbles = this.bubbles.filter(bubble => {
 
 
-            if (visited.has(bubble)) {
+            if (bubble.isSwordLock || visited.has(bubble)) {
                 return false;
             }
 
@@ -3959,7 +4177,7 @@ findConnectedSameColor(origin) {
       }
 
       const floating = this.bubbles.filter(
-    (bubble) => !connectedToTop.has(bubble)
+    (bubble) => !connectedToTop.has(bubble) && !bubble.isSwordLock
 );
 
 if (floating.length > 0) {
@@ -3985,13 +4203,41 @@ if (floating.length > 0) {
     this.score += floating.length * 150;
 
     this.bubbles = this.bubbles.filter(
-        (bubble) => connectedToTop.has(bubble)
+        (bubble) => connectedToTop.has(bubble) || bubble.isSwordLock
     );
 }
 
 },
 
 drawBubble(bubble) {
+
+    // Goldener Halteball des Schwertes
+    if (bubble.isSwordLock) {
+        const size = this.radius * 2.18;
+
+        if (this.goldBallImage?.complete && this.goldBallImage.naturalWidth > 0) {
+            this.ctx.save();
+            this.ctx.shadowColor = "#ffd84d";
+            this.ctx.shadowBlur = 12;
+            this.ctx.drawImage(
+                this.goldBallImage,
+                bubble.x - size / 2,
+                bubble.y - size / 2,
+                size,
+                size
+            );
+            this.ctx.restore();
+        } else {
+            this.ctx.save();
+            this.ctx.fillStyle = "#f6bf23";
+            this.ctx.beginPath();
+            this.ctx.arc(bubble.x, bubble.y, this.radius, 0, Math.PI * 2);
+            this.ctx.fill();
+            this.ctx.restore();
+        }
+
+        return;
+    }
 
     // Farbbombe
     if (bubble.isColorBomb && this.colorBombImage?.complete) {
@@ -4255,6 +4501,9 @@ drawAimGuide() {
       //this.ctx.fillStyle = "rgba(0,0,0,.12)";
       //this.ctx.fillRect(0, 0, this.width, this.height);
 
+      // Schwert liegt hinter dem Goldball und den normalen Kugeln.
+      this.drawSwordFeature();
+
       this.bubbles.forEach((bubble, index) => {
     this.drawBubble(bubble);
 
@@ -4304,8 +4553,14 @@ drawAimGuide() {
 
       this.ctx.fillStyle = "#ffffff";
       this.ctx.font = "bold 17px Arial";
+      const activeLevelConfig = getActiveLevelConfig(state.selectedLevel);
+      const targetHudText =
+          activeLevelConfig?.mode === "sword"
+              ? `${this.score.toLocaleString("de-DE")} | GOLDBALL`
+              : `${this.score.toLocaleString("de-DE")} | ${this.targetScore.toLocaleString("de-DE")}`;
+
       this.ctx.fillText(
-          `${this.score.toLocaleString("de-DE")} | ${this.targetScore.toLocaleString("de-DE")}`,
+          targetHudText,
           this.width - 18,
           this.height - 25
       );

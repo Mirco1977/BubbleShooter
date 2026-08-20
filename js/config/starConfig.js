@@ -349,17 +349,25 @@ const STAR_CONFIG = {
 },
 
 24: {
-    ballTypes: 4,
-    addRowAfterShot: "y",
-    rows: 5,
-    targetScore: 3500,
-    mode: "shots",
-    maxShots: 16,
+    // SCHWERT-LEVEL – identischer Test wie Level 70.
+    // Goldball am Griff (2. Kugel von oben) treffen.
+    // Schwertgröße wird automatisch auf 5 Ballhöhen x 3 Ballbreiten skaliert.
+    ballTypes: 5,
+    addRowAfterShot: "n",
+    rows: 8,
+    targetScore: 8000,
+    mode: "sword",
+    maxShots: 18,
+
+    sword: {
+        row: 2,
+        col: 7
+    },
 
     shots: {
-        threeStars: 8,
-        twoStars: 12,
-        oneStar: 13
+        threeStars: 6,
+        twoStars: 11,
+        oneStar: 18
     }
 },
 
@@ -1040,17 +1048,24 @@ const STAR_CONFIG = {
     }
 },
 70: {
+    // SCHWERT-LEVEL – Goldball am Griff (2. Kugel von oben) treffen.
+    // Schwertgröße wird automatisch auf 5 Ballhöhen x 3 Ballbreiten skaliert.
     ballTypes: 5,
-    addRowAfterShot: "y",
+    addRowAfterShot: "n",
     rows: 8,
     targetScore: 8000,
-    mode: "shots",
-    maxShots: 30,
+    mode: "sword",
+    maxShots: 18,
+
+    sword: {
+        row: 2,
+        col: 7
+    },
 
     shots: {
-        threeStars: 22,
-        twoStars: 25,
-        oneStar: 30
+        threeStars: 6,
+        twoStars: 11,
+        oneStar: 18
     }
 },
 
