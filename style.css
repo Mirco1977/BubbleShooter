@@ -4966,7 +4966,9 @@ body.wheel-win-sequence-active {
 .album-card-art {
   width: 100%;
   height: 100%;
-  object-fit: cover;
+  object-fit: contain;
+  object-position: center center;
+  display: block;
   transition: filter .2s ease, transform .2s ease;
 }
 
