@@ -104,7 +104,21 @@
             draggable="false">
         </button>
 
-        <!-- 6. ALTE LEVELKARTE: bewusst deaktiviert, aber NICHT gelöscht -->
+
+        <!-- 6. Sammelalbum -->
+        <button id="openAlbumsButton" class="menu-card has-image album-menu-card">
+          <div class="menu-card-text">
+            <strong>Sammelalbum</strong>
+            <span id="albumHomeStatus">Schwerter: 0/6 gesammelt</span>
+          </div>
+          <img
+            class="menu-card-image album-menu-image"
+            src="assets/albums/swords/album-swords.png"
+            alt="Sammelalbum Schwerter"
+            draggable="false">
+        </button>
+
+        <!-- 7. ALTE LEVELKARTE: bewusst deaktiviert, aber NICHT gelöscht -->
         <button
           id="openMapButton"
           class="menu-card has-image legacy-map-card"
@@ -123,7 +137,7 @@
             draggable="false">
         </button>
 
-        <!-- 7. Einstellungen -->
+        <!-- 8. Einstellungen -->
         <button id="openSettingsButton" class="menu-card has-image">
           <div class="menu-card-text">
             <strong>Einstellungen</strong>
@@ -469,6 +483,27 @@
             ERGEBNIS
         </span>
 
+
+        <div
+            id="albumCardReward"
+            class="album-card-reward hidden"
+            aria-live="polite">
+
+            <span class="album-card-reward-title">
+                NEUE SAMMELKARTE!
+            </span>
+
+            <div class="album-card-reward-body">
+                <img id="albumUnlockImage" class="album-card-reward-image" alt="">
+                <div class="album-card-reward-copy">
+                    <strong id="albumUnlockName"></strong>
+                    <span id="albumUnlockProgress"></span>
+                    <span id="albumUnlockBonus" class="album-unlock-bonus hidden"></span>
+                </div>
+            </div>
+
+        </div>
+
         <div
             id="itemUnlockReward"
             class="item-unlock-reward hidden"
@@ -670,6 +705,41 @@
       </div>
 
       <div id="episodeList" class="episode-list"></div>
+    </section>
+
+
+    <section id="albumsScreen" class="screen hidden">
+      <div class="screen-toolbar">
+        <button class="back-button" data-back="home">← Start</button>
+        <div>
+          <span class="eyebrow">SAMMELALBUM</span>
+          <h2>Schwerter</h2>
+        </div>
+        <span id="albumScreenCounter">0/6</span>
+      </div>
+
+      <div class="album-hero-card victory-card-look">
+        <img src="assets/albums/swords/album-swords.png" alt="Schwerter Album" class="album-cover-image">
+        <div class="album-hero-copy">
+          <span class="album-kicker">ALBUM 1</span>
+          <h3>Schwerter</h3>
+          <p>Sammle alle 6 Schwertkarten. Jede Karte wird automatisch hinzugefügt, sobald du das zugehörige Level erfolgreich abschließt.</p>
+          <div class="album-progress-track"><span id="albumProgressFill"></span></div>
+          <strong id="albumProgressText">0 von 6 gesammelt</strong>
+        </div>
+      </div>
+
+      <div id="albumCardGrid" class="album-card-grid" aria-live="polite"></div>
+
+      <div id="albumRewardPreview" class="album-reward-preview victory-card-look">
+        <span class="album-reward-star" aria-hidden="true">★</span>
+        <div>
+          <span class="eyebrow">ALBUM-BELOHNUNG</span>
+          <h3>Alle 6 Karten sammeln</h3>
+          <p>10× Bombenball · 10× Blitzball · 5× Farbbombe · 5× Sanduhr</p>
+        </div>
+        <strong id="albumRewardState">Noch nicht erhalten</strong>
+      </div>
     </section>
 
     <section id="rankingScreen" class="screen hidden">

@@ -4792,3 +4792,314 @@ body.wheel-win-sequence-active {
     .shop-offer-name { font-size: 10.5px; }
     .shop-offer-price { min-width: 61px; padding: 5px 6px; font-size: 10.5px; }
 }
+
+
+/* =========================================================
+   SAMMELALBUM – SCHWERTER
+   Victory-Design: dunkelrot, Gold, Lichtglanz
+   ========================================================= */
+.album-menu-card .album-menu-image {
+  object-fit: cover;
+  object-position: center 30%;
+}
+
+.victory-card-look {
+  position: relative;
+  overflow: hidden;
+  border: 2px solid rgba(255, 212, 92, 0.9);
+  border-radius: 22px;
+  color: #fff;
+  background:
+    radial-gradient(circle at 50% 18%, rgba(255, 212, 92, 0.18), transparent 40%),
+    linear-gradient(145deg, #200000, #860000 58%, #310000);
+  box-shadow:
+    0 0 0 4px rgba(134, 0, 0, 0.18),
+    0 12px 34px rgba(0, 0, 0, 0.38);
+}
+
+.album-hero-card {
+  display: grid;
+  grid-template-columns: 38% 1fr;
+  gap: 15px;
+  align-items: center;
+  padding: 14px;
+  margin-bottom: 16px;
+}
+
+.album-cover-image {
+  width: 100%;
+  aspect-ratio: 1.35 / 1;
+  object-fit: cover;
+  border-radius: 15px;
+  border: 1px solid rgba(255, 212, 92, 0.65);
+  box-shadow: 0 8px 20px rgba(0,0,0,.38);
+}
+
+.album-hero-copy h3,
+.album-reward-preview h3 {
+  margin: 2px 0 5px;
+  color: #fff;
+  font-size: clamp(21px, 5vw, 28px);
+  text-transform: uppercase;
+}
+
+.album-hero-copy p,
+.album-reward-preview p {
+  margin: 0 0 10px;
+  color: rgba(255,255,255,.82);
+  font-size: 13px;
+  line-height: 1.35;
+}
+
+.album-kicker {
+  color: #ffd45c;
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: .12em;
+}
+
+.album-progress-track {
+  height: 12px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgba(0,0,0,.48);
+  border: 1px solid rgba(255,212,92,.55);
+}
+
+#albumProgressFill {
+  display: block;
+  width: 0;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #b11616, #ffd45c);
+  box-shadow: 0 0 12px rgba(255,212,92,.8);
+  transition: width .35s ease;
+}
+
+#albumProgressText {
+  display: block;
+  margin-top: 6px;
+  color: #ffd45c;
+  font-size: 12px;
+}
+
+.album-card-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.album-collect-card {
+  position: relative;
+  min-width: 0;
+  padding: 8px;
+  border-radius: 18px;
+  border: 2px solid rgba(255,212,92,.72);
+  background: linear-gradient(145deg, #2a0808, #650000);
+  box-shadow: 0 8px 22px rgba(0,0,0,.34);
+}
+
+.album-collect-card.is-collected {
+  box-shadow:
+    0 0 18px rgba(255,212,92,.24),
+    0 8px 22px rgba(0,0,0,.38);
+}
+
+.album-card-number {
+  position: absolute;
+  z-index: 3;
+  top: 13px;
+  left: 13px;
+  padding: 4px 7px;
+  border-radius: 999px;
+  color: #3a0707;
+  background: #ffd45c;
+  font-size: 10px;
+  font-weight: 900;
+  box-shadow: 0 3px 8px rgba(0,0,0,.35);
+}
+
+.album-card-art-wrap {
+  position: relative;
+  overflow: hidden;
+  aspect-ratio: .74 / 1;
+  border-radius: 12px;
+  background: #160303;
+}
+
+.album-card-art {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: filter .2s ease, transform .2s ease;
+}
+
+.album-collect-card.is-locked .album-card-art {
+  filter: grayscale(1) brightness(.17) contrast(1.25);
+}
+
+.album-card-lock {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  font-size: clamp(34px, 11vw, 54px);
+  background: radial-gradient(circle, rgba(0,0,0,.1), rgba(0,0,0,.42));
+  text-shadow: 0 5px 12px rgba(0,0,0,.8);
+}
+
+.album-card-meta {
+  min-width: 0;
+  padding: 8px 3px 3px;
+  text-align: center;
+}
+
+.album-card-meta strong {
+  display: block;
+  overflow: hidden;
+  color: #fff;
+  font-size: 13px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.album-card-meta span {
+  display: block;
+  margin-top: 3px;
+  color: rgba(255,255,255,.65);
+  font-size: 10px;
+  line-height: 1.2;
+}
+
+.album-reward-preview {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 12px;
+  align-items: center;
+  margin-top: 16px;
+  padding: 14px;
+}
+
+.album-reward-star {
+  display: grid;
+  place-items: center;
+  width: 58px;
+  height: 58px;
+  border: 2px solid #ffd45c;
+  border-radius: 50%;
+  color: #ffd45c;
+  background: #650000;
+  font-size: 34px;
+  box-shadow: 0 0 18px rgba(255,212,92,.4);
+}
+
+#albumRewardState {
+  grid-column: 1 / -1;
+  padding: 8px 10px;
+  border-radius: 10px;
+  text-align: center;
+  color: rgba(255,255,255,.82);
+  background: rgba(0,0,0,.28);
+  font-size: 12px;
+}
+
+#albumRewardState.claimed {
+  color: #d9ffe5;
+  background: rgba(18, 133, 64, .35);
+}
+
+/* Neue Sammelkarte direkt in der bestehenden Victory-Karte */
+.album-card-reward {
+  margin: 8px 0 12px;
+  padding: 10px;
+  border: 2px solid rgba(255,212,92,.9);
+  border-radius: 16px;
+  background:
+    radial-gradient(circle at 25% 30%, rgba(255,212,92,.18), transparent 34%),
+    rgba(31, 2, 2, .78);
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.12),
+    0 0 20px rgba(255,212,92,.2);
+  animation: albumRewardPop .55s cubic-bezier(.18,.9,.28,1.2) both;
+}
+
+.album-card-reward-title {
+  display: block;
+  margin-bottom: 8px;
+  color: #ffd45c;
+  font-size: 12px;
+  font-weight: 900;
+  letter-spacing: .08em;
+  text-align: center;
+}
+
+.album-card-reward-body {
+  display: grid;
+  grid-template-columns: 68px minmax(0,1fr);
+  gap: 10px;
+  align-items: center;
+}
+
+.album-card-reward-image {
+  width: 68px;
+  height: 92px;
+  object-fit: cover;
+  border-radius: 9px;
+  border: 2px solid #ffd45c;
+  box-shadow: 0 0 15px rgba(255,212,92,.28);
+}
+
+.album-card-reward-copy {
+  min-width: 0;
+  text-align: left;
+}
+
+.album-card-reward-copy strong,
+.album-card-reward-copy span {
+  display: block;
+}
+
+.album-card-reward-copy strong {
+  color: #fff;
+  font-size: 15px;
+}
+
+#albumUnlockProgress {
+  margin-top: 4px;
+  color: rgba(255,255,255,.78);
+  font-size: 12px;
+}
+
+.album-unlock-bonus {
+  margin-top: 7px;
+  padding: 6px 8px;
+  border-radius: 8px;
+  color: #2d1600;
+  background: #ffd45c;
+  font-size: 10px;
+  font-weight: 900;
+  line-height: 1.25;
+}
+
+@keyframes albumRewardPop {
+  from { opacity: 0; transform: translateY(-12px) scale(.88); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@media (max-width: 420px) {
+  .album-hero-card {
+    grid-template-columns: 1fr;
+  }
+
+  .album-cover-image {
+    max-height: 180px;
+  }
+
+  .album-card-grid {
+    gap: 9px;
+  }
+
+  .album-collect-card {
+    padding: 6px;
+  }
+}

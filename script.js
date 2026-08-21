@@ -6,6 +6,7 @@
   import { AudioManager } from "./js/managers/AudioManager.js";
   import { StorageManager } from "./js/managers/StorageManager.js";
   import { calculateStars, STAR_CONFIG } from "./js/config/starConfig.js";
+  import { ALBUM_CONFIG, getAlbumCardForLevel } from "./js/config/albumConfig.js";
 
   (() => {
   "use strict";
@@ -247,6 +248,7 @@ const THEME_PATH = [
       shop: $("shopScreen"),
       wheel: $("wheelScreen"),
       episodes: $("episodesScreen"),
+      albums: $("albumsScreen"),
       settings: $("settingsScreen"),
       wolrdMap2: $("worldMap2Screen")
     },
@@ -261,6 +263,18 @@ const THEME_PATH = [
     openShopButton: $("openShopButton"),
     openWheelButton: $("openWheelButton"),
     openEpisodesButton: $("openEpisodesButton"),
+    openAlbumsButton: $("openAlbumsButton"),
+    albumHomeStatus: $("albumHomeStatus"),
+    albumScreenCounter: $("albumScreenCounter"),
+    albumProgressFill: $("albumProgressFill"),
+    albumProgressText: $("albumProgressText"),
+    albumCardGrid: $("albumCardGrid"),
+    albumRewardState: $("albumRewardState"),
+    albumCardReward: $("albumCardReward"),
+    albumUnlockImage: $("albumUnlockImage"),
+    albumUnlockName: $("albumUnlockName"),
+    albumUnlockProgress: $("albumUnlockProgress"),
+    albumUnlockBonus: $("albumUnlockBonus"),
     episodeHomeStatus: $("episodeHomeStatus"),
     episodeList: $("episodeList"),
     episodeScreenBadge: $("episodeScreenBadge"),
@@ -1353,6 +1367,195 @@ function startVictoryImpact(stars) {
     });
   }
 
+
+  /* =========================================================
+     SAMMELALBEN
+     - beliebig viele Alben ueber albumConfig.js moeglich
+     - aktuell 6 Karten pro Album
+     - Karten werden durch abgeschlossene Standardlevel gesammelt
+     ========================================================= */
+  const CollectorAlbum = {
+    ensureState() {
+      if (!state.progress.collectorAlbums || typeof state.progress.collectorAlbums !== "object") {
+        state.progress.collectorAlbums = {};
+      }
+
+      ALBUM_CONFIG.forEach((album) => {
+        if (!state.progress.collectorAlbums[album.id] || typeof state.progress.collectorAlbums[album.id] !== "object") {
+          state.progress.collectorAlbums[album.id] = {
+            cards: {},
+            rewardClaimed: false,
+            completedAt: null
+          };
+        }
+
+        const albumState = state.progress.collectorAlbums[album.id];
+        albumState.cards = albumState.cards && typeof albumState.cards === "object" ? albumState.cards : {};
+        albumState.rewardClaimed = Boolean(albumState.rewardClaimed);
+      });
+    },
+
+    getState(albumId) {
+      this.ensureState();
+      return state.progress.collectorAlbums[albumId];
+    },
+
+    getCollectedCount(album) {
+      const albumState = this.getState(album.id);
+      return album.cards.filter((card) => Boolean(albumState.cards[card.id])).length;
+    },
+
+    isComplete(album) {
+      return this.getCollectedCount(album) >= album.cards.length;
+    },
+
+    grantAlbumReward(album) {
+      const albumState = this.getState(album.id);
+      if (albumState.rewardClaimed || !this.isComplete(album)) return false;
+
+      Object.entries(album.reward?.items || {}).forEach(([itemKey, amount]) => {
+        addItemAmount(itemKey, amount, false);
+      });
+
+      albumState.rewardClaimed = true;
+      albumState.completedAt = albumState.completedAt || new Date().toISOString();
+      return true;
+    },
+
+    collectLevel(level, announce = true) {
+      const match = getAlbumCardForLevel(level);
+      if (!match) return null;
+
+      const { album, card } = match;
+      const albumState = this.getState(album.id);
+      if (albumState.cards[card.id]) return null;
+
+      albumState.cards[card.id] = {
+        collectedAt: new Date().toISOString(),
+        level: Number(level)
+      };
+
+      const count = this.getCollectedCount(album);
+      const completedNow = count >= album.cards.length;
+      const rewardGranted = completedNow ? this.grantAlbumReward(album) : false;
+
+      this.updateHomeStatus();
+
+      return announce ? {
+        album,
+        card,
+        count,
+        completedNow,
+        rewardGranted
+      } : null;
+    },
+
+    syncFromResults() {
+      this.ensureState();
+      let changed = false;
+
+      ALBUM_CONFIG.forEach((album) => {
+        const albumState = this.getState(album.id);
+
+        album.cards.forEach((card) => {
+          if (state.progress.results?.[card.unlockLevel] && !albumState.cards[card.id]) {
+            albumState.cards[card.id] = {
+              collectedAt: state.progress.results[card.unlockLevel]?.completedAt || new Date().toISOString(),
+              level: card.unlockLevel
+            };
+            changed = true;
+          }
+        });
+
+        if (this.isComplete(album) && !albumState.rewardClaimed) {
+          if (this.grantAlbumReward(album)) changed = true;
+        }
+      });
+
+      if (changed) SaveManager.saveProgress(state.progress);
+      this.updateHomeStatus();
+    },
+
+    formatReward(album) {
+      const labels = {
+        bomb: "Bombenball",
+        thunder: "Blitzball",
+        colorbomb: "Farbbombe",
+        hourglass: "Sanduhr",
+        rainbow: "Regenbogenball",
+        ballswitch: "Ball Switch",
+        aim: "Lupe"
+      };
+
+      return Object.entries(album.reward?.items || {})
+        .map(([key, amount]) => `${amount}× ${labels[key] || key}`)
+        .join(" · ");
+    },
+
+    updateHomeStatus() {
+      const album = ALBUM_CONFIG[0];
+      if (!album) return;
+      const count = this.getCollectedCount(album);
+      if (dom.albumHomeStatus) dom.albumHomeStatus.textContent = `${album.name}: ${count}/${album.cards.length} gesammelt`;
+    },
+
+    render() {
+      const album = ALBUM_CONFIG[0];
+      if (!album || !dom.albumCardGrid) return;
+
+      const albumState = this.getState(album.id);
+      const count = this.getCollectedCount(album);
+      const percent = Math.round((count / Math.max(1, album.cards.length)) * 100);
+
+      if (dom.albumScreenCounter) dom.albumScreenCounter.textContent = `${count}/${album.cards.length}`;
+      if (dom.albumProgressText) dom.albumProgressText.textContent = `${count} von ${album.cards.length} gesammelt`;
+      if (dom.albumProgressFill) dom.albumProgressFill.style.width = `${percent}%`;
+      if (dom.albumRewardState) {
+        dom.albumRewardState.textContent = albumState.rewardClaimed ? "Belohnung erhalten ✓" : "Noch nicht erhalten";
+        dom.albumRewardState.classList.toggle("claimed", albumState.rewardClaimed);
+      }
+
+      dom.albumCardGrid.innerHTML = album.cards.map((card, index) => {
+        const collected = Boolean(albumState.cards[card.id]);
+        return `
+          <article class="album-collect-card ${collected ? "is-collected" : "is-locked"}">
+            <div class="album-card-number">${String(index + 1).padStart(2, "0")}/06</div>
+            <div class="album-card-art-wrap">
+              <img src="${card.image}" alt="${collected ? card.name : "Gesperrte Sammelkarte"}" class="album-card-art">
+              ${collected ? "" : '<div class="album-card-lock" aria-hidden="true">🔒</div>'}
+            </div>
+            <div class="album-card-meta">
+              <strong>${collected ? card.name : "???"}</strong>
+              <span>${collected ? `Gesammelt in Level ${card.unlockLevel}` : `Freischaltung: Level ${card.unlockLevel}`}</span>
+            </div>
+          </article>
+        `;
+      }).join("");
+    },
+
+    hideVictoryReward() {
+      dom.albumCardReward?.classList.add("hidden");
+      dom.albumUnlockBonus?.classList.add("hidden");
+    },
+
+    showVictoryReward(result) {
+      this.hideVictoryReward();
+      if (!result || !dom.albumCardReward) return;
+
+      dom.albumUnlockImage.src = result.card.image;
+      dom.albumUnlockImage.alt = result.card.name;
+      dom.albumUnlockName.textContent = result.completedNow ? `Album vollständig: ${result.album.name}!` : result.card.name;
+      dom.albumUnlockProgress.textContent = `${result.count}/${result.album.cards.length} Karten gesammelt`;
+
+      if (result.rewardGranted) {
+        dom.albumUnlockBonus.textContent = `Belohnung: ${this.formatReward(result.album)}`;
+        dom.albumUnlockBonus.classList.remove("hidden");
+      }
+
+      dom.albumCardReward.classList.remove("hidden");
+    }
+  };
+
   const Navigation = {
   show(screenName) {
     Object.entries(dom.screens).forEach(([name, element]) => {
@@ -1386,6 +1589,10 @@ function startVictoryImpact(stars) {
 
     if (screenName === "episodes") {
       EpisodeRace.render();
+    }
+
+    if (screenName === "albums") {
+      CollectorAlbum.render();
     }
 
     window.scrollTo({
@@ -4687,6 +4894,7 @@ dom.shotsMapButton.onclick = () => {
 
 
     async finish(won, loseMessage = "Level verloren!") {
+      CollectorAlbum.hideVictoryReward();
       this.explosions = [];
       this.particles = [];
 
@@ -4755,6 +4963,8 @@ dom.shotsMapButton.onclick = () => {
          STANDARDLEVEL – bisheriges Verhalten
          ===================================================== */
       const oldResult = (state.progress.results || {})[level];
+      const newAlbumCard = CollectorAlbum.collectLevel(level, !oldResult);
+      CollectorAlbum.showVictoryReward(newAlbumCard);
       showUnlockedItemReward(level, Boolean(oldResult));
 
       if (levelConfig?.mode === "speed") {
@@ -5127,6 +5337,8 @@ const Shop = {
 
   dom.openEpisodesButton.addEventListener("click", () => Navigation.show("episodes"));
 
+  dom.openAlbumsButton?.addEventListener("click", () => Navigation.show("albums"));
+
   dom.wheelSpinButton.addEventListener("click", () => LuckyWheel.spin());
 
   dom.wheelVictoryBackButton?.addEventListener("click", () => {
@@ -5388,6 +5600,7 @@ const Shop = {
     ThemeManager.applyStageAssets(state.progress.selectedStage);
     ensureItemInventory();
     grantUnlockedItemStarterRewards();
+    CollectorAlbum.syncFromResults();
     LuckyWheel.ensureState();
     updateItemBarLocks();
     applySettingsToForm();
