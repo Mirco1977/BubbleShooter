@@ -4891,12 +4891,48 @@ body.wheel-win-sequence-active {
 
 .album-collect-card {
   position: relative;
+  display: block;
+  width: 100%;
   min-width: 0;
   padding: 8px;
   border-radius: 18px;
   border: 2px solid rgba(255,212,92,.72);
   background: linear-gradient(145deg, #2a0808, #650000);
   box-shadow: 0 8px 22px rgba(0,0,0,.34);
+  color: inherit;
+  font: inherit;
+  text-align: inherit;
+  appearance: none;
+  -webkit-appearance: none;
+  cursor: pointer;
+  pointer-events: auto;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.album-collect-card:focus-visible,
+.album-collect-card.is-selected {
+  outline: none;
+  border-color: #fff0a6;
+  transform: translateY(-2px) scale(1.015);
+  box-shadow:
+    0 0 0 3px rgba(255,212,92,.22),
+    0 0 24px rgba(255,212,92,.42),
+    0 9px 24px rgba(0,0,0,.42);
+}
+
+.album-collect-card:active {
+  transform: scale(.985);
+}
+
+.album-card-art-wrap,
+.album-card-art,
+.album-card-lock,
+.album-card-meta,
+.album-card-number {
+  pointer-events: none;
 }
 
 .album-collect-card.is-collected {

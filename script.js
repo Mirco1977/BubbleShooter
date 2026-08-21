@@ -1518,17 +1518,19 @@ function startVictoryImpact(stars) {
       dom.albumCardGrid.innerHTML = album.cards.map((card, index) => {
         const collected = Boolean(albumState.cards[card.id]);
         return `
-          <article class="album-collect-card ${collected ? "is-collected" : "is-locked"}">
+          <button type="button" class="album-collect-card ${collected ? "is-collected" : "is-locked"}"
+                  data-album-card-id="${card.id}"
+                  aria-label="${collected ? card.name : `Gesperrte Sammelkarte – Freischaltung Level ${card.unlockLevel}`}">
             <div class="album-card-number">${String(index + 1).padStart(2, "0")}/06</div>
             <div class="album-card-art-wrap">
-              <img src="${card.image}" alt="${collected ? card.name : "Gesperrte Sammelkarte"}" class="album-card-art">
+              <img src="${card.image}" alt="${collected ? card.name : "Gesperrte Sammelkarte"}" class="album-card-art" draggable="false">
               ${collected ? "" : '<div class="album-card-lock" aria-hidden="true">🔒</div>'}
             </div>
             <div class="album-card-meta">
               <strong>${collected ? card.name : "???"}</strong>
               <span>${collected ? `Gesammelt in Level ${card.unlockLevel}` : `Freischaltung: Level ${card.unlockLevel}`}</span>
             </div>
-          </article>
+          </button>
         `;
       }).join("");
     },
@@ -5338,6 +5340,23 @@ const Shop = {
   dom.openEpisodesButton.addEventListener("click", () => Navigation.show("episodes"));
 
   dom.openAlbumsButton?.addEventListener("click", () => Navigation.show("albums"));
+
+  // Sammelkarten: echte Touch-/Click-Auswahl auf Mobilgeräten und Desktop.
+  // Delegation bleibt auch nach CollectorAlbum.render() aktiv, da das Grid neu aufgebaut wird.
+  dom.albumCardGrid?.addEventListener("click", (event) => {
+    const cardElement = event.target.closest(".album-collect-card");
+    if (!cardElement || !dom.albumCardGrid.contains(cardElement)) return;
+
+    // Verhindert den auf manchen Mobilbrowsern nach einem Tap erzeugten Ghost-Click/Zoom.
+    event.preventDefault();
+
+    dom.albumCardGrid.querySelectorAll(".album-collect-card.is-selected")
+      .forEach((element) => {
+        if (element !== cardElement) element.classList.remove("is-selected");
+      });
+
+    cardElement.classList.toggle("is-selected");
+  });
 
   dom.wheelSpinButton.addEventListener("click", () => LuckyWheel.spin());
 
