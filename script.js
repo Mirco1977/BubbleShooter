@@ -12,23 +12,35 @@
 
   "use strict";
 
-  // LEVEL 70 – SCHWERT-SPEZIALLEVEL
-  // Das Longsword aus Sammelalbum 1 steht im Spielfeld.
-  // Der Goldball muss freigespielt werden; erst sein Fall startet den Sieg-Ablauf.
-  STAR_CONFIG[70] = {
-    ...(STAR_CONFIG[70] || {}),
-    ballTypes: STAR_CONFIG[70]?.ballTypes ?? 5,
-    rows: STAR_CONFIG[70]?.rows ?? 7,
-    addRowAfterShot: "n",
-    mode: "sword",
-    sword: {
-      // Reihe 3 = zwei vollständige Kugelreihen oberhalb des Goldballs.
-      row: 3,
-      col: 7,
-      image: "assets/albums/swords/longsword.png",
-      name: "Longsword"
-    }
-  };
+  // SAMMELALBUM 1 – ALLE SCHWERT-SPEZIALLEVEL
+  // Die Leveldaten werden direkt aus albumConfig.js übernommen.
+  // Dadurch bekommt jedes Schwert-Level automatisch sein eigenes Sammelstück,
+  // aber dieselbe Goldball-, Freispiel-, Aufbläh-, "ERSPIELT!"- und Platz-Animation.
+  const swordAlbumConfig = ALBUM_CONFIG.find((album) => album.id === "swords");
+
+  swordAlbumConfig?.cards?.forEach((card) => {
+    const level = Number(card.unlockLevel);
+    const original = STAR_CONFIG[level] || {};
+
+    STAR_CONFIG[level] = {
+      ...original,
+      ballTypes: original.ballTypes ?? 5,
+      // Mindestens genügend Reihen, damit oberhalb des Goldballs
+      // immer zwei vollständige Kugelreihen vorhanden sind.
+      rows: Math.max(7, Number(original.rows) || 7),
+      addRowAfterShot: "n",
+      mode: "sword",
+      sword: {
+        // Goldball in Reihe 3 = zwei vollständige Reihen darüber.
+        row: 3,
+        col: 7,
+        image: card.image,
+        name: card.name,
+        cardId: card.id,
+        albumId: "swords"
+      }
+    };
+  });
 
 /*
    * =========================================================

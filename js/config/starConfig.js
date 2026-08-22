@@ -1267,17 +1267,24 @@ const STAR_CONFIG = {
 },
 
 80: {
-    // Stage 8 – automatisch abgestimmtes Level
-    ballTypes: 3,
-    addRowAfterShot: "y",
-    rows: 5,
-    targetScore: 4200,
-    mode: "shots",
-    maxShots: 21,
+    // SCHWERT-LEVEL – Goldball am Griff (2. Kugel von oben) treffen.
+    // Schwertgröße wird automatisch auf 5 Ballhöhen x 3 Ballbreiten skaliert.
+    ballTypes: 5,
+    addRowAfterShot: "n",
+    rows: 8,
+    targetScore: 8000,
+    mode: "sword",
+    maxShots: 18,
+
+    sword: {
+        row: 2,
+        col: 7
+    },
+
     shots: {
-        threeStars: 13,
-        twoStars: 17,
-        oneStar: 21
+        threeStars: 6,
+        twoStars: 11,
+        oneStar: 18
     }
 },
 
