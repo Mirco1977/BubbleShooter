@@ -3033,7 +3033,7 @@ window.BK_openMainLevel = (levelNumber) => {
         flashDuration: 420,
         revealStart: 0,
         revealGrowDuration: 900,
-        revealHoldDuration: 700,
+        revealHoldDuration: 1200, // +0,5 s Sammelkarten-Gewinnsequenz
         burstStart: 0,
         burstDuration: 520,
         collectibleName: levelConfig?.sword?.name || "Sammelstück",
