@@ -5,6 +5,7 @@ export const ALBUM_CONFIG = [
     subtitle: "Sammle alle 6 Schwertkarten",
     maxCards: 6,
     cover: "assets/albums/swords/album-swords.png",
+    completionImage: "assets/albums/swords/album-complete.png",
     cards: [
       { id: "longsword", number: 78,  name: "Longsword",    unlockLevel: 70,  image: "assets/albums/swords/longsword.png" },
       { id: "kilij",     number: 167, name: "Kilij",        unlockLevel: 80,  image: "assets/albums/swords/kilij.png" },

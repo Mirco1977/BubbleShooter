@@ -270,6 +270,11 @@ const THEME_PATH = [
     albumProgressText: $("albumProgressText"),
     albumCardGrid: $("albumCardGrid"),
     albumRewardState: $("albumRewardState"),
+    albumCompletionShowcase: $("albumCompletionShowcase"),
+    albumCompletionImage: $("albumCompletionImage"),
+    albumRewardOverlay: $("albumRewardOverlay"),
+    albumRewardItems: $("albumRewardItems"),
+    albumRewardClose: $("albumRewardClose"),
     albumCardReward: $("albumCardReward"),
     albumUnlockImage: $("albumUnlockImage"),
     albumUnlockName: $("albumUnlockName"),
@@ -1437,7 +1442,7 @@ function startVictoryImpact(stars) {
 
       const count = this.getCollectedCount(album);
       const completedNow = count >= album.cards.length;
-      const rewardGranted = completedNow ? this.grantAlbumReward(album) : false;
+      const rewardGranted = false;
 
       this.updateHomeStatus();
 
@@ -1467,9 +1472,6 @@ function startVictoryImpact(stars) {
           }
         });
 
-        if (this.isComplete(album) && !albumState.rewardClaimed) {
-          if (this.grantAlbumReward(album)) changed = true;
-        }
       });
 
       if (changed) SaveManager.saveProgress(state.progress);
@@ -1492,6 +1494,57 @@ function startVictoryImpact(stars) {
         .join(" · ");
     },
 
+    rewardItemMeta(itemKey) {
+      const map = {
+        bomb: { label: "Bombenball", image: "assets/ui/bomb-ball.png" },
+        thunder: { label: "Blitzball", image: "assets/ui/thunder-ball.png" },
+        colorbomb: { label: "Farbbombe", image: "assets/ui/color-bomb.png" },
+        hourglass: { label: "Sanduhr", image: "assets/ui/hourglass.png" },
+        rainbow: { label: "Regenbogenball", image: "assets/ui/rainbow-ball.png" },
+        ballswitch: { label: "Ball Switch", image: "assets/ui/ballswitch.png" },
+        aim: { label: "Lupe", image: "assets/ui/lupe.png" }
+      };
+      return map[itemKey] || { label: itemKey, image: "" };
+    },
+
+    showAlbumRewardVictory(album) {
+      if (!dom.albumRewardOverlay || !dom.albumRewardItems) return;
+      dom.albumRewardItems.innerHTML = Object.entries(album.reward?.items || {}).map(([key, amount]) => {
+        const meta = this.rewardItemMeta(key);
+        return `
+          <div class="album-reward-item">
+            <img src="${meta.image}" alt="${meta.label}">
+            <strong>${amount}×</strong>
+            <span>${meta.label}</span>
+          </div>
+        `;
+      }).join("");
+      dom.albumRewardOverlay.classList.remove("hidden");
+      dom.albumRewardOverlay.setAttribute("aria-hidden", "false");
+      requestAnimationFrame(() => dom.albumRewardOverlay.classList.add("is-visible"));
+    },
+
+    hideAlbumRewardVictory() {
+      if (!dom.albumRewardOverlay) return;
+      dom.albumRewardOverlay.classList.remove("is-visible");
+      dom.albumRewardOverlay.setAttribute("aria-hidden", "true");
+      window.setTimeout(() => dom.albumRewardOverlay.classList.add("hidden"), 260);
+    },
+
+    claimReward() {
+      const album = ALBUM_CONFIG[0];
+      if (!album) return false;
+      const albumState = this.getState(album.id);
+      if (!this.isComplete(album) || albumState.rewardClaimed) return false;
+
+      if (!this.grantAlbumReward(album)) return false;
+      SaveManager.saveProgress(state.progress);
+      this.updateHomeStatus();
+      this.render();
+      this.showAlbumRewardVictory(album);
+      return true;
+    },
+
     updateHomeStatus() {
       const album = ALBUM_CONFIG[0];
       if (!album) return;
@@ -1510,9 +1563,31 @@ function startVictoryImpact(stars) {
       if (dom.albumScreenCounter) dom.albumScreenCounter.textContent = `${count}/${album.cards.length}`;
       if (dom.albumProgressText) dom.albumProgressText.textContent = `${count} von ${album.cards.length} gesammelt`;
       if (dom.albumProgressFill) dom.albumProgressFill.style.width = `${percent}%`;
+      const complete = this.isComplete(album);
       if (dom.albumRewardState) {
-        dom.albumRewardState.textContent = albumState.rewardClaimed ? "Belohnung erhalten ✓" : "Noch nicht erhalten";
-        dom.albumRewardState.classList.toggle("claimed", albumState.rewardClaimed);
+        if (albumState.rewardClaimed) {
+          dom.albumRewardState.textContent = "Belohnung erhalten ✓";
+          dom.albumRewardState.disabled = true;
+          dom.albumRewardState.classList.add("claimed");
+          dom.albumRewardState.classList.remove("ready");
+        } else if (complete) {
+          dom.albumRewardState.textContent = "Belohnung abholen";
+          dom.albumRewardState.disabled = false;
+          dom.albumRewardState.classList.add("ready");
+          dom.albumRewardState.classList.remove("claimed");
+        } else {
+          dom.albumRewardState.textContent = "Noch nicht erhalten";
+          dom.albumRewardState.disabled = true;
+          dom.albumRewardState.classList.remove("ready", "claimed");
+        }
+      }
+
+      const showCompletionImage = complete && albumState.rewardClaimed;
+      dom.albumCardGrid.classList.toggle("hidden", showCompletionImage);
+      dom.albumCompletionShowcase?.classList.toggle("hidden", !showCompletionImage);
+      if (showCompletionImage && dom.albumCompletionImage) {
+        dom.albumCompletionImage.src = album.completionImage || album.cover;
+        dom.albumCompletionImage.alt = `Vollständiges Album ${album.name}`;
       }
 
       dom.albumCardGrid.innerHTML = album.cards.map((card, index) => {
@@ -1549,8 +1624,8 @@ function startVictoryImpact(stars) {
       dom.albumUnlockName.textContent = result.completedNow ? `Album vollständig: ${result.album.name}!` : result.card.name;
       dom.albumUnlockProgress.textContent = `${result.count}/${result.album.cards.length} Karten gesammelt`;
 
-      if (result.rewardGranted) {
-        dom.albumUnlockBonus.textContent = `Belohnung: ${this.formatReward(result.album)}`;
+      if (result.completedNow) {
+        dom.albumUnlockBonus.textContent = "Album vollständig – deine Belohnung wartet im Sammelalbum.";
         dom.albumUnlockBonus.classList.remove("hidden");
       }
 
@@ -5356,6 +5431,21 @@ const Shop = {
       });
 
     cardElement.classList.toggle("is-selected");
+  });
+
+
+  dom.albumRewardState?.addEventListener("click", (event) => {
+    event.preventDefault();
+    CollectorAlbum.claimReward();
+  });
+
+  dom.albumRewardClose?.addEventListener("click", (event) => {
+    event.preventDefault();
+    CollectorAlbum.hideAlbumRewardVictory();
+  });
+
+  dom.albumRewardOverlay?.addEventListener("click", (event) => {
+    if (event.target === dom.albumRewardOverlay) CollectorAlbum.hideAlbumRewardVictory();
   });
 
   dom.wheelSpinButton.addEventListener("click", () => LuckyWheel.spin());

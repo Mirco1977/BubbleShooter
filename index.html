@@ -719,17 +719,20 @@
       </div>
 
       <div class="album-hero-card victory-card-look">
-        <img src="assets/albums/swords/album-swords.png" alt="Schwerter Album" class="album-cover-image">
         <div class="album-hero-copy">
           <span class="album-kicker">ALBUM 1</span>
           <h3>Schwerter</h3>
-          <p>Sammle alle 6 Schwertkarten. Jede Karte wird automatisch hinzugefügt, sobald du das zugehörige Level erfolgreich abschließt.</p>
+          <p class="album-description">Sammle alle 6 Schwertkarten. Jede Karte wird automatisch hinzugefügt, sobald du das zugehörige Level erfolgreich abschließt.</p>
           <div class="album-progress-track"><span id="albumProgressFill"></span></div>
           <strong id="albumProgressText">0 von 6 gesammelt</strong>
         </div>
       </div>
 
       <div id="albumCardGrid" class="album-card-grid" aria-live="polite"></div>
+
+      <div id="albumCompletionShowcase" class="album-completion-showcase victory-card-look hidden">
+        <img id="albumCompletionImage" src="assets/albums/swords/album-complete.png" alt="Vollständiges Album Schwerter">
+      </div>
 
       <div id="albumRewardPreview" class="album-reward-preview victory-card-look">
         <span class="album-reward-star" aria-hidden="true">★</span>
@@ -738,7 +741,18 @@
           <h3>Alle 6 Karten sammeln</h3>
           <p>10× Bombenball · 10× Blitzball · 5× Farbbombe · 5× Sanduhr</p>
         </div>
-        <strong id="albumRewardState">Noch nicht erhalten</strong>
+        <button id="albumRewardState" class="album-reward-button" type="button" disabled>Noch nicht erhalten</button>
+      </div>
+
+      <div id="albumRewardOverlay" class="album-reward-overlay hidden" aria-hidden="true">
+        <div class="album-reward-victory-card">
+          <span class="album-reward-victory-kicker">ALBUM VOLLSTÄNDIG</span>
+          <div class="album-reward-victory-medal">★</div>
+          <h3>Glückwunsch</h3>
+          <p>Deine Belohnung</p>
+          <div id="albumRewardItems" class="album-reward-items"></div>
+          <button id="albumRewardClose" class="primary-button album-reward-close" type="button">Weiter</button>
+        </div>
       </div>
     </section>
 
