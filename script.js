@@ -7,40 +7,15 @@
   import { StorageManager } from "./js/managers/StorageManager.js";
   import { calculateStars, STAR_CONFIG } from "./js/config/starConfig.js";
   import { ALBUM_CONFIG, getAlbumCardForLevel } from "./js/config/albumConfig.js";
+  import { applyAlbumLevelConfig } from "./js/config/albumLevel.js";
 
   (() => {
 
   "use strict";
 
-  // SAMMELALBUM 1 – ALLE SCHWERT-SPEZIALLEVEL
-  // Die Leveldaten werden direkt aus albumConfig.js übernommen.
-  // Dadurch bekommt jedes Schwert-Level automatisch sein eigenes Sammelstück,
-  // aber dieselbe Goldball-, Freispiel-, Aufbläh-, "ERSPIELT!"- und Platz-Animation.
-  const swordAlbumConfig = ALBUM_CONFIG.find((album) => album.id === "swords");
-
-  swordAlbumConfig?.cards?.forEach((card) => {
-    const level = Number(card.unlockLevel);
-    const original = STAR_CONFIG[level] || {};
-
-    STAR_CONFIG[level] = {
-      ...original,
-      ballTypes: original.ballTypes ?? 5,
-      // Mindestens genügend Reihen, damit oberhalb des Goldballs
-      // immer zwei vollständige Kugelreihen vorhanden sind.
-      rows: Math.max(7, Number(original.rows) || 7),
-      addRowAfterShot: "n",
-      mode: "sword",
-      sword: {
-        // Goldball in Reihe 3 = zwei vollständige Reihen darüber.
-        row: 3,
-        col: 7,
-        image: card.image,
-        name: card.name,
-        cardId: card.id,
-        albumId: "swords"
-      }
-    };
-  });
+  // Alle Sammelalbum-Speziallevel werden zentral in albumLevel.js konfiguriert.
+  // Dazu gehören aktuell Album 1 (Schwerter) und Album 2 (Kronen).
+  applyAlbumLevelConfig(STAR_CONFIG);
 
 /*
    * =========================================================
