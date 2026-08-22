@@ -1631,7 +1631,7 @@ function startVictoryImpact(stars) {
       const album = ALBUM_CONFIG[0];
       if (!album) return;
       const count = this.getCollectedCount(album);
-      if (dom.albumHomeStatus) dom.albumHomeStatus.textContent = `${album.name}: ${count}/${album.cards.length} gesammelt`;
+      if (dom.albumHomeStatus) dom.albumHomeStatus.textContent = "Sammle Sticker und Bonis";
     },
 
     render() {
