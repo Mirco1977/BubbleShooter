@@ -9,7 +9,26 @@
   import { ALBUM_CONFIG, getAlbumCardForLevel } from "./js/config/albumConfig.js";
 
   (() => {
+
   "use strict";
+
+  // LEVEL 70 – SCHWERT-SPEZIALLEVEL
+  // Das Longsword aus Sammelalbum 1 steht im Spielfeld.
+  // Der Goldball muss freigespielt werden; erst sein Fall startet den Sieg-Ablauf.
+  STAR_CONFIG[70] = {
+    ...(STAR_CONFIG[70] || {}),
+    ballTypes: STAR_CONFIG[70]?.ballTypes ?? 5,
+    rows: STAR_CONFIG[70]?.rows ?? 7,
+    addRowAfterShot: "n",
+    mode: "sword",
+    sword: {
+      // Reihe 3 = zwei vollständige Kugelreihen oberhalb des Goldballs.
+      row: 3,
+      col: 7,
+      image: "assets/albums/swords/longsword.png"
+    }
+  };
+
 /*
    * =========================================================
    * BANDENKICK BUBBLE CHALLENGE – VERSION 0.2
@@ -2430,6 +2449,7 @@ window.BK_openMainLevel = (levelNumber) => {
     swordFeature: null,
     swordReleaseActive: false,
     swordReleaseStartedAt: 0,
+    fallingGoldBall: null,
 
     switchBallActive: false,
     aimItemAktive: false,
@@ -2659,6 +2679,7 @@ window.BK_openMainLevel = (levelNumber) => {
       this.swordFeature = null;
       this.swordReleaseActive = false;
       this.swordReleaseStartedAt = 0;
+      this.fallingGoldBall = null;
       const stageNumber = getActiveThemeStage(levelNumber);
       this.ballImageCache = {};
 
@@ -2713,7 +2734,10 @@ window.BK_openMainLevel = (levelNumber) => {
       this.chainLockImage.src = "assets/ui/chain-lock-overlay.png";
 
       this.swordImage = new Image();
-      this.swordImage.src = "assets/ui/sword.png";
+      const swordLevelConfig = getActiveLevelConfig(levelNumber);
+      this.swordImage.src =
+        swordLevelConfig?.sword?.image ||
+        "assets/albums/swords/longsword.png";
 
       this.goldBallImage = new Image();
       this.goldBallImage.src = "assets/ui/gold-ball.png";
@@ -2991,9 +3015,9 @@ window.BK_openMainLevel = (levelNumber) => {
       const swordWidth = diameter * 3;
       const swordHeight = diameter * 5;
 
-      // Griff / Goldball liegt exakt auf Höhe der 2. Kugel von oben.
-      // Bei unserer Grafik befindet sich der Griff ca. bei 25 % der Schwertlänge.
-      const swordTop = lockY - swordHeight * 0.25;
+      // Goldball sitzt sichtbar ÜBER dem Schwert.
+      // Zwischen Ball und Schwert bleibt nur ein kleiner Abstand.
+      const swordTop = lockY + this.radius * 1.18;
       const swordLeft = lockX - swordWidth / 2;
 
       this.swordFeature = {
@@ -3005,7 +3029,11 @@ window.BK_openMainLevel = (levelNumber) => {
         swordHeight,
         released: false,
         flashStart: 0,
-        flashDuration: 650
+        flashDuration: 420,
+        burstStart: 0,
+        burstDuration: 520,
+        burstDone: false,
+        hidden: false
       };
 
       // Im 3x5-Feld um das Schwert Platz schaffen.
@@ -3039,40 +3067,46 @@ window.BK_openMainLevel = (levelNumber) => {
         return false;
       }
 
-      this.swordReleaseActive = true;
-      this.swordReleaseStartedAt = performance.now();
+      const now = performance.now();
 
-      // Goldball sofort entfernen.
+      this.swordReleaseActive = true;
+      this.swordReleaseStartedAt = now;
+
+      // Goldball aus dem Kugelverbund lösen. Er wird ab jetzt separat
+      // mit echter Fallbewegung gezeichnet und animiert.
       this.bubbles = this.bubbles.filter((bubble) => bubble !== lockBubble);
+      this.fallingGoldBall = {
+        x: lockBubble.x,
+        y: lockBubble.y,
+        vy: 0.8,
+        startedAt: now,
+        flashDuration: 420
+      };
 
       this.swordFeature.released = true;
-      this.swordFeature.flashStart = performance.now();
+      this.swordFeature.flashStart = now;
+      this.swordFeature.burstStart = 0;
+      this.swordFeature.burstDone = false;
+      this.swordFeature.hidden = false;
 
-      // Treffer-Effekt um den Goldball.
-      for (let i = 0; i < 24; i++) {
-        const angle = (Math.PI * 2 * i) / 24;
-        const speed = 1.5 + Math.random() * 3.2;
+      // Kurzer Freigabe-Effekt direkt am Goldball.
+      for (let i = 0; i < 18; i++) {
+        const angle = (Math.PI * 2 * i) / 18;
+        const speed = 1.2 + Math.random() * 2.6;
 
         this.particles.push({
           x: lockBubble.x,
           y: lockBubble.y,
           vx: Math.cos(angle) * speed,
           vy: Math.sin(angle) * speed,
-          size: 3 + Math.random() * 5,
-          life: 28 + Math.random() * 18,
-          maxLife: 46,
+          size: 2.5 + Math.random() * 4,
+          life: 24 + Math.random() * 16,
+          maxLife: 40,
           color: { color: i % 2 ? "#ffd34d" : "#ffffff" }
         });
       }
 
-      this.explosions.push({
-        x: lockBubble.x,
-        y: lockBubble.y,
-        radius: 0,
-        alpha: 1
-      });
-
-      this.screenShake = 7;
+      this.screenShake = 4;
       Audio.playEffect("hit");
 
       if (this.shooter) {
@@ -3081,23 +3115,136 @@ window.BK_openMainLevel = (levelNumber) => {
         this.shooter.vy = 0;
       }
 
-      // Erst aufblitzen, DANACH normale vorhandene Level-Sieg-Animation.
-      window.setTimeout(() => {
-        if (this.levelFinished) return;
-        this.victoryAnimation = true;
-      }, 650);
-
-      window.setTimeout(() => {
-        if (this.levelFinished) return;
-        this.finish(true);
-      }, 1850);
-
       return true;
+    },
+
+    updateSwordReleaseAnimation(deltaTime = 1) {
+      if (!this.swordReleaseActive || !this.swordFeature) return;
+
+      const now = performance.now();
+      const elapsed = now - this.swordReleaseStartedAt;
+      const sword = this.swordFeature;
+
+      // Der freigespielte Goldball fällt mit Beschleunigung nach unten.
+      if (this.fallingGoldBall) {
+        this.fallingGoldBall.vy += 0.42 * deltaTime;
+        this.fallingGoldBall.y += this.fallingGoldBall.vy * deltaTime;
+
+        if (this.fallingGoldBall.y > this.height + this.radius * 3) {
+          this.fallingGoldBall = null;
+        }
+      }
+
+      // Nach dem kurzen Goldball-Blitz beginnt das Aufblähen der Sammel-PNG.
+      if (elapsed >= 430 && !sword.burstStart) {
+        sword.burstStart = now;
+      }
+
+      if (sword.burstStart && !sword.burstDone) {
+        const burstProgress = Math.min(
+          1,
+          (now - sword.burstStart) / sword.burstDuration
+        );
+
+        if (burstProgress >= 1) {
+          sword.burstDone = true;
+          sword.hidden = true;
+
+          const centerX = sword.swordLeft + sword.swordWidth / 2;
+          const centerY = sword.swordTop + sword.swordHeight / 2;
+
+          // Platzen der jeweiligen Sammelkarten-PNG.
+          for (let i = 0; i < 34; i++) {
+            const angle = Math.random() * Math.PI * 2;
+            const speed = 2.2 + Math.random() * 5.4;
+
+            this.particles.push({
+              x: centerX,
+              y: centerY,
+              vx: Math.cos(angle) * speed,
+              vy: Math.sin(angle) * speed,
+              size: 3 + Math.random() * 7,
+              life: 28 + Math.random() * 24,
+              maxLife: 52,
+              color: {
+                color: i % 3 === 0 ? "#ffffff" : "#ffd34d"
+              }
+            });
+          }
+
+          this.explosions.push({
+            x: centerX,
+            y: centerY,
+            radius: 0,
+            alpha: 1
+          });
+
+          this.screenShake = 8;
+          Audio.playEffect("hit");
+
+          // Ab jetzt exakt die vorhandene Standard-Levelgewonnen-Animation.
+          this.score = Math.max(this.score, this.targetScore);
+          dom.playScore.textContent =
+            `${this.score.toLocaleString("de-DE")} Punkte`;
+
+          this.swordReleaseActive = false;
+          this.victoryAnimation = true;
+
+          // Sicherheits-Fallback: Die normale Victory-Animation darf fertiglaufen.
+          window.setTimeout(() => {
+            if (!this.levelFinished) {
+              this.finish(true);
+            }
+          }, 1900);
+        }
+      }
+    },
+
+    drawFallingGoldBall() {
+      const ball = this.fallingGoldBall;
+      if (!ball) return;
+
+      const size = this.radius * 2.18;
+      const elapsed = performance.now() - ball.startedAt;
+      const flashProgress = Math.min(1, elapsed / ball.flashDuration);
+      const pulse = Math.sin(flashProgress * Math.PI);
+
+      this.ctx.save();
+      this.ctx.globalAlpha = 1;
+      this.ctx.shadowColor = "#fff3a0";
+      this.ctx.shadowBlur =
+        flashProgress < 1 ? 14 + pulse * 34 : 8;
+
+      if (this.goldBallImage?.complete && this.goldBallImage.naturalWidth > 0) {
+        this.ctx.drawImage(
+          this.goldBallImage,
+          ball.x - size / 2,
+          ball.y - size / 2,
+          size,
+          size
+        );
+      } else {
+        this.ctx.fillStyle = "#f6bf23";
+        this.ctx.beginPath();
+        this.ctx.arc(ball.x, ball.y, this.radius, 0, Math.PI * 2);
+        this.ctx.fill();
+      }
+
+      if (flashProgress < 1) {
+        this.ctx.globalCompositeOperation = "lighter";
+        this.ctx.globalAlpha = 0.25 + pulse * 0.65;
+        this.ctx.fillStyle = "#ffffff";
+        this.ctx.beginPath();
+        this.ctx.arc(ball.x, ball.y, this.radius * (1.05 + pulse * 0.18), 0, Math.PI * 2);
+        this.ctx.fill();
+      }
+
+      this.ctx.restore();
     },
 
     drawSwordFeature() {
       const sword = this.swordFeature;
-      if (!sword) return;
+      if (!sword || sword.hidden) return;
 
       const now = performance.now();
       const flashProgress =
@@ -3105,35 +3252,45 @@ window.BK_openMainLevel = (levelNumber) => {
           ? Math.min(1, (now - sword.flashStart) / sword.flashDuration)
           : 0;
 
-      this.ctx.save();
+      let scale = 1;
+      let alpha = 1;
 
-      if (this.swordImage?.complete && this.swordImage.naturalWidth > 0) {
-        this.ctx.globalAlpha = 1;
-        this.ctx.drawImage(
-          this.swordImage,
-          sword.swordLeft,
-          sword.swordTop,
-          sword.swordWidth,
-          sword.swordHeight
+      if (sword.burstStart) {
+        const burstProgress = Math.min(
+          1,
+          (now - sword.burstStart) / sword.burstDuration
         );
+        const eased = 1 - Math.pow(1 - burstProgress, 3);
+        scale = 1 + eased * 0.48;
+
+        if (burstProgress > 0.78) {
+          alpha = Math.max(0, 1 - (burstProgress - 0.78) / 0.22);
+        }
       }
 
-      if (sword.released && flashProgress < 1) {
-        const pulse = Math.sin(flashProgress * Math.PI);
-        this.ctx.globalCompositeOperation = "lighter";
-        this.ctx.globalAlpha = 0.35 + pulse * 0.65;
-        this.ctx.shadowColor = "#fff6b3";
-        this.ctx.shadowBlur = 28 + pulse * 30;
+      const drawWidth = sword.swordWidth * scale;
+      const drawHeight = sword.swordHeight * scale;
+      const centerX = sword.swordLeft + sword.swordWidth / 2;
+      const centerY = sword.swordTop + sword.swordHeight / 2;
+      const drawLeft = centerX - drawWidth / 2;
+      const drawTop = centerY - drawHeight / 2;
 
-        if (this.swordImage?.complete && this.swordImage.naturalWidth > 0) {
-          this.ctx.drawImage(
-            this.swordImage,
-            sword.swordLeft,
-            sword.swordTop,
-            sword.swordWidth,
-            sword.swordHeight
-          );
-        }
+      this.ctx.save();
+      this.ctx.globalAlpha = alpha;
+
+      if (sword.burstStart) {
+        this.ctx.shadowColor = "#ffd34d";
+        this.ctx.shadowBlur = 12 + (scale - 1) * 55;
+      }
+
+      if (this.swordImage?.complete && this.swordImage.naturalWidth > 0) {
+        this.ctx.drawImage(
+          this.swordImage,
+          drawLeft,
+          drawTop,
+          drawWidth,
+          drawHeight
+        );
       }
 
       this.ctx.restore();
@@ -3726,6 +3883,13 @@ createShooter() {
       }
     this.updateParticles(deltaTime);
     this.updateChainBreaks(deltaTime);
+    this.updateSwordReleaseAnimation(deltaTime);
+
+    // Während Goldball-Fall und Sammelkarten-PNG-Platzen wird die normale
+    // Spielphysik kurz angehalten. Danach übernimmt die Standard-Victory-Animation.
+    if (this.swordReleaseActive) {
+        return;
+    }
 
     if (this.victoryAnimation) {
         this.updateVictoryAnimation(deltaTime);
@@ -3862,12 +4026,9 @@ createShooter() {
 
           this.lastHitBubble = hitBubble;
 
-          // Schwert-Level: Goldball wird nur durch direkten Treffer abgeschossen.
-          if (hitBubble?.isSwordLock) {
-              this.hitSwordLock(hitBubble);
-              return;
-          }
-
+          // Sammelalbum-Level: Ein direkter Treffer auf den Goldball gewinnt NICHT.
+          // Er dient als Hindernis und muss durch Wegspielen seiner Verbindung
+          // zur Decke tatsächlich freigespielt werden.
           this.attachShooter();
 
           // Max Schüsse prüfen nach abgeschlossenem Schuss
@@ -4558,38 +4719,44 @@ findConnectedSameColor(origin) {
         }
       }
 
+      const swordLock = this.bubbles.find(
+        (bubble) => bubble.isSwordLock
+      );
+      const swordLockFreed =
+        swordLock && !connectedToTop.has(swordLock);
+
       const floating = this.bubbles.filter(
-    (bubble) => !connectedToTop.has(bubble) && !bubble.isSwordLock
-);
+        (bubble) =>
+          !connectedToTop.has(bubble) &&
+          !bubble.isSwordLock
+      );
 
-if (floating.length > 0) {
+      if (floating.length > 0) {
+        const levelConfig = getActiveLevelConfig(state.selectedLevel);
 
-    const levelConfig = getActiveLevelConfig(state.selectedLevel);
-
-    if (levelConfig?.mode === "colors") {
-
-        floating.forEach((bubble) => {
-
+        if (levelConfig?.mode === "colors") {
+          floating.forEach((bubble) => {
             const colorId = bubble.color.id;
-
             if (!this.collectedColors[colorId]) {
-                this.collectedColors[colorId] = 0;
+              this.collectedColors[colorId] = 0;
             }
-
             this.collectedColors[colorId]++;
+          });
+        }
 
-        });
+        this.score += floating.length * 150;
+        const floatingSet = new Set(floating);
+        this.bubbles = this.bubbles.filter(
+          (bubble) => !floatingSet.has(bubble)
+        );
+      }
 
-    }
-
-    this.score += floating.length * 150;
-
-    this.bubbles = this.bubbles.filter(
-        (bubble) => connectedToTop.has(bubble) || bubble.isSwordLock
-    );
-}
-
-},
+      // Erst wenn der Goldball keinerlei Verbindung mehr zur Decke besitzt,
+      // gilt er als freigespielt und startet den Sammelalbum-Abschlussflow.
+      if (swordLockFreed) {
+        this.hitSwordLock(swordLock);
+      }
+    },
 
 drawBubble(bubble) {
 
@@ -4906,6 +5073,7 @@ drawAimGuide() {
         );
     }
 });
+      this.drawFallingGoldBall();
       this.drawParticles();
       this.drawChainBreaks();
       this.drawThunders();
