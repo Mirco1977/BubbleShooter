@@ -24,6 +24,27 @@ export const ALBUM_CONFIG = [
         hourglass: 5
       }
     }
+  },
+  {
+    id: "crowns",
+    name: "Kronen",
+    subtitle: "Sammle alle 6 Kronenkarten",
+    maxCards: 6,
+    cover: "assets/albums/crowns/album-complete.png",
+    completionImage: "assets/albums/crowns/album-complete.png",
+    cards: [
+      { id: "pharao-tutanchamun", number: 1, name: "Krone des Pharao Tutanchamun", unlockLevel: 71, image: "assets/albums/crowns/pharao-tutanchamun.png" },
+      { id: "st-edwards-crown", number: 2, name: "St. Edward’s Crown", unlockLevel: 81, image: "assets/albums/crowns/st-edwards-crown.png" },
+      { id: "moghul-kaiser", number: 3, name: "Krone der Moghul-Kaiser", unlockLevel: 91, image: "assets/albums/crowns/moghul-kaiser.png" },
+      { id: "azteken-kopfschmuck", number: 4, name: "Azteken-Kopfschmuck", unlockLevel: 101, image: "assets/albums/crowns/azteken-kopfschmuck.png" },
+      { id: "krone-von-tonga", number: 5, name: "Krone von Tonga", unlockLevel: 111, image: "assets/albums/crowns/krone-von-tonga.png" },
+      { id: "zulu-koenig", number: 6, name: "Krone des Zulu-Königs", unlockLevel: 121, image: "assets/albums/crowns/zulu-koenig.png" }
+    ],
+    reward: {
+      title: "Album-Belohnung",
+      text: "Alle 6 Kronen gesammelt!",
+      items: { bomb: 10, thunder: 10, colorbomb: 5, hourglass: 5 }
+    }
   }
 ];
 

@@ -1380,6 +1380,46 @@ function startVictoryImpact(stars) {
      - Karten werden durch abgeschlossene Standardlevel gesammelt
      ========================================================= */
   const CollectorAlbum = {
+    activeAlbumId: ALBUM_CONFIG[0]?.id || null,
+
+    getActiveAlbum() {
+      return ALBUM_CONFIG.find((album) => album.id === this.activeAlbumId) || ALBUM_CONFIG[0] || null;
+    },
+
+    setActiveAlbum(albumId) {
+      if (!ALBUM_CONFIG.some((album) => album.id === albumId)) return;
+      this.activeAlbumId = albumId;
+      this.render();
+    },
+
+    ensureAlbumSwitcher() {
+      if (!dom.albumCardGrid || ALBUM_CONFIG.length < 2) return;
+      const screen = dom.screens?.albums;
+      const hero = screen?.querySelector(".album-hero-card");
+      if (!screen || !hero) return;
+
+      if (!document.getElementById("albumSwitcherStyles")) {
+        const style = document.createElement("style");
+        style.id = "albumSwitcherStyles";
+        style.textContent = `.album-switcher{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin:0 0 12px}.album-switch-button{min-width:0;padding:10px 8px;border:1px solid rgba(255,212,92,.42);border-radius:13px;background:rgba(20,20,24,.92);color:rgba(255,255,255,.76);font:inherit;font-size:12px;font-weight:800;cursor:pointer}.album-switch-button.is-active{border-color:#ffd45c;color:#ffd45c;background:linear-gradient(145deg,#310000,#860000);box-shadow:0 0 14px rgba(255,212,92,.18)}@media(max-width:380px){.album-switch-button{font-size:11px;padding:9px 6px}}`;
+        document.head.appendChild(style);
+      }
+
+      let switcher = screen.querySelector(".album-switcher");
+      if (!switcher) {
+        switcher = document.createElement("div");
+        switcher.className = "album-switcher";
+        hero.parentNode.insertBefore(switcher, hero);
+      }
+      switcher.innerHTML = ALBUM_CONFIG.map((album, index) => `
+        <button type="button" class="album-switch-button ${album.id === this.activeAlbumId ? "is-active" : ""}" data-album-id="${album.id}">
+          Album ${index + 1} · ${escapeHtml(album.name)}
+        </button>`).join("");
+      switcher.querySelectorAll("[data-album-id]").forEach((button) => {
+        button.addEventListener("click", () => this.setActiveAlbum(button.dataset.albumId));
+      });
+    },
+
     ensureState() {
       if (!state.progress.collectorAlbums || typeof state.progress.collectorAlbums !== "object") {
         state.progress.collectorAlbums = {};
@@ -1559,7 +1599,7 @@ function startVictoryImpact(stars) {
     },
 
     claimReward() {
-      const album = ALBUM_CONFIG[0];
+      const album = this.getActiveAlbum();
       if (!album) return false;
       const albumState = this.getState(album.id);
       if (!this.isComplete(album) || albumState.rewardClaimed) return false;
@@ -1595,8 +1635,24 @@ function startVictoryImpact(stars) {
     },
 
     render() {
-      const album = ALBUM_CONFIG[0];
+      const album = this.getActiveAlbum();
       if (!album || !dom.albumCardGrid) return;
+
+      this.ensureAlbumSwitcher();
+      const albumIndex = Math.max(0, ALBUM_CONFIG.findIndex((entry) => entry.id === album.id));
+      const screen = dom.screens?.albums;
+      const toolbarTitle = screen?.querySelector(".screen-toolbar h2");
+      const heroKicker = screen?.querySelector(".album-kicker");
+      const heroTitle = screen?.querySelector(".album-hero-copy h3");
+      const heroText = screen?.querySelector(".album-hero-copy p");
+      const rewardTitle = screen?.querySelector(".album-reward-preview h3");
+      const rewardText = screen?.querySelector(".album-reward-preview p");
+      if (toolbarTitle) toolbarTitle.textContent = album.name;
+      if (heroKicker) heroKicker.textContent = `ALBUM ${albumIndex + 1}`;
+      if (heroTitle) heroTitle.textContent = album.name;
+      if (heroText) heroText.textContent = `Sammle alle ${album.cards.length} ${album.name === "Kronen" ? "Kronenkarten" : "Schwertkarten"}. Jede Karte wird automatisch hinzugefügt, sobald du das zugehörige Level erfolgreich abschließt.`;
+      if (rewardTitle) rewardTitle.textContent = `Alle ${album.cards.length} Karten sammeln`;
+      if (rewardText) rewardText.textContent = this.formatReward(album);
 
       const albumState = this.getState(album.id);
       const count = this.getCollectedCount(album);
