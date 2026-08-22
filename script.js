@@ -25,7 +25,8 @@
       // Reihe 3 = zwei vollständige Kugelreihen oberhalb des Goldballs.
       row: 3,
       col: 7,
-      image: "assets/albums/swords/longsword.png"
+      image: "assets/albums/swords/longsword.png",
+      name: "Longsword"
     }
   };
 
@@ -3030,8 +3031,12 @@ window.BK_openMainLevel = (levelNumber) => {
         released: false,
         flashStart: 0,
         flashDuration: 420,
+        revealStart: 0,
+        revealGrowDuration: 900,
+        revealHoldDuration: 700,
         burstStart: 0,
         burstDuration: 520,
+        collectibleName: levelConfig?.sword?.name || "Sammelstück",
         burstDone: false,
         hidden: false
       };
@@ -3085,6 +3090,7 @@ window.BK_openMainLevel = (levelNumber) => {
 
       this.swordFeature.released = true;
       this.swordFeature.flashStart = now;
+      this.swordFeature.revealStart = 0;
       this.swordFeature.burstStart = 0;
       this.swordFeature.burstDone = false;
       this.swordFeature.hidden = false;
@@ -3135,9 +3141,17 @@ window.BK_openMainLevel = (levelNumber) => {
         }
       }
 
-      // Nach dem kurzen Goldball-Blitz beginnt das Aufblähen der Sammel-PNG.
-      if (elapsed >= 430 && !sword.burstStart) {
-        sword.burstStart = now;
+      // Nach dem Goldball-Blitz startet die Sammelstück-Enthüllung:
+      // aufblähen + Name einblenden, kurz halten, danach platzen.
+      if (elapsed >= 430 && !sword.revealStart) {
+        sword.revealStart = now;
+      }
+
+      if (sword.revealStart && !sword.burstStart) {
+        const revealElapsed = now - sword.revealStart;
+        if (revealElapsed >= sword.revealGrowDuration + sword.revealHoldDuration) {
+          sword.burstStart = now;
+        }
       }
 
       if (sword.burstStart && !sword.burstDone) {
@@ -3255,16 +3269,24 @@ window.BK_openMainLevel = (levelNumber) => {
       let scale = 1;
       let alpha = 1;
 
+      // Sammelstück wächst während der Enthüllung weich auf ca. 136 %.
+      if (sword.revealStart && !sword.burstStart) {
+        const revealElapsed = now - sword.revealStart;
+        const growProgress = Math.min(1, revealElapsed / sword.revealGrowDuration);
+        const easedGrow = 1 - Math.pow(1 - growProgress, 3);
+        scale = 1 + easedGrow * 0.36;
+      }
+
       if (sword.burstStart) {
         const burstProgress = Math.min(
           1,
           (now - sword.burstStart) / sword.burstDuration
         );
         const eased = 1 - Math.pow(1 - burstProgress, 3);
-        scale = 1 + eased * 0.48;
+        scale = 1.36 + eased * 0.28;
 
-        if (burstProgress > 0.78) {
-          alpha = Math.max(0, 1 - (burstProgress - 0.78) / 0.22);
+        if (burstProgress > 0.68) {
+          alpha = Math.max(0, 1 - (burstProgress - 0.68) / 0.32);
         }
       }
 
@@ -3294,6 +3316,41 @@ window.BK_openMainLevel = (levelNumber) => {
       }
 
       this.ctx.restore();
+
+      // Während der Enthüllung erscheint der Name im Victory-Look.
+      if (sword.revealStart && !sword.hidden) {
+        const revealElapsed = now - sword.revealStart;
+        const fadeIn = Math.min(1, revealElapsed / 260);
+        let textAlpha = fadeIn;
+        if (sword.burstStart) {
+          const bp = Math.min(1, (now - sword.burstStart) / sword.burstDuration);
+          textAlpha = Math.max(0, 1 - bp);
+        }
+
+        const label = `${String(sword.collectibleName || "Sammelstück").toUpperCase()} ERSPIELT!`;
+        const textY = Math.min(this.height - 132, centerY + drawHeight / 2 + 38);
+
+        this.ctx.save();
+        this.ctx.globalAlpha = textAlpha;
+        this.ctx.textAlign = "center";
+        this.ctx.textBaseline = "middle";
+        this.ctx.font = "900 25px Arial";
+        this.ctx.lineWidth = 7;
+        this.ctx.strokeStyle = "rgba(80,20,0,.92)";
+        this.ctx.shadowColor = "#ffd34d";
+        this.ctx.shadowBlur = 18;
+        this.ctx.strokeText(label, centerX, textY);
+        this.ctx.fillStyle = "#ffd34d";
+        this.ctx.fillText(label, centerX, textY);
+
+        this.ctx.shadowBlur = 8;
+        this.ctx.font = "700 14px Arial";
+        this.ctx.lineWidth = 4;
+        this.ctx.strokeText("DEM SAMMELALBUM HINZUGEFÜGT", centerX, textY + 29);
+        this.ctx.fillStyle = "#ffffff";
+        this.ctx.fillText("DEM SAMMELALBUM HINZUGEFÜGT", centerX, textY + 29);
+        this.ctx.restore();
+      }
     },
 
     addNewTopRow() {
