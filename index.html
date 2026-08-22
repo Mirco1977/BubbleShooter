@@ -722,7 +722,7 @@
         <div class="album-hero-copy">
           <span class="album-kicker">ALBUM 1</span>
           <h3>Schwerter</h3>
-          <p class="album-description">Sammle alle 6 Schwertkarten. Jede Karte wird automatisch hinzugefügt, sobald du das zugehörige Level erfolgreich abschließt.</p>
+          <p>Sammle alle 6 Schwertkarten. Jede Karte wird automatisch hinzugefügt, sobald du das zugehörige Level erfolgreich abschließt.</p>
           <div class="album-progress-track"><span id="albumProgressFill"></span></div>
           <strong id="albumProgressText">0 von 6 gesammelt</strong>
         </div>
@@ -730,8 +730,13 @@
 
       <div id="albumCardGrid" class="album-card-grid" aria-live="polite"></div>
 
-      <div id="albumCompletionShowcase" class="album-completion-showcase victory-card-look hidden">
-        <img id="albumCompletionImage" src="assets/albums/swords/album-complete.png" alt="Vollständiges Album Schwerter">
+      <div id="albumCompletionShowcase"
+           class="album-completion-showcase victory-card-look hidden"
+           style="width:100%;max-width:100%;overflow:hidden;padding:6px;box-sizing:border-box;">
+        <img id="albumCompletionImage"
+             src="assets/albums/swords/album-complete.png"
+             alt="Vollständiges Album Schwerter"
+             style="display:block;width:100%;max-width:100%;height:auto;object-fit:contain;object-position:center;box-sizing:border-box;">
       </div>
 
       <div id="albumRewardPreview" class="album-reward-preview victory-card-look">

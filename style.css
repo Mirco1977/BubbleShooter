@@ -4818,12 +4818,13 @@ body.wheel-win-sequence-active {
 }
 
 .album-hero-card {
-  display: grid;
-  grid-template-columns: 38% 1fr;
-  gap: 15px;
-  align-items: center;
+  display: block;
+  width: 100%;
+  height: auto;
+  min-height: 0;
   padding: 14px;
   margin-bottom: 16px;
+  box-sizing: border-box;
 }
 
 .album-cover-image {
@@ -4843,12 +4844,35 @@ body.wheel-win-sequence-active {
   text-transform: uppercase;
 }
 
+.album-hero-copy {
+  display: block;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+}
+
 .album-hero-copy p,
 .album-reward-preview p {
   margin: 0 0 10px;
   color: rgba(255,255,255,.82);
   font-size: 13px;
   line-height: 1.35;
+}
+
+.album-hero-copy .album-description {
+  display: block;
+  width: 100%;
+  max-width: 100%;
+  white-space: normal;
+  overflow: visible;
+  text-overflow: clip;
+  overflow-wrap: break-word;
+  word-break: normal;
+}
+
+.album-hero-copy .album-progress-track {
+  width: 100%;
+  max-width: 100%;
 }
 
 .album-kicker {
@@ -5126,7 +5150,9 @@ body.wheel-win-sequence-active {
 
 @media (max-width: 420px) {
   .album-hero-card {
-    grid-template-columns: 1fr;
+    display: block;
+    width: 100%;
+    height: auto;
   }
 
   .album-cover-image {
@@ -5141,7 +5167,256 @@ body.wheel-win-sequence-active {
     padding: 6px;
   }
 }
-\n\n/* =========================================================\n   SAMMELALBUM – Abschluss & manuelle Belohnung\n   ========================================================= */\n.album-hero-card {\n  display: block;\n  padding: 16px;\n}\n\n.album-hero-copy {\n  width: 100%;\n}\n\n.album-cover-image {\n  display: none !important;\n}\n\n.album-completion-showcase {\n  margin: 16px 0 0;\n  padding: 8px;\n  animation: albumCompletionReveal .55s cubic-bezier(.18,.9,.28,1.16) both;\n}\n\n.album-completion-showcase img {\n  display: block;\n  width: 100%;\n  height: auto;\n  border-radius: 16px;\n  object-fit: contain;\n  box-shadow: inset 0 0 0 1px rgba(255,212,92,.45);\n}\n\n.album-reward-button {\n  grid-column: 1 / -1;\n  width: 100%;\n  min-height: 44px;\n  padding: 9px 12px;\n  border: 1px solid rgba(255,255,255,.12);\n  border-radius: 11px;\n  color: rgba(255,255,255,.82);\n  background: rgba(0,0,0,.28);\n  font: inherit;\n  font-size: 12px;\n  font-weight: 900;\n  text-align: center;\n  appearance: none;\n  -webkit-appearance: none;\n  transition: transform .18s ease, box-shadow .18s ease, background .18s ease;\n}\n\n.album-reward-button.ready {\n  color: #fff;\n  border-color: #ffd45c;\n  background: linear-gradient(145deg, #9b2016, #790f0c 55%, #430605);\n  box-shadow: 0 0 18px rgba(255,212,92,.24);\n  cursor: pointer;\n  animation: albumRewardReadyPulse 1.5s ease-in-out infinite;\n}\n\n.album-reward-button.ready:active {\n  transform: scale(.985);\n}\n\n.album-reward-button.claimed {\n  color: #d9ffe5;\n  border-color: rgba(92,230,135,.35);\n  background: rgba(18,133,64,.35);\n}\n\n.album-reward-overlay {\n  position: fixed;\n  z-index: 9999;\n  inset: 0;\n  display: grid;\n  place-items: center;\n  padding: 18px;\n  background: rgba(3,5,12,.76);\n  backdrop-filter: blur(5px);\n  -webkit-backdrop-filter: blur(5px);\n  opacity: 0;\n  transition: opacity .24s ease;\n}\n\n.album-reward-overlay.hidden {\n  display: none;\n}\n\n.album-reward-overlay.is-visible {\n  opacity: 1;\n}\n\n.album-reward-victory-card {\n  position: relative;\n  width: min(90vw, 370px);\n  overflow: hidden;\n  padding: 22px 18px 18px;\n  border: 2px solid #ffd45c;\n  border-radius: 22px;\n  color: #fff;\n  text-align: center;\n  background:\n    radial-gradient(circle at 50% 18%, rgba(255,220,100,.22), transparent 35%),\n    linear-gradient(145deg, #9b2016 0%, #790f0c 48%, #430605 100%);\n  box-shadow: 0 0 34px rgba(255,212,92,.36), 0 26px 60px rgba(0,0,0,.78);\n  transform: scale(.72) translateY(20px);\n}\n\n.album-reward-overlay.is-visible .album-reward-victory-card {\n  animation: albumRewardVictoryImpact .62s cubic-bezier(.18,1.16,.32,1) both;\n}\n\n.album-reward-victory-card::before {\n  content: "";\n  position: absolute;\n  width: 520px;\n  height: 520px;\n  left: 50%;\n  top: 45%;\n  z-index: 0;\n  transform: translate(-50%,-50%);\n  opacity: .27;\n  background: repeating-conic-gradient(from 0deg, rgba(255,220,102,.22) 0deg 9deg, transparent 9deg 18deg);\n  animation: albumRewardRays 9s linear infinite;\n}\n\n.album-reward-victory-card > * {\n  position: relative;\n  z-index: 1;\n}\n\n.album-reward-victory-kicker {\n  display: block;\n  color: #ffd45c;\n  font-size: 11px;\n  font-weight: 900;\n  letter-spacing: .13em;\n}\n\n.album-reward-victory-medal {\n  display: grid;\n  place-items: center;\n  width: 50px;\n  height: 50px;\n  margin: 10px auto 7px;\n  border: 2px solid #ffd45c;\n  border-radius: 50%;\n  color: #ffd45c;\n  background: rgba(77,0,0,.5);\n  font-size: 27px;\n  box-shadow: 0 0 20px rgba(255,212,92,.28);\n}\n\n.album-reward-victory-card h3 {\n  margin: 3px 0 2px;\n  color: #fff;\n  font-size: 28px;\n  text-transform: uppercase;\n}\n\n.album-reward-victory-card > p {\n  margin: 0 0 14px;\n  color: #ffd45c;\n  font-weight: 900;\n}\n\n.album-reward-items {\n  display: grid;\n  grid-template-columns: repeat(2, minmax(0,1fr));\n  gap: 9px;\n  margin-bottom: 14px;\n}\n\n.album-reward-item {\n  display: grid;\n  grid-template-columns: 42px 1fr;\n  grid-template-rows: auto auto;\n  gap: 0 8px;\n  align-items: center;\n  min-width: 0;\n  padding: 8px;\n  border: 1px solid rgba(255,212,92,.55);\n  border-radius: 12px;\n  background: rgba(28,0,0,.46);\n}\n\n.album-reward-item img {\n  grid-row: 1 / 3;\n  width: 42px;\n  height: 42px;\n  object-fit: contain;\n}\n\n.album-reward-item strong {\n  color: #ffd45c;\n  font-size: 16px;\n  line-height: 1;\n  text-align: left;\n}\n\n.album-reward-item span {\n  overflow: hidden;\n  color: rgba(255,255,255,.84);\n  font-size: 10px;\n  text-overflow: ellipsis;\n  white-space: nowrap;\n  text-align: left;\n}\n\n.album-reward-close {\n  width: 100%;\n}\n\n@keyframes albumCompletionReveal {\n  from { opacity: 0; transform: translateY(12px) scale(.96); }\n  to { opacity: 1; transform: translateY(0) scale(1); }\n}\n\n@keyframes albumRewardReadyPulse {\n  0%,100% { box-shadow: 0 0 12px rgba(255,212,92,.18); }\n  50% { box-shadow: 0 0 25px rgba(255,212,92,.45); }\n}\n\n@keyframes albumRewardVictoryImpact {\n  from { opacity: 0; transform: scale(.72) translateY(20px); }\n  68% { opacity: 1; transform: scale(1.045) translateY(-3px); }\n  to { opacity: 1; transform: scale(1) translateY(0); }\n}\n\n@keyframes albumRewardRays {\n  from { transform: translate(-50%,-50%) rotate(0deg); }\n  to { transform: translate(-50%,-50%) rotate(360deg); }\n}\n\n@media (max-width: 420px) {\n  .album-hero-card {\n    padding: 14px;\n  }\n  .album-completion-showcase {\n    padding: 6px;\n  }\n  .album-reward-victory-card {\n    width: min(92vw, 350px);\n    padding: 19px 14px 15px;\n  }\n  .album-reward-items {\n    gap: 7px;\n  }\n}\n
+
+
+/* =========================================================
+   SAMMELALBUM – Abschluss & manuelle Belohnung
+   ========================================================= */
+.album-hero-card {
+  display: block;
+  padding: 16px;
+}
+
+.album-hero-copy {
+  width: 100%;
+}
+
+.album-cover-image {
+  display: none !important;
+}
+
+.album-completion-showcase {
+  margin: 16px 0 0;
+  padding: 8px;
+  animation: albumCompletionReveal .55s cubic-bezier(.18,.9,.28,1.16) both;
+}
+
+.album-completion-showcase img {
+  display: block;
+  width: 100%;
+  height: auto;
+  border-radius: 16px;
+  object-fit: contain;
+  box-shadow: inset 0 0 0 1px rgba(255,212,92,.45);
+}
+
+.album-reward-button {
+  grid-column: 1 / -1;
+  width: 100%;
+  min-height: 44px;
+  padding: 9px 12px;
+  border: 1px solid rgba(255,255,255,.12);
+  border-radius: 11px;
+  color: rgba(255,255,255,.82);
+  background: rgba(0,0,0,.28);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 900;
+  text-align: center;
+  appearance: none;
+  -webkit-appearance: none;
+  transition: transform .18s ease, box-shadow .18s ease, background .18s ease;
+}
+
+.album-reward-button.ready {
+  color: #fff;
+  border-color: #ffd45c;
+  background: linear-gradient(145deg, #9b2016, #790f0c 55%, #430605);
+  box-shadow: 0 0 18px rgba(255,212,92,.24);
+  cursor: pointer;
+  animation: albumRewardReadyPulse 1.5s ease-in-out infinite;
+}
+
+.album-reward-button.ready:active {
+  transform: scale(.985);
+}
+
+.album-reward-button.claimed {
+  color: #d9ffe5;
+  border-color: rgba(92,230,135,.35);
+  background: rgba(18,133,64,.35);
+}
+
+.album-reward-overlay {
+  position: fixed;
+  z-index: 9999;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 18px;
+  background: rgba(3,5,12,.76);
+  backdrop-filter: blur(5px);
+  -webkit-backdrop-filter: blur(5px);
+  opacity: 0;
+  transition: opacity .24s ease;
+}
+
+.album-reward-overlay.hidden {
+  display: none;
+}
+
+.album-reward-overlay.is-visible {
+  opacity: 1;
+}
+
+.album-reward-victory-card {
+  position: relative;
+  width: min(90vw, 370px);
+  overflow: hidden;
+  padding: 22px 18px 18px;
+  border: 2px solid #ffd45c;
+  border-radius: 22px;
+  color: #fff;
+  text-align: center;
+  background:
+    radial-gradient(circle at 50% 18%, rgba(255,220,100,.22), transparent 35%),
+    linear-gradient(145deg, #9b2016 0%, #790f0c 48%, #430605 100%);
+  box-shadow: 0 0 34px rgba(255,212,92,.36), 0 26px 60px rgba(0,0,0,.78);
+  transform: scale(.72) translateY(20px);
+}
+
+.album-reward-overlay.is-visible .album-reward-victory-card {
+  animation: albumRewardVictoryImpact .62s cubic-bezier(.18,1.16,.32,1) both;
+}
+
+.album-reward-victory-card::before {
+  content: "";
+  position: absolute;
+  width: 520px;
+  height: 520px;
+  left: 50%;
+  top: 45%;
+  z-index: 0;
+  transform: translate(-50%,-50%);
+  opacity: .27;
+  background: repeating-conic-gradient(from 0deg, rgba(255,220,102,.22) 0deg 9deg, transparent 9deg 18deg);
+  animation: albumRewardRays 9s linear infinite;
+}
+
+.album-reward-victory-card > * {
+  position: relative;
+  z-index: 1;
+}
+
+.album-reward-victory-kicker {
+  display: block;
+  color: #ffd45c;
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: .13em;
+}
+
+.album-reward-victory-medal {
+  display: grid;
+  place-items: center;
+  width: 50px;
+  height: 50px;
+  margin: 10px auto 7px;
+  border: 2px solid #ffd45c;
+  border-radius: 50%;
+  color: #ffd45c;
+  background: rgba(77,0,0,.5);
+  font-size: 27px;
+  box-shadow: 0 0 20px rgba(255,212,92,.28);
+}
+
+.album-reward-victory-card h3 {
+  margin: 3px 0 2px;
+  color: #fff;
+  font-size: 28px;
+  text-transform: uppercase;
+}
+
+.album-reward-victory-card > p {
+  margin: 0 0 14px;
+  color: #ffd45c;
+  font-weight: 900;
+}
+
+.album-reward-items {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0,1fr));
+  gap: 9px;
+  margin-bottom: 14px;
+}
+
+.album-reward-item {
+  display: grid;
+  grid-template-columns: 42px 1fr;
+  grid-template-rows: auto auto;
+  gap: 0 8px;
+  align-items: center;
+  min-width: 0;
+  padding: 8px;
+  border: 1px solid rgba(255,212,92,.55);
+  border-radius: 12px;
+  background: rgba(28,0,0,.46);
+}
+
+.album-reward-item img {
+  grid-row: 1 / 3;
+  width: 42px;
+  height: 42px;
+  object-fit: contain;
+}
+
+.album-reward-item strong {
+  color: #ffd45c;
+  font-size: 16px;
+  line-height: 1;
+  text-align: left;
+}
+
+.album-reward-item span {
+  overflow: hidden;
+  color: rgba(255,255,255,.84);
+  font-size: 10px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-align: left;
+}
+
+.album-reward-close {
+  width: 100%;
+}
+
+@keyframes albumCompletionReveal {
+  from { opacity: 0; transform: translateY(12px) scale(.96); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@keyframes albumRewardReadyPulse {
+  0%,100% { box-shadow: 0 0 12px rgba(255,212,92,.18); }
+  50% { box-shadow: 0 0 25px rgba(255,212,92,.45); }
+}
+
+@keyframes albumRewardVictoryImpact {
+  from { opacity: 0; transform: scale(.72) translateY(20px); }
+  68% { opacity: 1; transform: scale(1.045) translateY(-3px); }
+  to { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+@keyframes albumRewardRays {
+  from { transform: translate(-50%,-50%) rotate(0deg); }
+  to { transform: translate(-50%,-50%) rotate(360deg); }
+}
+
+@media (max-width: 420px) {
+  .album-hero-card {
+    padding: 14px;
+  }
+  .album-completion-showcase {
+    padding: 6px;
+  }
+  .album-reward-victory-card {
+    width: min(92vw, 350px);
+    padding: 19px 14px 15px;
+  }
+  .album-reward-items {
+    gap: 7px;
+  }
+}
+
 
 /* =========================================================
    SAMMELALBUM – Hero ohne Bild, Text über volle Kartenbreite
@@ -5194,5 +5469,49 @@ body.wheel-win-sequence-active {
   .album-hero-card .album-description {
     font-size: 12px !important;
     line-height: 1.42 !important;
+  }
+}
+
+
+/* =========================================================
+   SAMMELALBUM – fertiges Album-Bild mobil sicher einpassen
+   ========================================================= */
+#albumCompletionShowcase {
+  display: block;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  height: auto;
+  overflow: hidden;
+  padding: 6px;
+  box-sizing: border-box;
+}
+
+#albumCompletionShowcase.hidden {
+  display: none !important;
+}
+
+#albumCompletionImage {
+  display: block !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  min-width: 0 !important;
+  height: auto !important;
+  max-height: none !important;
+  margin: 0 auto !important;
+  object-fit: contain !important;
+  object-position: center center !important;
+  box-sizing: border-box !important;
+  transform: none !important;
+}
+
+@media (max-width: 530px) {
+  #albumCompletionShowcase {
+    padding: 4px;
+    border-radius: 18px;
+  }
+
+  #albumCompletionImage {
+    border-radius: 13px !important;
   }
 }
