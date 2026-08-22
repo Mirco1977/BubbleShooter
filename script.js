@@ -5040,7 +5040,26 @@ dom.shotsMapButton.onclick = () => {
          STANDARDLEVEL – bisheriges Verhalten
          ===================================================== */
       const oldResult = (state.progress.results || {})[level];
-      const newAlbumCard = CollectorAlbum.collectLevel(level, !oldResult);
+      let newAlbumCard = CollectorAlbum.collectLevel(level, !oldResult);
+
+      /* TESTPHASE: Album-Gewinnanimation in Level 120 bei jedem Sieg anzeigen.
+         So kann die letzte Sammelkarte / Album-vollständig-Anzeige beliebig oft getestet werden,
+         auch wenn Level 120 und die Karte bereits gespeichert wurden. */
+      if (Number(level) === 120 && !newAlbumCard) {
+        const testMatch = getAlbumCardForLevel(120);
+        if (testMatch) {
+          const { album, card } = testMatch;
+          newAlbumCard = {
+            album,
+            card,
+            count: CollectorAlbum.getCollectedCount(album),
+            completedNow: CollectorAlbum.isComplete(album),
+            rewardGranted: false,
+            testReplay: true
+          };
+        }
+      }
+
       CollectorAlbum.showVictoryReward(newAlbumCard);
       showUnlockedItemReward(level, Boolean(oldResult));
 
