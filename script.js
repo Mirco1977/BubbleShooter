@@ -1390,6 +1390,8 @@ function startVictoryImpact(stars) {
           state.progress.collectorAlbums[album.id] = {
             cards: {},
             rewardClaimed: false,
+            rewardAlreadyGranted: false,
+            rewardFlowVersion: 2,
             completedAt: null
           };
         }
@@ -1397,6 +1399,26 @@ function startVictoryImpact(stars) {
         const albumState = state.progress.collectorAlbums[album.id];
         albumState.cards = albumState.cards && typeof albumState.cards === "object" ? albumState.cards : {};
         albumState.rewardClaimed = Boolean(albumState.rewardClaimed);
+
+        // Migration aus der alten Album-Logik:
+        // Dort konnte 6/6 sofort als "Belohnung erhalten" gespeichert werden.
+        // Ein solcher Spielstand wird einmalig in den neuen Zwischenzustand
+        // "Belohnung abholen" ueberfuehrt. Bereits gutgeschriebene Items
+        // werden dabei markiert, damit sie beim manuellen Abholen NICHT
+        // ein zweites Mal vergeben werden.
+        if (!albumState.rewardFlowVersion) {
+          const collectedCount = album.cards.reduce((sum, card) =>
+            sum + (albumState.cards[card.id] ? 1 : 0), 0);
+          if (collectedCount >= album.cards.length && albumState.rewardClaimed) {
+            albumState.rewardClaimed = false;
+            albumState.rewardAlreadyGranted = true;
+          } else {
+            albumState.rewardAlreadyGranted = Boolean(albumState.rewardAlreadyGranted);
+          }
+          albumState.rewardFlowVersion = 2;
+        } else {
+          albumState.rewardAlreadyGranted = Boolean(albumState.rewardAlreadyGranted);
+        }
       });
     },
 
@@ -1528,7 +1550,12 @@ function startVictoryImpact(stars) {
       if (!dom.albumRewardOverlay) return;
       dom.albumRewardOverlay.classList.remove("is-visible");
       dom.albumRewardOverlay.setAttribute("aria-hidden", "true");
-      window.setTimeout(() => dom.albumRewardOverlay.classList.add("hidden"), 260);
+      window.setTimeout(() => {
+        dom.albumRewardOverlay.classList.add("hidden");
+        // Erst NACH der Victory-Animation: Sammelkarten ausblenden und
+        // das fertige Album-Gesamtbild + "Belohnung erhalten" anzeigen.
+        this.render();
+      }, 260);
     },
 
     claimReward() {
@@ -1537,10 +1564,25 @@ function startVictoryImpact(stars) {
       const albumState = this.getState(album.id);
       if (!this.isComplete(album) || albumState.rewardClaimed) return false;
 
-      if (!this.grantAlbumReward(album)) return false;
+      // Neue Spielstaende erhalten die Items exakt hier beim aktiven Klick.
+      // Migrierte Spielstaende hatten die Items durch die alte Automatik
+      // bereits bekommen und duerfen deshalb nicht doppelt belohnt werden.
+      if (!albumState.rewardAlreadyGranted) {
+        Object.entries(album.reward?.items || {}).forEach(([itemKey, amount]) => {
+          addItemAmount(itemKey, amount, false);
+        });
+      }
+
+      albumState.rewardClaimed = true;
+      albumState.rewardAlreadyGranted = true;
+      albumState.completedAt = albumState.completedAt || new Date().toISOString();
+      albumState.rewardFlowVersion = 2;
       SaveManager.saveProgress(state.progress);
       this.updateHomeStatus();
-      this.render();
+
+      // Wichtig: Noch NICHT neu rendern. Hinter dem Victory-Overlay bleiben
+      // waehrend der Belohnungsanimation die sechs Sammelkarten sichtbar.
+      // Erst beim Schliessen der Animation wird auf das Abschlussbild gewechselt.
       this.showAlbumRewardVictory(album);
       return true;
     },
@@ -5040,26 +5082,7 @@ dom.shotsMapButton.onclick = () => {
          STANDARDLEVEL – bisheriges Verhalten
          ===================================================== */
       const oldResult = (state.progress.results || {})[level];
-      let newAlbumCard = CollectorAlbum.collectLevel(level, !oldResult);
-
-      /* TESTPHASE: Album-Gewinnanimation in Level 120 bei jedem Sieg anzeigen.
-         So kann die letzte Sammelkarte / Album-vollständig-Anzeige beliebig oft getestet werden,
-         auch wenn Level 120 und die Karte bereits gespeichert wurden. */
-      if (Number(level) === 120 && !newAlbumCard) {
-        const testMatch = getAlbumCardForLevel(120);
-        if (testMatch) {
-          const { album, card } = testMatch;
-          newAlbumCard = {
-            album,
-            card,
-            count: CollectorAlbum.getCollectedCount(album),
-            completedNow: CollectorAlbum.isComplete(album),
-            rewardGranted: false,
-            testReplay: true
-          };
-        }
-      }
-
+      const newAlbumCard = CollectorAlbum.collectLevel(level, !oldResult);
       CollectorAlbum.showVictoryReward(newAlbumCard);
       showUnlockedItemReward(level, Boolean(oldResult));
 
