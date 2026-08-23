@@ -7,9 +7,10 @@
  *  1) Vorschaukarte von Level 6 wird angezeigt und gesperrt.
  *  2) Pfeil/Highlight zeigt auf den ersten freigeschalteten Item-Button.
  *  3) Danach wird das Info-"i" erklärt.
- *  4) Danach werden die vier leeren Loadout-Slots erklärt.
- *  5) Sperre fällt weg; Spieler muss den Ball Switch auswählen.
- *  6) Erst wenn der Ball Switch in einem Slot liegt, wird "Level starten" frei.
+ *  4) Danach wird die verfügbare Anzahl rechts erklärt (-1 pro Verwendung).
+ *  5) Danach werden die vier leeren Loadout-Slots erklärt.
+ *  6) Sperre fällt weg; Spieler muss den Ball Switch auswählen.
+ *  7) Erst wenn der Ball Switch in einem Slot liegt, wird "Level starten" frei.
  */
 
 const ROOT_ID = "bk-level6-loadout-guide";
@@ -17,8 +18,8 @@ const STYLE_ID = "bk-level6-loadout-guide-style";
 const PROMPT_ID = "bk-level6-loadout-prompt";
 const STORAGE_KEY = "bandenkick_level6_loadout_intro_v1";
 
-const STEP_MS = 3200; // deutlich langsamer: jeder Hinweis bleibt 3,2 s sichtbar
-const TOTAL_STEPS = 3;
+const STEP_MS = 5200; // jeder Hinweis bleibt jetzt 5,2 s sichtbar (+1 Sekunde)
+const TOTAL_STEPS = 4;
 
 let active = false;
 let gated = false;
@@ -81,7 +82,7 @@ function addStyles() {
       box-shadow: 0 0 18px #ffd34d;
       pointer-events: none;
       transform-origin: 50% 100%;
-      animation: bkL6ArrowBounce .55s ease-in-out infinite alternate;
+      animation: none;
     }
 
     #${ROOT_ID} .bk-l6-arrow::after {
@@ -133,7 +134,6 @@ function addStyles() {
     #${PROMPT_ID} {
       position: fixed;
       left: 50%;
-      top: 12px;
       transform: translateX(-50%);
       z-index: 25000;
       width: min(410px, calc(100vw - 24px));
@@ -147,6 +147,8 @@ function addStyles() {
       box-shadow: 0 10px 30px rgba(0,0,0,.45), 0 0 18px rgba(255,211,77,.26);
       font: 800 14px/1.3 Arial, Helvetica, sans-serif;
       pointer-events: none;
+      animation: bkTutorialPromptPulse 1.25s ease-in-out infinite;
+      transform-origin: center center;
     }
 
     #${PROMPT_ID} strong {
@@ -186,15 +188,62 @@ function addStyles() {
           0 0 70px rgba(255,211,77,.58);
       }
     }
-    @keyframes bkL6ArrowBounce { to { transform: translateY(10px); } }
     @keyframes bkL6InteractivePulse { to { outline-offset: 7px; box-shadow: 0 0 34px rgba(255,211,77,.95) !important; } }
 
+
+    @keyframes bkTutorialPromptPulse {
+      0%, 100% {
+        transform: translateX(-50%) scale(1);
+        box-shadow:
+          0 12px 30px rgba(0, 0, 0, .45),
+          0 0 0 2px rgba(255, 214, 74, .28),
+          0 0 12px rgba(255, 196, 32, .35);
+      }
+      50% {
+        transform: translateX(-50%) scale(1.035);
+        box-shadow:
+          0 12px 30px rgba(0, 0, 0, .45),
+          0 0 0 5px rgba(255, 221, 83, .55),
+          0 0 28px rgba(255, 196, 32, .9);
+      }
+    }
+
     @media (max-width: 420px) {
-      #${ROOT_ID} .bk-l6-card { top: 8px; }
-      #${PROMPT_ID} { top: 6px; }
+      /* Prompt-Position wird dynamisch zwischen Zielbereich und Loadout gesetzt. */
     }
   `;
   document.head.appendChild(style);
+}
+
+function findAvailabilityElement(item) {
+  if (!item) return null;
+
+  // Zuerst bekannte/naheliegende Klassennamen versuchen.
+  const direct =
+    item.querySelector(
+      ".prelevel-item-count, .prelevel-item-qty, .prelevel-item-amount, " +
+      ".prelevel-item-stock, .item-count, .item-qty, .item-amount, " +
+      "[data-role='count'], [data-role='amount'], [data-role='quantity']"
+    );
+
+  if (direct) return direct;
+
+  // Fallback für bestehendes Markup:
+  // numerische Anzeige suchen und das am weitesten rechts liegende Element wählen.
+  const itemRect = item.getBoundingClientRect();
+  const numericCandidates = Array.from(item.querySelectorAll("span, b, strong, div"))
+    .filter((el) => /^\s*\d+\s*$/.test(el.textContent || ""))
+    .filter((el) => {
+      const r = el.getBoundingClientRect();
+      return r.width > 0 && r.height > 0;
+    })
+    .sort((a, b) => {
+      const ar = a.getBoundingClientRect();
+      const br = b.getBoundingClientRect();
+      return br.right - ar.right;
+    });
+
+  return numericCandidates[0] || item;
 }
 
 function getTargets() {
@@ -205,10 +254,12 @@ function getTargets() {
     item?.querySelector(".prelevel-item-info") ||
     item?.querySelector(".item-info-button");
 
+  const availability = findAvailabilityElement(item);
+
   const slots =
     document.getElementById("preLevelLoadoutSlots");
 
-  return { item, info, slots };
+  return { item, info, availability, slots };
 }
 
 function setStartDisabled(disabled) {
@@ -250,10 +301,11 @@ function positionStep() {
 
   const focus = root.querySelector(".bk-l6-focus");
   const arrow = root.querySelector(".bk-l6-arrow");
+  const card = root.querySelector(".bk-l6-card");
   const title = root.querySelector(".bk-l6-card strong");
   const text = root.querySelector(".bk-l6-card span");
 
-  const { item, info, slots } = getTargets();
+  const { item, info, availability, slots } = getTargets();
 
   const steps = [
     {
@@ -265,6 +317,11 @@ function positionStep() {
       el: info,
       title: "WAS KANN DAS ITEM?",
       text: "Tippe später auf das kleine i, wenn du die Funktion eines Items nachlesen möchtest."
+    },
+    {
+      el: availability,
+      title: "DEINE VERFÜGBARE ANZAHL",
+      text: "Die Zahl rechts zeigt dir, wie oft du das Item noch besitzt. Bei jeder Verwendung wird genau 1 Item verbraucht – die Anzeige sinkt also um -1."
     },
     {
       el: slots,
@@ -281,27 +338,52 @@ function positionStep() {
   text.textContent = step.text;
 
   const r = el.getBoundingClientRect();
-  const pad = currentStep === 1 ? 8 : 10;
+  const pad = (currentStep === 1 || currentStep === 2) ? 8 : 10;
 
   focus.style.left = `${Math.max(5, r.left - pad)}px`;
   focus.style.top = `${Math.max(5, r.top - pad)}px`;
   focus.style.width = `${Math.max(28, r.width + pad * 2)}px`;
   focus.style.height = `${Math.max(28, r.height + pad * 2)}px`;
 
-  // Pfeil möglichst oberhalb des Ziels; liegt Ziel sehr weit oben, darunter.
+  // Pfeil möglichst oberhalb des Ziels.
+  // Erklärungskarte sitzt direkt ÜBER dem Pfeil, damit Hinweis und Ziel
+  // auf Handy und Desktop visuell zusammengehören.
   const arrowW = 14;
   const centerX = r.left + r.width / 2;
-  let top = r.top - 82;
+  let arrowTop = r.top - 82;
 
-  if (top < 110) {
-    // Karte oben nicht überdecken: Pfeil rechts neben Ziel verwenden.
+  if (arrowTop < 120) {
+    // Bei Zielen weit oben den Pfeil rechts neben das Ziel setzen.
     arrow.style.left = `${Math.min(window.innerWidth - 32, r.right + 18)}px`;
     arrow.style.top = `${r.top + Math.max(0, r.height / 2 - 55)}px`;
     arrow.style.transform = "rotate(90deg)";
+
+    // Erklärung möglichst direkt oberhalb des Fokus platzieren.
+    const cardHeight = card?.offsetHeight || 105;
+    let cardTop = r.top - cardHeight - 18;
+    if (cardTop < 8) {
+      cardTop = Math.min(window.innerHeight - cardHeight - 8, r.bottom + 18);
+    }
+    if (card) card.style.top = `${Math.max(8, cardTop)}px`;
   } else {
     arrow.style.left = `${centerX - arrowW / 2}px`;
-    arrow.style.top = `${top}px`;
+    arrow.style.top = `${arrowTop}px`;
     arrow.style.transform = "";
+
+    const cardHeight = card?.offsetHeight || 105;
+    // ca. 12 px Abstand zwischen Erklärung und Pfeil
+    let cardTop = arrowTop - cardHeight - 14;
+
+    // Falls oberhalb nicht genug Platz ist, Karte knapp oberhalb des Fokus
+    // oder notfalls direkt unterhalb des Fokus setzen.
+    if (cardTop < 8) {
+      cardTop = r.top - cardHeight - 16;
+    }
+    if (cardTop < 8) {
+      cardTop = Math.min(window.innerHeight - cardHeight - 8, r.bottom + 18);
+    }
+
+    if (card) card.style.top = `${Math.max(8, cardTop)}px`;
   }
 }
 
@@ -318,6 +400,40 @@ function runStep() {
   }
 }
 
+function positionActionPrompt(prompt, success = false) {
+  if (!prompt) return;
+
+  // Der "JETZT DU!"-Hinweis soll direkt über "DEIN LOADOUT" sitzen:
+  // also unterhalb des Ziel-/Punktebereichs und unmittelbar vor den Slots.
+  const slots = document.getElementById("preLevelLoadoutSlots");
+  const loadoutCard =
+    slots?.closest(".prelevel-loadout-card") ||
+    slots?.parentElement;
+
+  const target = loadoutCard || slots;
+
+  if (!target) {
+    // Sicherer Fallback, falls sich das Markup später ändert.
+    prompt.style.top = "38%";
+    return;
+  }
+
+  const r = target.getBoundingClientRect();
+  const promptHeight = prompt.offsetHeight || 78;
+
+  if (success) {
+    // Nach der Auswahl bleibt der Start-Hinweis nahe beim unteren Bereich.
+    // scrollIntoView() kümmert sich anschließend um den Startbutton.
+    prompt.style.top = `${Math.max(8, r.top - promptHeight - 12)}px`;
+    return;
+  }
+
+  // Direkt zwischen dem Bereich "Erreiche mindestens XY Punkte"
+  // und der Loadout-Karte platzieren.
+  const desiredTop = r.top - promptHeight - 10;
+  prompt.style.top = `${Math.max(8, desiredTop)}px`;
+}
+
 function showPrompt(success = false) {
   let prompt = document.getElementById(PROMPT_ID);
   if (!prompt) {
@@ -329,6 +445,9 @@ function showPrompt(success = false) {
   prompt.innerHTML = success
     ? `<strong>PERFEKT!</strong>Unten findest du jetzt <b>LEVEL STARTEN</b>. Tippe auf den Button, um Level 6 zu beginnen.`
     : `<strong>JETZT DU!</strong>Tippe auf den Ball Switch. Er wird automatisch in den ersten freien Slot gesetzt.`;
+
+  // Nach dem Rendern ist die echte Höhe bekannt.
+  window.requestAnimationFrame(() => positionActionPrompt(prompt, success));
 }
 
 function beginInteraction() {
@@ -410,7 +529,13 @@ export const Level6LoadoutGuide = Object.freeze({
       currentStep = 0;
       createOverlay();
 
-      resizeHandler = () => positionStep();
+      resizeHandler = () => {
+        positionStep();
+        const prompt = document.getElementById(PROMPT_ID);
+        if (prompt) {
+          positionActionPrompt(prompt, completed);
+        }
+      };
       window.addEventListener("resize", resizeHandler);
 
       runStep();
