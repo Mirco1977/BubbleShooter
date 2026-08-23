@@ -272,6 +272,106 @@ function addStyles() {
 
     #${ROOT_ID} .bk-tut-ready:not(:disabled) {
       pointer-events: auto;
+      touch-action: manipulation;
+      -webkit-tap-highlight-color: transparent;
+      position: relative;
+      z-index: 8;
+    }
+
+    #${ROOT_ID}.bk-tut-hud-mode {
+      display: block;
+      padding: 0;
+      background: transparent;
+      backdrop-filter: none;
+      -webkit-backdrop-filter: none;
+      opacity: 1;
+      animation: none;
+    }
+
+    #${ROOT_ID} .bk-hud-focus {
+      position: fixed;
+      z-index: 2;
+      pointer-events: none;
+      border: 4px solid #ffd34d;
+      border-radius: 16px;
+      box-shadow:
+        0 0 0 9999px rgba(5,7,12,.78),
+        0 0 0 4px rgba(134,0,0,.82),
+        0 0 26px rgba(255,211,77,.95);
+      transition: left .45s ease, top .45s ease, width .45s ease, height .45s ease;
+      animation: bkHudFocusPulse .9s ease-in-out infinite alternate;
+    }
+
+    #${ROOT_ID} .bk-hud-card {
+      position: fixed;
+      z-index: 4;
+      left: 50%;
+      transform: translateX(-50%);
+      width: min(420px, calc(100vw - 24px));
+      box-sizing: border-box;
+      padding: 13px 15px 12px;
+      border: 3px solid #efc650;
+      border-radius: 18px;
+      background: linear-gradient(180deg, #9c0808, #690000);
+      box-shadow: 0 10px 30px rgba(0,0,0,.52), 0 0 22px rgba(255,211,77,.28);
+      color: #fff;
+      text-align: center;
+      font-family: Arial, Helvetica, sans-serif;
+    }
+
+    #${ROOT_ID} .bk-hud-card strong {
+      display: block;
+      color: #ffd85a;
+      font-size: clamp(18px, 4.8vw, 23px);
+      line-height: 1.08;
+      margin-bottom: 6px;
+      text-shadow: 0 2px 2px #3a0000;
+    }
+
+    #${ROOT_ID} .bk-hud-card span {
+      display: block;
+      font-size: clamp(13px, 3.5vw, 15px);
+      line-height: 1.35;
+      font-weight: 750;
+    }
+
+    #${ROOT_ID} .bk-hud-progress {
+      display: block;
+      margin-top: 7px;
+      color: rgba(255,255,255,.7);
+      font-size: 11px;
+      font-weight: 800;
+      letter-spacing: .5px;
+    }
+
+    #${ROOT_ID} .bk-hud-finish {
+      display: block;
+      margin: 10px auto 0;
+      min-width: 190px;
+      padding: 10px 20px;
+      border: 3px solid #ffd34d;
+      border-radius: 15px;
+      background: #860000;
+      color: #fff;
+      font: 1000 17px/1.1 Arial, Helvetica, sans-serif;
+      cursor: pointer;
+      touch-action: manipulation;
+      -webkit-tap-highlight-color: transparent;
+      box-shadow: 0 0 18px rgba(255,211,77,.32);
+      animation: bkHudButtonPulse .7s ease-in-out infinite alternate;
+    }
+
+    @keyframes bkHudFocusPulse {
+      to {
+        box-shadow:
+          0 0 0 9999px rgba(5,7,12,.78),
+          0 0 0 5px rgba(134,0,0,.95),
+          0 0 35px rgba(255,211,77,1);
+      }
+    }
+
+    @keyframes bkHudButtonPulse {
+      to { transform: scale(1.045); box-shadow: 0 0 28px rgba(255,211,77,.72); }
     }
 
     @keyframes bkTutOverlayIn { to { opacity: 1; } }
@@ -356,9 +456,15 @@ function createOverlay() {
     </div>
   `;
 
-  // Prevent any click/touch from reaching the canvas beneath the overlay.
+  // Prevent interactions from reaching the canvas beneath the overlay.
+  // WICHTIG: echte Tutorial-Buttons werden auf Mobilgeräten NICHT per
+  // preventDefault abgefangen, damit Tap/Click zuverlässig ausgelöst wird.
   ["pointerdown", "pointerup", "click", "touchstart", "touchend"].forEach((type) => {
     root.addEventListener(type, (event) => {
+      if (event.target.closest("button")) {
+        event.stopPropagation();
+        return;
+      }
       event.preventDefault();
       event.stopPropagation();
     }, { passive: false });
@@ -388,8 +494,185 @@ function enableReadyButton() {
   button.addEventListener("click", (event) => {
     event.preventDefault();
     event.stopPropagation();
-    finish();
+    startHudTour();
   });
+}
+
+const HUD_STEP_MS = 4400;
+let hudStep = 0;
+let hudTimer = null;
+let hudResizeHandler = null;
+
+function getHudTarget(stepIndex) {
+  if (stepIndex === 0) {
+    return {
+      element: document.getElementById("targetScoreDisplay"),
+      title: "LINKS: DEIN LEVELZIEL",
+      text: "Hier siehst du, wie viele Punkte du für dieses Level erreichen musst."
+    };
+  }
+
+  if (stepIndex === 1) {
+    return {
+      element: document.getElementById("shotsDisplay"),
+      title: "MITTE: DEINE SCHÜSSE",
+      text: "Hier wird jeder abgegebene Schuss gezählt. So behältst du deinen Spielverlauf im Blick."
+    };
+  }
+
+  if (stepIndex === 2) {
+    return {
+      element: document.getElementById("colorsDisplay"),
+      title: "RECHTS: FARBEN IM LEVEL",
+      text: "Diese Zahl zeigt dir, mit wie vielen verschiedenen Ballfarben du in diesem Level spielst."
+    };
+  }
+
+  return {
+    canvasRegion: true,
+    element: document.getElementById("gameCanvas"),
+    title: "UNTEN RECHTS: PUNKTSTAND | ZIEL",
+    text: "Links steht dein aktueller Punktestand – also was du bereits HAST. Rechts steht die Zielpunktzahl – also was du für den Sieg HABEN SOLLST."
+  };
+}
+
+function getHudRect(target) {
+  const el = target?.element;
+  if (!el) return null;
+
+  const r = el.getBoundingClientRect();
+
+  if (!target.canvasRegion) {
+    return {
+      left: r.left,
+      top: r.top,
+      width: r.width,
+      height: r.height
+    };
+  }
+
+  // Das Punktestand/Ziel-HUD wird direkt im Canvas unten rechts gezeichnet.
+  // Deshalb markieren wir exakt diese relative Canvas-Region.
+  const regionWidth = r.width * 0.48;
+  const regionHeight = Math.min(r.height * 0.16, 100);
+  return {
+    left: r.right - regionWidth - 5,
+    top: r.bottom - regionHeight - 5,
+    width: regionWidth,
+    height: regionHeight
+  };
+}
+
+function positionHudCard(card, rect) {
+  if (!card || !rect) return;
+
+  const cardHeight = card.offsetHeight || 105;
+  const viewportH = window.innerHeight;
+
+  // Bei der oberen Leiste Erklärung direkt darunter,
+  // beim unteren Punktestand direkt darüber.
+  let top;
+  if (rect.top < viewportH * 0.38) {
+    top = rect.top + rect.height + 18;
+  } else {
+    top = rect.top - cardHeight - 18;
+  }
+
+  top = Math.max(8, Math.min(viewportH - cardHeight - 8, top));
+  card.style.top = `${top}px`;
+}
+
+function renderHudStep() {
+  if (!active) return;
+
+  const root = document.getElementById(ROOT_ID);
+  if (!root) return;
+
+  const target = getHudTarget(hudStep);
+  const rect = getHudRect(target);
+  const focus = root.querySelector(".bk-hud-focus");
+  const card = root.querySelector(".bk-hud-card");
+  const title = root.querySelector(".bk-hud-card strong");
+  const body = root.querySelector(".bk-hud-card span");
+  const progress = root.querySelector(".bk-hud-progress");
+
+  if (!rect || !focus || !card) {
+    finish();
+    return;
+  }
+
+  const pad = 7;
+  focus.style.left = `${Math.max(3, rect.left - pad)}px`;
+  focus.style.top = `${Math.max(3, rect.top - pad)}px`;
+  focus.style.width = `${Math.max(30, rect.width + pad * 2)}px`;
+  focus.style.height = `${Math.max(30, rect.height + pad * 2)}px`;
+
+  title.textContent = target.title;
+  body.textContent = target.text;
+  progress.textContent = `${hudStep + 1} / 4`;
+
+  const oldButton = card.querySelector(".bk-hud-finish");
+  oldButton?.remove();
+
+  if (hudStep === 3) {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "bk-hud-finish";
+    button.textContent = "LOS GEHT'S!";
+    button.addEventListener("pointerdown", (event) => event.stopPropagation());
+    button.addEventListener("click", (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      finish();
+    });
+    card.appendChild(button);
+  }
+
+  window.requestAnimationFrame(() => positionHudCard(card, rect));
+}
+
+function scheduleNextHudStep() {
+  clearTimeout(hudTimer);
+
+  if (hudStep >= 3) {
+    // Letzter Schritt bleibt stehen, bis der Spieler selbst LOS GEHT'S drückt.
+    return;
+  }
+
+  hudTimer = window.setTimeout(() => {
+    hudStep += 1;
+    renderHudStep();
+    scheduleNextHudStep();
+  }, HUD_STEP_MS);
+}
+
+function startHudTour() {
+  if (!active) return;
+
+  clearTimeout(timer);
+  timer = null;
+  clearTimeout(hudTimer);
+
+  const root = document.getElementById(ROOT_ID);
+  if (!root) return;
+
+  root.classList.add("bk-tut-hud-mode");
+  root.innerHTML = `
+    <div class="bk-hud-focus"></div>
+    <div class="bk-hud-card">
+      <strong></strong>
+      <span></span>
+      <small class="bk-hud-progress"></small>
+    </div>
+  `;
+
+  hudStep = 0;
+  hudResizeHandler = () => renderHudStep();
+  window.addEventListener("resize", hudResizeHandler);
+  window.addEventListener("orientationchange", hudResizeHandler);
+
+  renderHudStep();
+  scheduleNextHudStep();
 }
 
 function finish() {
@@ -397,7 +680,15 @@ function finish() {
   const root = document.getElementById(ROOT_ID);
   active = false;
   clearTimeout(timer);
+  clearTimeout(hudTimer);
   timer = null;
+  hudTimer = null;
+
+  if (hudResizeHandler) {
+    window.removeEventListener("resize", hudResizeHandler);
+    window.removeEventListener("orientationchange", hudResizeHandler);
+    hudResizeHandler = null;
+  }
 
   if (!root) return;
   root.classList.add("bk-tut-out");
@@ -420,8 +711,17 @@ export const Level1Tutorial = Object.freeze({
 
   stop() {
     clearTimeout(timer);
+    clearTimeout(hudTimer);
     timer = null;
+    hudTimer = null;
     active = false;
+
+    if (hudResizeHandler) {
+      window.removeEventListener("resize", hudResizeHandler);
+      window.removeEventListener("orientationchange", hudResizeHandler);
+      hudResizeHandler = null;
+    }
+
     document.getElementById(ROOT_ID)?.remove();
   },
 
