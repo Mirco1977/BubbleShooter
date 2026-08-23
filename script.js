@@ -8,6 +8,8 @@
   import { calculateStars, STAR_CONFIG } from "./js/config/starConfig.js";
   import { ALBUM_CONFIG, getAlbumCardForLevel } from "./js/config/albumConfig.js";
   import { applyAlbumLevelConfig } from "./js/config/albumLevel.js";
+  import { Level1Tutorial } from "./js/tutorial/level1Tutorial.js";
+  import { Level6LoadoutGuide } from "./js/tutorial/level6LoadoutGuide.js";
 
   (() => {
 
@@ -724,6 +726,10 @@ const PreLevelLoadout = {
     if (dom.preLevelLoadoutHint && !dom.preLevelLoadoutHint.classList.contains("show")) {
       dom.preLevelLoadoutHint.textContent = `${this.selected.length}/${this.maxItems} Items ausgewählt`;
     }
+
+    // Level 6: Startfreigabe aktualisieren, sobald der Spieler
+    // ein Item auswählt oder wieder entfernt.
+    Level6LoadoutGuide.onLoadoutChange(this.selected);
   }
 };
 
@@ -2370,6 +2376,13 @@ function startVictoryImpact(stars) {
       renderPreviewBalls(levelNumber);
       PreLevelLoadout.open(levelConfig);
       Navigation.show("level");
+
+      // Beim ersten Öffnen von Level 6 wird die neue Item-/Slot-Einführung
+      // über der bestehenden Vorschaukarte abgespielt.
+      Level6LoadoutGuide.open({
+        levelNumber,
+        startButton: dom.startLevelButton
+      });
     }
   };
 
@@ -2383,7 +2396,48 @@ window.BK_openMainLevel = (levelNumber) => {
   if (!Number.isInteger(level) || level < 1) return;
 
   window.BK_levelOrigin = "worldMap2";
+  state.gameMode = "standard";
+  state.activeEpisodeId = null;
+  state.selectedLevel = level;
 
+  // LEVEL 1–5:
+  // Vor dem ersten Item gibt es keine Levelvorschau.
+  // Das Level startet direkt aus der Endloskarte.
+  if (level <= 5) {
+    Level6LoadoutGuide.close();
+
+    const worldMapScreen =
+      document.getElementById("worldMap2Screen");
+
+    const levelScreen =
+      document.getElementById("levelScreen");
+
+    if (worldMapScreen) {
+      worldMapScreen.classList.add("hidden");
+    }
+
+    if (levelScreen) {
+      levelScreen.classList.add("hidden");
+      levelScreen.classList.remove("world2-level-overlay");
+    }
+
+    // Kein Item kann vor Level 5 sinnvoll ins Loadout gesetzt werden.
+    PreLevelLoadout.open(STAR_CONFIG[level] || {});
+    BubbleGame.equippedItems = new Set();
+
+    Audio.stopBackground();
+    Audio.playEffect("levelStart");
+
+    window.scrollTo({
+      top: 0,
+      behavior: "auto"
+    });
+
+    BubbleGame.start(level);
+    return;
+  }
+
+  // Ab Level 6 wird die gewohnte Vorschaukarte verwendet.
   LevelPreview.open(level);
 
   const worldMapScreen =
@@ -2657,6 +2711,8 @@ window.BK_openMainLevel = (levelNumber) => {
     },
 
     start(levelNumber) {
+      Level1Tutorial.stop();
+      Level6LoadoutGuide.close();
       state.selectedLevel = levelNumber;
       updateItemBarLocks();
       this.victoryAnimation = false;
@@ -2912,7 +2968,12 @@ window.BK_openMainLevel = (levelNumber) => {
 
       Navigation.show("play");
 
-      Navigation.show("play");
+      // Level 1: reine DOM-Einführung über dem Spielfeld.
+      // Sie verändert weder BubbleGame.update/draw noch den Ball-Cache.
+      Level1Tutorial.start({
+        levelNumber,
+        gameMode: state.gameMode
+      });
 
       /*setTimeout(() => {
           window.scrollTo({
@@ -3820,6 +3881,7 @@ createShooter() {
       if (
         !this.running ||
         this.levelFinished ||
+        Level1Tutorial.isActive() ||
         this.speedCountdownActive ||
         this.swordReleaseActive ||
         !this.shooter ||
@@ -5241,6 +5303,7 @@ drawAimGuide() {
       this.animationFrame = requestAnimationFrame(frame);
       },
     stop() {
+      Level1Tutorial.stop();
       this.running = false;
       this.speedCountdownActive = false;
       cancelAnimationFrame(this.animationFrame);
@@ -5879,6 +5942,14 @@ const Shop = {
 
   dom.startLevelButton.addEventListener("click", () => {
 
+  // Falls Level 6 gerade die Loadout-Einführung zeigt, darf der Start
+  // erst nach erfüllter Aufgabe erfolgen.
+  if (!Level6LoadoutGuide.canStart()) {
+    Level6LoadoutGuide.remind();
+    return;
+  }
+
+  Level6LoadoutGuide.complete();
   Audio.stopBackground();
   Audio.playEffect("levelStart");
 
