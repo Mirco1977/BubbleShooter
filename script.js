@@ -402,16 +402,7 @@ const THEME_PATH = [
 
 const ITEM_START_AMOUNT = 5;
 
-const FROST_PLACEHOLDER_IMAGE =
-  "data:image/svg+xml;charset=UTF-8," + encodeURIComponent(`
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128">
-      <defs><radialGradient id="g" cx="38%" cy="30%" r="70%">
-        <stop offset="0" stop-color="#fff"/><stop offset=".28" stop-color="#dcf7ff"/>
-        <stop offset=".66" stop-color="#76d9ff"/><stop offset="1" stop-color="#2185b7"/>
-      </radialGradient></defs>
-      <circle cx="64" cy="64" r="57" fill="url(#g)" stroke="#efffff" stroke-width="6"/>
-      <text x="64" y="84" text-anchor="middle" font-size="67" font-family="Arial" fill="#fff">❄</text>
-    </svg>`);
+const FROST_PLACEHOLDER_IMAGE = "assets/ui/frost-ball.png";
 
 function ensureFrostStyles() {
   if (document.getElementById("bk-frost-item-styles")) return;
@@ -1919,7 +1910,13 @@ function startVictoryImpact(stars) {
     getSegments() {
       const hourglassAvailable = this.isHourglassOnWheel();
 
+      let frostFieldUsed = false;
       return WHEEL_CONFIG.segments.map((segment) => {
+        // Ein bisheriges Zufallsfeld wird ab Frostball-Freischaltung fest zum Frostball-Feld.
+        if (segment.type === "random" && isItemUnlocked("frost") && !frostFieldUsed) {
+          frostFieldUsed = true;
+          return { id: segment.id, type: "item", category: "normal", itemKey: "frost", amount: 1 };
+        }
         if (segment.type !== "hourglass-or-random") {
           return { ...segment };
         }
@@ -1946,10 +1943,8 @@ function startVictoryImpact(stars) {
     getJackpotItemKeys() {
       const keys = [...WHEEL_CONFIG.randomItemKeys];
 
-      if (this.isHourglassOnWheel()) {
-        keys.push("hourglass");
-      }
-
+      if (this.isHourglassOnWheel()) keys.push("hourglass");
+      if (isItemUnlocked("frost")) keys.push("frost");
       return keys;
     },
 
@@ -2607,7 +2602,6 @@ window.BK_openMainLevel = (levelNumber) => {
         this.shooter.isThunder = false;
         this.shooter.isRainbow = false;
         this.shooter.isColorBomb = false;
-        this.shooter.isFrost = false;
         return true;
     },
 
@@ -2625,7 +2619,6 @@ window.BK_openMainLevel = (levelNumber) => {
         this.shooter.isRainbow = false;
         this.shooter.isColorBomb = false;
         this.shooter.isThunder = true;
-        this.shooter.isFrost = false;
         return true;
     },
 
@@ -2643,7 +2636,6 @@ window.BK_openMainLevel = (levelNumber) => {
         this.shooter.isThunder = false;
         this.shooter.isColorBomb = false;
         this.shooter.isRainbow = true;
-        this.shooter.isFrost = false;
         return true;
     },
 
@@ -2661,7 +2653,6 @@ window.BK_openMainLevel = (levelNumber) => {
         this.shooter.isThunder = false;
         this.shooter.isRainbow = false;
         this.shooter.isColorBomb = true;
-        this.shooter.isFrost = false;
         return true;
     },
 
@@ -2702,94 +2693,21 @@ window.BK_openMainLevel = (levelNumber) => {
     },
 
     activateFrost() {
-      // Frostball ist ein echter Schussball:
-      // Item auswählen -> aktueller Shooter wird Frostball -> erst beim Deckenaufprall
-      // startet der 20-Sekunden-Frost-Effekt.
-      if (
-        !isItemUnlocked("frost") ||
-        !this.running ||
-        this.levelFinished ||
-        !this.equippedItems?.has("frost") ||
-        !this.shooter ||
-        this.shooter.moving
-      ) return false;
-
-      if (this.frostActive) {
-        showToast("Frost ist bereits aktiv.");
-        return false;
-      }
-
-      if (this.shooter.isFrost) return false;
+      if (!isItemUnlocked("frost") || !this.running || this.levelFinished || !this.equippedItems?.has("frost")) return false;
+      if (this.frostActive) { showToast("Frost ist bereits aktiv."); return false; }
       if (!consumeItem("frost")) return false;
 
-      // Andere Spezialschüsse werden sauber ersetzt.
-      this.shooter.isBomb = false;
-      this.shooter.isThunder = false;
-      this.shooter.isRainbow = false;
-      this.shooter.isColorBomb = false;
-      this.shooter.isFrost = true;
-      this.shooter.frostScale = 1;
-      this.shooter.frostStartY = this.shooter.y;
-
-      showToast("Frostball bereit – schieße ihn nach oben!");
-      updateItemBarLocks();
-      return true;
-    },
-
-    startFrostEffect() {
       const now = performance.now();
-
       this.frostActive = true;
       this.frostStartedAt = now;
       this.frostEndsAt = now + this.frostDurationMs;
-      this.frostSpeedPauseStartedAt =
-        this.speedMode && this.speedTimerStartedAt ? now : 0;
-
-      if (this.speedMode) {
-        dom.speedTimerHud?.classList.add("frost-timer-frozen");
-      }
-
-      showToast(
-        this.speedMode
-          ? "Frostball: Zeit und Nachrücken 20 Sekunden eingefroren!"
-          : "Frostball: Nachrücken 20 Sekunden eingefroren!"
-      );
-
+      this.frostSpeedPauseStartedAt = this.speedMode && this.speedTimerStartedAt ? now : 0;
+      if (this.speedMode) dom.speedTimerHud?.classList.add("frost-timer-frozen");
+      showToast(this.speedMode
+        ? "Frostball: Zeit und Nachrücken 20 Sekunden eingefroren!"
+        : "Frostball: Nachrücken 20 Sekunden eingefroren!");
       updateItemBarLocks();
-    },
-
-    explodeFrostShot() {
-      if (!this.shooter?.isFrost) return;
-
-      const x = this.shooter.x;
-      const y = Math.max(this.radius, this.shooter.y);
-
-      // Großer Eis-Burst beim Aufprall.
-      for (let i = 0; i < 34; i++) {
-        const angle = (Math.PI * 2 * i) / 34 + Math.random() * 0.22;
-        const speed = 2.1 + Math.random() * 4.8;
-
-        this.particles.push({
-          x,
-          y,
-          vx: Math.cos(angle) * speed,
-          vy: Math.sin(angle) * speed,
-          size: 3 + Math.random() * 7,
-          life: 26 + Math.random() * 22,
-          color: i % 3 === 0 ? "#ffffff" : (i % 2 === 0 ? "#bff4ff" : "#68d5ff")
-        });
-      }
-
-      this.explosions.push({
-        x,
-        y,
-        radius: this.radius * 0.9,
-        alpha: 1
-      });
-
-      this.screenShake = Math.max(this.screenShake || 0, 7);
-      this.startFrostEffect();
-      this.createShooter();
+      return true;
     },
 
     updateFrostState(currentTime = performance.now()) {
@@ -4048,9 +3966,6 @@ createShooter() {
         isThunder: false,
         isRainbow: false,
         isColorBomb: false,
-        isFrost: false,
-        frostScale: 1,
-        frostStartY: 0,
         isAim: false,
         color: color,
         image: color.image || null
@@ -4097,12 +4012,6 @@ createShooter() {
 
       this.shooter.vx = dx / length * speed;
       this.shooter.vy = dy / length * speed;
-
-      if (this.shooter.isFrost) {
-        this.shooter.frostStartY = this.shooter.y;
-        this.shooter.frostScale = 1;
-      }
-
       this.shooter.moving = true;
 
       this.shots++;
@@ -4306,16 +4215,6 @@ createShooter() {
 
       this.shooter.x += this.shooter.vx * deltaTime * speedMultiplier;
       this.shooter.y += this.shooter.vy * deltaTime * speedMultiplier;
-
-      if (this.shooter.isFrost) {
-        // Von normaler Größe bis 250 % aufblähen, während der Ball nach oben fliegt.
-        const startY = Number(this.shooter.frostStartY) || (this.height - 62);
-        const travel = Math.max(0, startY - this.shooter.y);
-        const maxTravel = Math.max(1, startY - this.radius);
-        const progress = Math.max(0, Math.min(1, travel / maxTravel));
-        const eased = 1 - Math.pow(1 - progress, 2);
-        this.shooter.frostScale = 1 + eased * 1.5;
-      }
       
       if (
         this.shooter.x <= this.radius ||
@@ -4351,16 +4250,6 @@ createShooter() {
 
       const bubbleHit = hitBubble !== null;
 
-      // Frostball fliegt durch/über alle vorhandenen Bälle hindurch.
-      // Nur die Decke beendet den Flug.
-      if (this.shooter.isFrost) {
-          if (ceilingHit) {
-              this.shooter.y = this.radius;
-              this.explodeFrostShot();
-          }
-          return;
-      }
-
       if (ceilingHit || bubbleHit) {
 
           this.lastHitBubble = hitBubble;
@@ -4388,13 +4277,6 @@ createShooter() {
 },
 
     attachShooter() {
-      if (this.shooter.isFrost) {
-        // Sollte nur als Sicherheitsnetz greifen – der Frostball wird
-        // normalerweise bereits im Update beim Deckenaufprall verarbeitet.
-        this.explodeFrostShot();
-        return;
-      }
-
       if(this.shooter.isBomb) {
         
         this.explodeBomb();
@@ -5131,63 +5013,6 @@ drawBubble(bubble) {
             this.ctx.restore();
         }
 
-        return;
-    }
-
-    // Frostball – echter Schussball, während des Flugs bis auf 250 % skaliert.
-    if (bubble.isFrost) {
-        const scale = Math.max(1, Math.min(2.5, Number(bubble.frostScale) || 1));
-        const size = this.radius * 2 * scale;
-
-        if (!this.frostBallImage) {
-            this.frostBallImage = new Image();
-            this.frostBallImage.src = FROST_PLACEHOLDER_IMAGE;
-        }
-
-        this.ctx.save();
-        this.ctx.shadowColor = "#8ceaff";
-        this.ctx.shadowBlur = 16 + 10 * scale;
-
-        if (this.frostBallImage.complete && this.frostBallImage.naturalWidth > 0) {
-            this.ctx.drawImage(
-                this.frostBallImage,
-                bubble.x - size / 2,
-                bubble.y - size / 2,
-                size,
-                size
-            );
-        } else {
-            const gradient = this.ctx.createRadialGradient(
-                bubble.x - size * .18,
-                bubble.y - size * .22,
-                size * .08,
-                bubble.x,
-                bubble.y,
-                size * .5
-            );
-            gradient.addColorStop(0, "#ffffff");
-            gradient.addColorStop(.35, "#c9f5ff");
-            gradient.addColorStop(1, "#3ab4e6");
-            this.ctx.fillStyle = gradient;
-            this.ctx.beginPath();
-            this.ctx.arc(bubble.x, bubble.y, size / 2, 0, Math.PI * 2);
-            this.ctx.fill();
-        }
-
-        // kleiner, eigener Frostglitter am fliegenden Ball
-        const t = performance.now() * .006;
-        for (let i = 0; i < 7; i++) {
-            const angle = t + i * (Math.PI * 2 / 7);
-            const rr = size * (.30 + (i % 2) * .07);
-            const sx = bubble.x + Math.cos(angle) * rr;
-            const sy = bubble.y + Math.sin(angle) * rr;
-            this.ctx.fillStyle = "rgba(255,255,255,.9)";
-            this.ctx.beginPath();
-            this.ctx.arc(sx, sy, Math.max(1.2, size * .018), 0, Math.PI * 2);
-            this.ctx.fill();
-        }
-
-        this.ctx.restore();
         return;
     }
 
@@ -6546,7 +6371,7 @@ const ITEM_INFO = {
 
     frost: {
         title: "Frostball",
-        text: "Der Frostball wird als echter Spezialball abgeschossen. Er fliegt durch die vorhandenen Bälle hindurch, wächst während des Flugs bis auf 250 % an und platzt beim Aufprall an der Decke. Danach friert er für 20 Sekunden das Nachrücken neuer Reihen ein. In Speedgames bleibt zusätzlich die Restzeit 20 Sekunden vollständig stehen."
+        text: "Der Frostball friert für 20 Sekunden das Nachrücken neuer Reihen ein. In Speedgames bleibt zusätzlich die Restzeit für 20 Sekunden vollständig stehen. Währenddessen liegt ein sichtbarer Frost- und Glitterfilm über der obersten Ballreihe."
     }
 
 };
