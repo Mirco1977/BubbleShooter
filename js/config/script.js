@@ -2731,8 +2731,10 @@ window.BK_openMainLevel = (levelNumber) => {
         return false;
       }
 
-      // Normalbetrieb: Pro Aktivierung wird genau 1 Feuerball aus dem Bestand verbraucht.
-      if (!consumeItem("fireball")) return false;
+      // TESTMODUS:
+      // Vorübergehend wird KEIN Bestand abgezogen. Dadurch kann der Feuerball
+      // beliebig oft getestet werden. Für den Livebetrieb später wieder:
+      // if (!consumeItem("fireball")) return false;
 
       this.shooter.isBomb = false;
       this.shooter.isThunder = false;

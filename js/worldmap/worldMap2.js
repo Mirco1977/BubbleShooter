@@ -76,26 +76,6 @@ getMapScale() {
       this.scrollToCurrent(true);
     });
 
-    // Info-i der dynamisch erzeugten Item-Meilensteine direkt auf der Karte
-    // behandeln. Dadurch funktioniert es auch auf Touchgeraeten, obwohl der
-    // restliche Milestone absichtlich keine Pointer-Events annimmt.
-    this.world.addEventListener("click", (event) => {
-      const infoButton = event.target.closest?.(".world2-item-info");
-      if (!infoButton) return;
-      event.preventDefault();
-      event.stopPropagation();
-      window.BK_openItemInfo?.(infoButton.dataset.item);
-    });
-
-    this.world.addEventListener("keydown", (event) => {
-      if (event.key !== "Enter" && event.key !== " ") return;
-      const infoButton = event.target.closest?.(".world2-item-info");
-      if (!infoButton) return;
-      event.preventDefault();
-      event.stopPropagation();
-      window.BK_openItemInfo?.(infoButton.dataset.item);
-    });
-
     // Kartenbilder frühzeitig in den Browser-Cache laden. Dadurch gibt es
     // beim Rücksprung aus einem gewonnenen Level keinen blauen Leerzustand.
     this.preloadMapAssets();
@@ -361,6 +341,7 @@ xForLevel(level) {
       Math.ceil(CONFIG.totalLevels / CONFIG.levelsPerStage);
 
     for (let stageIndex = 0; stageIndex < stageCount; stageIndex++) {
+      const stageNo = stageIndex + 1;
       const firstLevel =
         stageIndex * CONFIG.levelsPerStage + 1;
 
@@ -369,45 +350,40 @@ xForLevel(level) {
       const stage =
         CONFIG.stages[stageIndex % CONFIG.stages.length];
 
-      if (!stage?.logo) continue;
-
       const marker = document.createElement("div");
-      marker.className = "world2-stage-marker world2-stage-watermark";
-      marker.setAttribute("aria-hidden", "true");
+      marker.className = "world2-stage-marker";
+      if (stageNo === 1) {
+        marker.classList.add("stage-1");
+      }
 
       const scale = this.getMapScale();
 
-      // Unterkante des jeweiligen 10-Level-Bildes.
-      let stageBottom;
+/*
+ * Stage-Logo immer an derselben festen Position
+ * innerhalb jedes 10-Level-Bildes.
+ */
+marker.classList.add("fixed");
 
-      if (stageIndex === 0) {
-        stageBottom = 0;
-      } else {
-        stageBottom =
-          (
-            CONFIG.stageLayouts.first.height +
-            ((stageIndex - 1) * CONFIG.stageLayouts.standard.height)
-          ) * scale;
-      }
+/*
+ * Unterkante des jeweiligen Stage-Bildes bestimmen.
+ */
+let stageBottom;
 
-      const layout = stageIndex === 0
-        ? CONFIG.stageLayouts.first
-        : CONFIG.stageLayouts.standard;
+if (stageIndex === 0) {
+  stageBottom = 0;
+} else {
+  stageBottom =
+    (
+      CONFIG.stageLayouts.first.height +
+      ((stageIndex - 1) * CONFIG.stageLayouts.standard.height)
+    ) * scale;
+}
 
-      // Das eigentliche Fussballfeld liegt unterhalb des Finish-/
-      // Uebergangsbereichs. 39 % der Bildhoehe trifft deshalb die
-      // optische vertikale Feldmitte deutlich besser als 50 %.
-      // Auf ALLEN Stages wird das Logo angezeigt – auch auf der aktuellen.
-      const fieldCenterRatio = 0.25;
-
-      marker.style.bottom =
-        `${stageBottom + ((layout.height * fieldCenterRatio) * scale)}px`;
-
-      // Logo immer quadratisch halten. Die Groesse orientiert sich an der
-      // echten Kartenbreite und bleibt sicher innerhalb des Fussballfeldes.
-      const logoSize = Math.min(305, Math.max(210, this.world.clientWidth * 0.58));
-      marker.style.setProperty("width", `${logoSize}px`, "important");
-      marker.style.setProperty("height", `${logoSize}px`, "important");
+/*
+ * Feste vertikale Position innerhalb des Stage-Bildes.
+ */
+marker.style.bottom =
+  `${stageBottom + (180 * scale)}px`;
 
       marker.style.setProperty(
         "--stage-accent",
@@ -416,10 +392,17 @@ xForLevel(level) {
 
       marker.innerHTML = `
         <div class="world2-stage-logo-wrap">
-          <img class="world2-stage-logo"
-               src="${stage.logo}"
-               alt=""
-               draggable="false">
+          ${stage.logo
+            ? `<img class="world2-stage-logo"
+                    src="${stage.logo}"
+                    alt="${stage.name}"
+                    draggable="false">`
+            : ""}
+        </div>
+
+        <div class="world2-stage-copy">
+          <span>STAGE ${stageNo}</span>
+          <strong>${stage.name}</strong>
         </div>
       `;
 
@@ -509,32 +492,30 @@ xForLevel(level) {
     35: "assets/ui/bomb-ball.png",
     45: "assets/ui/thunder-ball.png",
     55: "assets/ui/color-bomb.png",
-    65: "assets/ui/hourglass.png"
+    65: "assets/ui/hourglass.png",
+    75: "assets/ui/fire-ball.png",
+    85: "assets/ui/frost-ball.png"
   };
 
   return images[level] || "";
 },
 
-  getMilestoneItemKey(level) {
-  const keys = {
-    5: "ballswitch",
-    15: "rainbow",
-    25: "aim",
-    35: "bomb",
-    45: "thunder",
-    55: "colorbomb",
-    65: "hourglass"
-  };
-
-  return keys[level] || "";
-},
-
   renderMilestones(level, progress) {
 
-  const entries =
-    CONFIG.milestones.filter(
-      milestone => milestone.level === level
-    );
+  const itemMilestones = {
+    5:  { level: 5,  type: "item", label: "Ball Switch" },
+    15: { level: 15, type: "item", label: "Regenbogenball" },
+    25: { level: 25, type: "item", label: "Zielhilfe" },
+    35: { level: 35, type: "item", label: "Bombenball" },
+    45: { level: 45, type: "item", label: "Blitzball" },
+    55: { level: 55, type: "item", label: "Farbbombe" },
+    65: { level: 65, type: "item", label: "Sanduhr" },
+    75: { level: 75, type: "item", label: "Feuerball" },
+    85: { level: 85, type: "item", label: "Frostball" }
+  };
+
+  const entry = itemMilestones[level];
+  const entries = entry ? [entry] : [];
 
   if (!entries.length) return;
 
@@ -619,7 +600,6 @@ xForLevel(level) {
 }
 
     const itemImage = this.getMilestoneImage(level);
-    const itemKey = this.getMilestoneItemKey(level);
 
     el.innerHTML = `
       <span class="world2-milestone-icon">
@@ -628,9 +608,6 @@ xForLevel(level) {
               src="${itemImage}"
               alt="${entry.label || "Item"}"
               draggable="false">`
-          : ""}
-        ${itemKey
-          ? `<span class="item-info-button world2-item-info" data-item="${itemKey}" role="button" tabindex="0" aria-label="Info zu ${entry.label || "Item"}">i</span>`
           : ""}
       </span>
 
@@ -1038,23 +1015,9 @@ xForLevel(level) {
       return `<i class="world2-stage-particle" style="--a:${angle}deg;--d:${distance}px;--delay:${(index % 5) * 45}ms"></i>`;
     }).join("");
 
-    const nextStageLevel = prepared.toLevel;
-    const nextStageNo = getStageIndex(nextStageLevel) + 1;
-    const nextStage = getStage(nextStageLevel);
-
     celebration.innerHTML = `
       <div class="world2-stage-finish-burst"></div>
       <div class="world2-stage-particles">${particles}</div>
-
-      <div class="world2-stage-unlock-card">
-        <span class="world2-stage-unlock-kicker">— NEUE STAGE FREIGESCHALTET —</span>
-        <div class="world2-stage-unlock-logo-wrap">
-          ${nextStage.logo ? `<img class="world2-stage-unlock-logo" src="${nextStage.logo}" alt="${nextStage.name || `Stage ${nextStageNo}`}" draggable="false">` : ""}
-        </div>
-        <strong class="world2-stage-unlock-name">${nextStage.name || `Stage ${nextStageNo}`}</strong>
-        <span class="world2-stage-unlock-number">STAGE ${nextStageNo}</span>
-      </div>
-
       <div class="world2-stage-finish-card">
         <div class="world2-stage-finish-crown" aria-hidden="true">
           <span></span><span></span><span></span>
@@ -1073,58 +1036,8 @@ xForLevel(level) {
       celebration.classList.add("show");
     });
 
-    // Phase 2: Erst NACH der modernen "Stage geschafft"-Animation.
-    // Die Stage-geschafft-Karte fährt nach unten, darüber erscheint
-    // die neue Stage im exakt gleichen Victory-Look.
-    this.stageUnlockTimer = window.setTimeout(() => {
-      if (this.stageFinishCelebration === celebration) {
-        const finishCard = celebration.querySelector(".world2-stage-finish-card");
-        const unlockCard = celebration.querySelector(".world2-stage-unlock-card");
-
-        if (finishCard && unlockCard) {
-          /*
-           * Ziel: Der Mittelpunkt des freien Abstands zwischen beiden Karten
-           * liegt auf jedem Endgeraet exakt in der vertikalen Mitte des
-           * sichtbaren WorldMap2-Bereichs.
-           *
-           * Endpositionen der beiden vorhandenen Animationen:
-           * - Stage geschafft: translateY(-20%) + scale(.94)
-           * - Neue Stage:      translateY(-190%)
-           *
-           * Die 0.33 beim unteren Card-Center beruecksichtigt zusaetzlich
-           * den Scale um den unteren Transform-Origin.
-           */
-          const shellCenterY = shell.clientHeight / 2;
-          const anchorY = Number.parseFloat(celebration.style.top) || celebration.offsetTop || 0;
-
-          const finishTop = finishCard.offsetTop;
-          const finishHeight = finishCard.offsetHeight;
-          const unlockTop = unlockCard.offsetTop;
-          const unlockHeight = unlockCard.offsetHeight;
-
-          const finishCenterY =
-            anchorY + finishTop + (finishHeight * 0.33);
-
-          const unlockCenterY =
-            anchorY + unlockTop - (unlockHeight * 1.40);
-
-          const pairCenterY =
-            (finishCenterY + unlockCenterY) / 2;
-
-          const shiftY = shellCenterY - pairCenterY;
-
-          celebration.style.setProperty(
-            "--world2-stage-pair-shift",
-            `${shiftY.toFixed(2)}px`
-          );
-        }
-
-        celebration.classList.add("unlock-show");
-      }
-    }, 1050);
-
-    // Beide Karten kurz gemeinsam stehen lassen. Danach geht die
-    // Kartenfahrt wie gewohnt automatisch zum neuen Level weiter.
+    // Celebration bewusst kurz stehen lassen, damit sie als Stage-Abschluss
+    // wahrgenommen wird. Danach geht die Kartenfahrt automatisch weiter.
     this.stageFinishTimer = window.setTimeout(() => {
       celebration.classList.add("leave");
 
@@ -1132,15 +1045,10 @@ xForLevel(level) {
         this.removeStageFinishCelebration();
         onDone?.();
       }, 430);
-    }, 3300);
+    }, 2450);
   },
 
   removeStageFinishCelebration() {
-    if (this.stageUnlockTimer) {
-      clearTimeout(this.stageUnlockTimer);
-      this.stageUnlockTimer = null;
-    }
-
     if (this.stageFinishTimer) {
       clearTimeout(this.stageFinishTimer);
       this.stageFinishTimer = null;
@@ -1256,30 +1164,7 @@ xForLevel(level) {
 
   scrollToCurrent(smooth = true) {
     this.scrollToLevel(this.currentLevel, smooth);
-  },
-
-  // Liefert dem Hauptspiel die Stage-Daten für das
-  // "Neue Stage freigeschaltet"-Popup.
-  getStageInfo(level) {
-    const safeLevel = clamp(
-      Number(level || 1),
-      1,
-      CONFIG.totalLevels
-    );
-
-    const stageIndex = getStageIndex(safeLevel);
-    const stage = getStage(safeLevel);
-
-    return {
-      stageNo: stageIndex + 1,
-      name: stage.name,
-      logo: stage.logo || "",
-      accent: stage.accent || "#860000",
-      firstLevel: stageIndex * CONFIG.levelsPerStage + 1
-    };
-  },
-
-  levelsPerStage: CONFIG.levelsPerStage
+  }
 };
 
 function boot() {

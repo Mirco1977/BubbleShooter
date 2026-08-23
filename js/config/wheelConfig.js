@@ -10,7 +10,7 @@ export const WHEEL_CONFIG = Object.freeze({
     { id:"bomb", type:"item", category:"normal", itemKey:"bomb", amount:1 },
     { id:"frost", type:"item", category:"normal", itemKey:"frost", amount:1 },
     { id:"rainbow", type:"item", category:"normal", itemKey:"rainbow", amount:1 },
-    { id:"jackpot2", type:"jackpot", category:"jackpot" },
+    { id:"fireball", type:"item", category:"normal", itemKey:"fireball", amount:1 },
     { id:"aim", type:"item", category:"normal", itemKey:"aim", amount:1 },
     { id:"colorbomb", type:"item", category:"normal", itemKey:"colorbomb", amount:1 },
     { id:"hourglass", type:"hourglass-or-random", category:"random", amount:3 },
