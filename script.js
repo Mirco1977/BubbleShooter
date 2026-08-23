@@ -449,7 +449,25 @@ function ensureFrostItemButton() {
 
 dom.frostItemButton = ensureFrostItemButton();
 
-const FIREBALL_PLACEHOLDER_IMAGE = "assets/ui/fire-ball.png";
+const FIREBALL_PLACEHOLDER_IMAGE =
+  "data:image/svg+xml;charset=UTF-8," + encodeURIComponent(`
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128">
+      <defs>
+        <radialGradient id="ball" cx="38%" cy="28%" r="72%">
+          <stop offset="0" stop-color="#ffffff"/>
+          <stop offset=".22" stop-color="#ffe786"/>
+          <stop offset=".54" stop-color="#ff8a18"/>
+          <stop offset=".82" stop-color="#d52b00"/>
+          <stop offset="1" stop-color="#6c0900"/>
+        </radialGradient>
+      </defs>
+      <path d="M64 5 C85 23 101 42 94 61 C112 53 120 73 108 91 C99 108 82 119 62 121 C39 122 18 106 13 84 C8 63 23 42 40 29 C45 20 54 11 64 5Z"
+            fill="#ff6d00" opacity=".93"/>
+      <circle cx="64" cy="69" r="42" fill="url(#ball)" stroke="#ffd25a" stroke-width="5"/>
+      <path d="M64 38 l11 8 -4 13 11 8 -4 13 -14 5 -13-6 -1-15 10-9 -4-13z"
+            fill="#38120a" opacity=".82"/>
+      <circle cx="64" cy="69" r="41" fill="none" stroke="#fff2b2" stroke-width="2" opacity=".7"/>
+    </svg>`);
 
 function ensureFireballStyles() {
   if (document.getElementById("bk-fireball-item-styles")) return;
@@ -500,6 +518,11 @@ function ensureFireballItemButton() {
 }
 
 dom.fireballItemButton = ensureFireballItemButton();
+
+// TESTPHASE: Freischalt-Animationen werden bei JEDEM erneuten Gewinn
+// des jeweiligen Freischaltlevels erneut angezeigt.
+// Später für den Produktivbetrieb einfach auf false setzen.
+const ITEM_UNLOCK_ANIMATION_TEST_MODE = true;
 
 const ITEM_UNLOCKS = {
 
@@ -871,10 +894,16 @@ function showUnlockedItemReward(levelNumber, wasAlreadyCompleted) {
     state.progress.itemUnlockAnimationsShown[itemKey]
   );
 
-  // Für die bisherigen Items bleibt das alte Verhalten erhalten.
-  // Farbbombe und Sanduhr dürfen dagegen einmalig auch bei einem bereits
-  // früher absolvierten Level ihre Freischalt-Animation nachholen.
-  if (animationAlreadyShown || (wasAlreadyCompleted && !retroactiveItems.has(itemKey))) {
+  // TESTPHASE:
+  // Bei jedem erneuten Gewinn eines Item-Freischaltlevels wird die komplette
+  // Freischalt-/Gewinnanimation erneut gezeigt – z. B. Level 5 drei Mal oder
+  // Level 25 vier Mal. Nur die Animation wird wiederholt; die 5 Starter-Items
+  // werden weiterhin nur beim allerersten Freischalten gutgeschrieben.
+  const shouldSuppressAnimation =
+    !ITEM_UNLOCK_ANIMATION_TEST_MODE &&
+    (animationAlreadyShown || (wasAlreadyCompleted && !retroactiveItems.has(itemKey)));
+
+  if (shouldSuppressAnimation) {
     dom.itemUnlockReward.classList.add("hidden");
     dom.itemUnlockImage.removeAttribute("src");
     dom.itemUnlockImage.alt = "";
@@ -894,7 +923,9 @@ function showUnlockedItemReward(levelNumber, wasAlreadyCompleted) {
 
   dom.itemUnlockImage.src = unlockedItem.image;
   dom.itemUnlockImage.alt = unlockedItem.label;
-  dom.itemUnlockName.textContent = `${unlockedItem.label} ×${ITEM_START_AMOUNT}`;
+  dom.itemUnlockName.textContent = alreadyGranted
+    ? `${unlockedItem.label} freigeschaltet!`
+    : `${unlockedItem.label} ×${ITEM_START_AMOUNT}`;
   dom.itemUnlockReward.classList.remove("hidden");
 
   // Animation auch dann zuverlässig neu starten, wenn das Ergebnis-Popup
@@ -1995,9 +2026,8 @@ function startVictoryImpact(stars) {
       const keys = [...WHEEL_CONFIG.randomItemKeys];
 
       if (this.isHourglassOnWheel()) keys.push("hourglass");
-      if (isItemUnlocked("fireball")) keys.push("fireball");
       if (isItemUnlocked("frost")) keys.push("frost");
-      return [...new Set(keys)];
+      return keys;
     },
 
     getRandomRewardItemKey() {
@@ -2731,241 +2761,57 @@ window.BK_openMainLevel = (levelNumber) => {
         return false;
       }
 
-      // Normalbetrieb: Pro Aktivierung wird genau 1 Feuerball aus dem Bestand verbraucht.
       if (!consumeItem("fireball")) return false;
 
+      // Der aktuelle Abschussball bleibt optisch und farblich derselbe.
+      // Nur Feuer/Glut/Funken werden darum gelegt.
       this.shooter.isBomb = false;
       this.shooter.isThunder = false;
       this.shooter.isRainbow = false;
       this.shooter.isColorBomb = false;
       this.shooter.isFireball = true;
+      this.shooter.fireballHitsRemaining = 3;
 
-      // Die "ersten 3 Reihen" sind die drei untersten vorhandenen Reihen,
-      // also genau die Reihen, die der Ball von unten kommend zuerst durchfliegt.
-      const rowYs = [...new Set(
-        this.bubbles
-          .filter((bubble) => !bubble.isSwordLock)
-          .map((bubble) =>
-            Math.round((bubble.y - this.radius) / this.rowHeight) * this.rowHeight + this.radius
-          )
-      )]
-        .sort((a, b) => b - a)
-        .slice(0, 3);
-
-      this.shooter.fireballTargetRowYs = rowYs;
-      this.shooter.fireballThirdRowY =
-        rowYs.length ? rowYs[rowYs.length - 1] : null;
-      this.shooter.fireballHitsRemaining = 3; // nur noch Kompatibilitätswert
-
-      showToast("Feuerball: Brennt sich durch die ersten 3 Reihen!");
+      showToast("Feuerball: Durchschlägt 3 Bälle!");
       updateItemBarLocks();
       return true;
     },
 
-    isBubbleInFireballRows(bubble) {
-      if (!bubble || bubble.isSwordLock || !this.shooter?.isFireball) return false;
-
-      const rows = this.shooter.fireballTargetRowYs || [];
-      return rows.some(
-        (rowY) => Math.abs(bubble.y - rowY) <= this.rowHeight * 0.42
-      );
-    },
-
-    igniteBubbleWithFireball(bubble, currentTime = performance.now()) {
+    hitWithFireball(target) {
       if (
-        !bubble ||
-        bubble.isSwordLock ||
-        bubble.fireballBurning ||
-        !this.isBubbleInFireballRows(bubble)
+        !this.shooter?.isFireball ||
+        !target ||
+        target.isSwordLock ||
+        this.shooter.fireballHitsRemaining <= 0
       ) return false;
 
-      bubble.fireballBurning = true;
-      bubble.fireballBurnStartedAt = currentTime;
-      bubble.fireballBurnDuration = 900;
-      bubble.fireballBurnSeed = Math.random() * Math.PI * 2;
+      const targetIndex = this.bubbles.indexOf(target);
+      if (targetIndex < 0) return false;
 
       Audio.playEffect("hit");
+      this.createPopEffect(target.x, target.y, target.color);
+
+      // Trefferball sofort zerstören – unabhängig von seiner Farbe.
+      this.bubbles.splice(targetIndex, 1);
+      this.score += 100;
+      dom.playScore.textContent = `${this.score.toLocaleString("de-DE")} Punkte`;
+
+      this.shooter.fireballHitsRemaining -= 1;
+
+      // Durch den Tunnel freigewordene Kugeln dürfen wie gewohnt fallen.
+      this.removeFloatingBubbles();
+      this.checkObjectiveWin();
+
+      if (this.levelFinished) return true;
+
+      // Nach drei Durchschüssen ist die Feuerladung verbraucht.
+      // Der Ball fliegt weiter und dockt beim nächsten Kontakt normal an.
+      if (this.shooter.fireballHitsRemaining <= 0) {
+        this.shooter.isFireball = false;
+        this.shooter.fireballHitsRemaining = 0;
+      }
+
       return true;
-    },
-
-    processFireballPassThrough(currentTime = performance.now()) {
-      if (!this.shooter?.isFireball || !this.shooter.moving) return false;
-
-      // Alle Bälle entzünden, die der Feuerball auf seinem Weg tatsächlich berührt.
-      this.bubbles.forEach((bubble) => {
-        if (
-          bubble.isSwordLock ||
-          bubble.fireballBurning ||
-          !this.isBubbleInFireballRows(bubble)
-        ) return;
-
-        const distance = Math.hypot(
-          bubble.x - this.shooter.x,
-          bubble.y - this.shooter.y
-        );
-
-        // Etwas großzügiger als die normale Kollisionskante, damit die
-        // brennende Schneise visuell klar und zuverlässig erkennbar ist.
-        if (distance <= this.radius * 2 - 1) {
-          this.igniteBubbleWithFireball(bubble, currentTime);
-        }
-      });
-
-      const thirdRowY = this.shooter.fireballThirdRowY;
-
-      // Solange die 3. Reihe noch nicht vollständig durchquert wurde,
-      // ignoriert der Feuerball normale Kollisionen und fliegt hindurch.
-      if (
-        Number.isFinite(thirdRowY) &&
-        this.shooter.y > thirdRowY - this.radius * 1.8
-      ) {
-        return true;
-      }
-
-      // Danach erlischt die Feuerladung. Der Ball fliegt normal weiter und
-      // dockt beim nächsten Kontakt ganz normal an.
-      this.shooter.isFireball = false;
-      this.shooter.fireballHitsRemaining = 0;
-      this.shooter.fireballTargetRowYs = [];
-      this.shooter.fireballThirdRowY = null;
-      return false;
-    },
-
-    updateFireballBurning(currentTime = performance.now()) {
-      const expired = this.bubbles.filter(
-        (bubble) =>
-          bubble.fireballBurning &&
-          currentTime - (bubble.fireballBurnStartedAt || currentTime) >=
-            (bubble.fireballBurnDuration || 900)
-      );
-
-      if (!expired.length) return;
-
-      let popped = 0;
-
-      expired.forEach((bubble) => {
-        const index = this.bubbles.indexOf(bubble);
-        if (index < 0) return;
-
-        this.createPopEffect(bubble.x, bubble.y, bubble.color);
-        this.bubbles.splice(index, 1);
-        this.score += 100;
-        popped++;
-      });
-
-      if (popped > 0) {
-        dom.playScore.textContent =
-          `${this.score.toLocaleString("de-DE")} Punkte`;
-
-        // Erst wenn keine weiteren Feuerball-Treffer mehr "nachbrennen",
-        // werden freischwebende Gruppen wie gewohnt fallen gelassen.
-        const stillBurning = this.bubbles.some(
-          (bubble) => bubble.fireballBurning
-        );
-
-        if (!stillBurning) {
-          this.removeFloatingBubbles();
-        }
-
-        this.checkObjectiveWin();
-      }
-    },
-
-    drawBurningBubbleFire(bubble) {
-      if (!bubble?.fireballBurning || !this.ctx) return;
-
-      const ctx = this.ctx;
-      const now = performance.now();
-      const elapsed = now - (bubble.fireballBurnStartedAt || now);
-      const duration = bubble.fireballBurnDuration || 900;
-      const life = Math.max(0, Math.min(1, elapsed / duration));
-      const r = this.radius;
-      const seed = bubble.fireballBurnSeed || 0;
-
-      ctx.save();
-      ctx.globalCompositeOperation = "lighter";
-
-      const glow = ctx.createRadialGradient(
-        bubble.x, bubble.y, r * .48,
-        bubble.x, bubble.y, r * 1.72
-      );
-      glow.addColorStop(0, "rgba(255,235,90,.34)");
-      glow.addColorStop(.42, "rgba(255,121,0,.58)");
-      glow.addColorStop(.76, "rgba(255,45,0,.62)");
-      glow.addColorStop(1, "rgba(100,0,0,0)");
-      ctx.fillStyle = glow;
-      ctx.beginPath();
-      ctx.arc(bubble.x, bubble.y, r * 1.78, 0, Math.PI * 2);
-      ctx.fill();
-
-      // Mehrere deutlich sichtbare Flammen um den getroffenen Ball.
-      for (let i = 0; i < 11; i++) {
-        const angle =
-          seed + i * (Math.PI * 2 / 11) + Math.sin(now * .011 + i) * .16;
-        const base = r * .72;
-        const flame =
-          r * (1.32 + .52 * (Math.sin(now * .018 + i * 1.9) + 1) / 2);
-
-        const bx = bubble.x + Math.cos(angle) * base;
-        const by = bubble.y + Math.sin(angle) * base;
-        const tx = bubble.x + Math.cos(angle) * flame;
-        const ty = bubble.y + Math.sin(angle) * flame;
-        const side = r * .16;
-
-        ctx.fillStyle =
-          i % 3 === 0
-            ? `rgba(255,238,95,${.95 - life * .18})`
-            : i % 2 === 0
-              ? `rgba(255,135,0,${.90 - life * .15})`
-              : `rgba(255,48,0,${.82 - life * .12})`;
-
-        ctx.beginPath();
-        ctx.moveTo(
-          bx + Math.cos(angle + Math.PI / 2) * side,
-          by + Math.sin(angle + Math.PI / 2) * side
-        );
-        ctx.quadraticCurveTo(
-          bubble.x + Math.cos(angle) * r,
-          bubble.y + Math.sin(angle) * r,
-          tx, ty
-        );
-        ctx.quadraticCurveTo(
-          bubble.x + Math.cos(angle) * r,
-          bubble.y + Math.sin(angle) * r,
-          bx + Math.cos(angle - Math.PI / 2) * side,
-          by + Math.sin(angle - Math.PI / 2) * side
-        );
-        ctx.closePath();
-        ctx.fill();
-      }
-
-      // Kräftigere Glut/Funken während des Abbrennens.
-      for (let i = 0; i < 10; i++) {
-        const a = seed + i * .91 + now * .0045;
-        const dist = r * (.72 + ((i * 17) % 10) / 10 * .92);
-        const lift = r * (.15 + life * .55);
-        const sx = bubble.x + Math.cos(a) * dist;
-        const sy = bubble.y + Math.sin(a) * dist - lift;
-        ctx.fillStyle = i % 3 === 0
-          ? "rgba(255,245,150,.95)"
-          : i % 2 === 0
-            ? "rgba(255,150,20,.92)"
-            : "rgba(255,60,0,.88)";
-        ctx.beginPath();
-        ctx.arc(sx, sy, Math.max(1.2, r * .06), 0, Math.PI * 2);
-        ctx.fill();
-      }
-
-      // Kurz vor dem Zerplatzen wird der Ball heiß/hell und pulsiert stärker.
-      if (life > .52) {
-        ctx.globalAlpha = (life - .52) / .48;
-        ctx.fillStyle = "rgba(255,236,128,.35)";
-        ctx.beginPath();
-        ctx.arc(bubble.x, bubble.y, r * (1 + life * .18), 0, Math.PI * 2);
-        ctx.fill();
-      }
-
-      ctx.restore();
     },
 
     drawFireballAura() {
@@ -4371,8 +4217,6 @@ createShooter() {
         isColorBomb: false,
         isFireball: false,
         fireballHitsRemaining: 0,
-        fireballTargetRowYs: [],
-        fireballThirdRowY: null,
         isAim: false,
         color: color,
         image: color.image || null
@@ -4504,7 +4348,6 @@ createShooter() {
     update(deltaTime = 1) {
       const currentTime = performance.now();
       this.updateFrostState(currentTime);
-      this.updateFireballBurning(currentTime);
       this.updateSpeedGame(currentTime);
       if (this.levelFinished || !this.running) return;
       let speedMultiplier = 1;
@@ -4642,10 +4485,6 @@ createShooter() {
 
       this.bubbles.forEach((bubble) => {
 
-          // Brennende Feuerball-Treffer sind bereits "getroffen" und sollen
-          // den noch fliegenden Ball nicht erneut blockieren.
-          if (bubble.fireballBurning) return;
-
           const distance = Math.hypot(
               bubble.x - this.shooter.x,
               bubble.y - this.shooter.y
@@ -4660,42 +4499,26 @@ createShooter() {
           }
       });
 
-      // FEUERBALL:
-      // Während der ersten 3 durchflogenen Reihen werden normale Kollisionen
-      // komplett ignoriert. Alle tatsächlich berührten Bälle fangen sichtbar
-      // Feuer und zerplatzen erst kurz danach.
-      if (this.shooter.isFireball) {
-        const stillPassingThrough =
-          this.processFireballPassThrough(currentTime);
+      const bubbleHit = hitBubble !== null;
 
-        if (stillPassingThrough) {
+      // FEUERBALL:
+      // Normale Bälle werden bis zu 3-mal durchschlagen. Der Goldball/
+      // Sammelalbum-Lock bleibt absichtlich geschützt und verhält sich normal.
+      if (
+        bubbleHit &&
+        this.shooter.isFireball &&
+        hitBubble &&
+        !hitBubble.isSwordLock &&
+        this.shooter.fireballHitsRemaining > 0
+      ) {
+        const penetrated = this.hitWithFireball(hitBubble);
+
+        // Nach einem Durchschuss muss der Schuss in diesem Frame sofort
+        // weiterlaufen und darf nicht zusätzlich an derselben Position andocken.
+        if (penetrated) {
           return;
         }
-
-        // Nach dem Ende der dritten Reihe Kollisionsziel noch einmal bestimmen,
-        // da während des Durchflugs Bälle bereits brennen können.
-        hitBubble = null;
-        closestDistance = Infinity;
-
-        this.bubbles.forEach((bubble) => {
-          if (bubble.fireballBurning) return;
-
-          const distance = Math.hypot(
-            bubble.x - this.shooter.x,
-            bubble.y - this.shooter.y
-          );
-
-          if (
-            distance <= this.radius * 2 - 2 &&
-            distance < closestDistance
-          ) {
-            hitBubble = bubble;
-            closestDistance = distance;
-          }
-        });
       }
-
-      const bubbleHit = hitBubble !== null;
 
       if (ceilingHit || bubbleHit) {
 
@@ -5778,7 +5601,6 @@ drawAimGuide() {
 
       this.bubbles.forEach((bubble, index) => {
     this.drawBubble(bubble);
-    this.drawBurningBubbleFire(bubble);
 
     // TEST: Kette nur über den ersten Ball legen
     if (
@@ -6824,7 +6646,7 @@ const ITEM_INFO = {
 
     fireball: {
         title: "Feuerball",
-        text: "Der Feuerball legt Flammen und Funken um deinen aktuellen Abschussball. Er fliegt vollständig durch die ersten 3 Ballreihen. Jeder Ball, den er dabei berührt, fängt sichtbar Feuer und zerplatzt kurz danach. Nach der dritten Reihe erlischt die Feuerladung und der Ball dockt beim nächsten Kontakt wieder normal an."
+        text: "Der Feuerball legt Flammen und Funken um deinen aktuellen Abschussball. Nach dem Abschuss durchschlägt und zerstört er die ersten 3 normalen Bälle unabhängig von ihrer Farbe. Danach erlischt die Feuerladung und der Ball dockt beim nächsten Kontakt wieder ganz normal im Spielfeld an."
     },
 
     frost: {
