@@ -402,6 +402,62 @@ const THEME_PATH = [
 
 const ITEM_START_AMOUNT = 5;
 
+const FROST_PLACEHOLDER_IMAGE =
+  "data:image/svg+xml;charset=UTF-8," + encodeURIComponent(`
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128">
+      <defs><radialGradient id="g" cx="38%" cy="30%" r="70%">
+        <stop offset="0" stop-color="#fff"/><stop offset=".28" stop-color="#dcf7ff"/>
+        <stop offset=".66" stop-color="#76d9ff"/><stop offset="1" stop-color="#2185b7"/>
+      </radialGradient></defs>
+      <circle cx="64" cy="64" r="57" fill="url(#g)" stroke="#efffff" stroke-width="6"/>
+      <text x="64" y="84" text-anchor="middle" font-size="67" font-family="Arial" fill="#fff">❄</text>
+    </svg>`);
+
+function ensureFrostStyles() {
+  if (document.getElementById("bk-frost-item-styles")) return;
+  const style = document.createElement("style");
+  style.id = "bk-frost-item-styles";
+  style.textContent = `
+    #frostItemButton img,
+    .prelevel-item-button[data-item-key="frost"] img { filter: drop-shadow(0 0 7px rgba(134,224,255,.75)); }
+    #speedTimerHud.frost-timer-frozen {
+      position: relative; overflow: visible; border-color: #bff5ff !important;
+      box-shadow: 0 0 0 2px rgba(235,253,255,.72) inset, 0 0 18px rgba(98,216,255,.9), 0 0 34px rgba(180,241,255,.48) !important;
+      filter: saturate(.72) brightness(1.16); animation: bkFrostTimerPulse 1.1s ease-in-out infinite alternate;
+    }
+    #speedTimerHud.frost-timer-frozen::after {
+      content: "❄  EINGEFROREN"; position: absolute; left: 50%; bottom: -20px; transform: translateX(-50%);
+      white-space: nowrap; color: #eaffff; font: 900 10px/1 Arial,sans-serif; letter-spacing: .5px;
+      text-shadow: 0 0 6px #58cfff, 0 1px 2px #003851; pointer-events: none;
+    }
+    @keyframes bkFrostTimerPulse { from { transform: scale(1); } to { transform: scale(1.035); } }
+  `;
+  document.head.appendChild(style);
+}
+
+function ensureFrostItemButton() {
+  ensureFrostStyles();
+  let button = document.getElementById("frostItemButton");
+  if (button) return button;
+  const source = dom.hourglassItemButton || dom.colorBombItemButton || dom.thunderItemButton;
+  const bar = source?.parentElement || document.querySelector(".item-bar");
+  button = document.createElement("button");
+  button.id = "frostItemButton";
+  button.type = "button";
+  button.className = "item-bar-button frost-item locked-item";
+  button.disabled = true;
+  button.setAttribute("aria-label", "Frostball – gesperrt bis Level 85");
+  button.innerHTML = `
+    <img src="${FROST_PLACEHOLDER_IMAGE}" alt="Frostball">
+    <span class="item-info-button" data-item="frost">i</span>
+    <span class="item-count">0</span>
+    <span class="item-lock-icon" aria-hidden="true">🔒</span>`;
+  bar?.appendChild(button);
+  return button;
+}
+
+dom.frostItemButton = ensureFrostItemButton();
+
 const ITEM_UNLOCKS = {
 
   ballswitch: {
@@ -451,6 +507,13 @@ const ITEM_UNLOCKS = {
     unlockLevel: 65,
     label: "Sanduhr",
     image: "assets/ui/hourglass.png"
+  },
+
+  frost: {
+    button: dom.frostItemButton,
+    unlockLevel: 85,
+    label: "Frostball",
+    image: FROST_PLACEHOLDER_IMAGE
   }
 
 };
@@ -664,10 +727,22 @@ const PreLevelLoadout = {
 
     dom.preLevelLoadoutItems.innerHTML = "";
 
-    // Statische 3x3-Auswahl: alle sieben existierenden Items bleiben immer
-    // sichtbar. Noch nicht freigeschaltete Items sind abgedunkelt und mit
-    // einem Schloss überlagert. Die Felder 8 und 9 bleiben reserviert.
-    Object.entries(ITEM_UNLOCKS).forEach(([itemKey, item]) => {
+    // Feste 3x3-Positionen: Platz 8 bleibt für das spätere offensive Item reserviert,
+    // Frostball sitzt fest auf Platz 9.
+    const loadoutOrder = ["ballswitch", "rainbow", "aim", "bomb", "thunder", "colorbomb", "hourglass", null, "frost"];
+
+    loadoutOrder.forEach((itemKey, slotIndex) => {
+      if (!itemKey) {
+        const placeholder = document.createElement("div");
+        placeholder.className = "prelevel-item-button prelevel-item-placeholder";
+        placeholder.setAttribute("aria-label", "Reservierter Item-Platz 8");
+        placeholder.dataset.slot = String(slotIndex + 1);
+        placeholder.innerHTML = '<span class="prelevel-placeholder-lock" aria-hidden="true">🔒</span>';
+        dom.preLevelLoadoutItems.appendChild(placeholder);
+        return;
+      }
+
+      const item = ITEM_UNLOCKS[itemKey];
       const unlocked = isItemUnlocked(itemKey);
       const amount = getItemAmount(itemKey);
       const selected = this.selected.includes(itemKey);
@@ -681,17 +756,17 @@ const PreLevelLoadout = {
       button.classList.toggle("locked", !unlocked);
       button.classList.toggle("mode-disabled", speedBlocked);
       button.classList.toggle("empty", empty);
-      button.disabled = false; // Info-i bleibt auch bei gesperrten Items anklickbar.
+      button.disabled = false;
       button.setAttribute("aria-disabled", !unlocked || speedBlocked || empty ? "true" : "false");
       button.dataset.itemKey = itemKey;
+      button.dataset.slot = String(slotIndex + 1);
       button.innerHTML = `
         <img src="${item.image}" alt="${item.label}">
         <span class="item-info-button prelevel-item-info" data-item="${itemKey}" role="button" aria-label="Info zu ${item.label}" tabindex="0">i</span>
         <span class="prelevel-item-count">${unlocked ? amount : ""}</span>
         <span class="prelevel-item-name">${item.label}</span>
         ${!unlocked ? '<span class="prelevel-item-lock" aria-hidden="true">🔒</span>' : ""}
-        ${selected ? '<span class="prelevel-item-check">✓</span>' : ""}
-      `;
+        ${selected ? '<span class="prelevel-item-check">✓</span>' : ""}`;
 
       if (!unlocked) {
         button.title = `Wird nach dem Gewinn von Level ${item.unlockLevel} freigeschaltet`;
@@ -713,15 +788,6 @@ const PreLevelLoadout = {
       });
       dom.preLevelLoadoutItems.appendChild(button);
     });
-
-    // Zwei feste Reservefelder, bis weitere Items hinzukommen.
-    for (let reserve = 0; reserve < 2; reserve += 1) {
-      const placeholder = document.createElement("div");
-      placeholder.className = "prelevel-item-button prelevel-item-placeholder";
-      placeholder.setAttribute("aria-label", "Noch nicht verfügbares Item");
-      placeholder.innerHTML = '<span class="prelevel-placeholder-lock" aria-hidden="true">🔒</span>';
-      dom.preLevelLoadoutItems.appendChild(placeholder);
-    }
 
     if (dom.preLevelLoadoutHint && !dom.preLevelLoadoutHint.classList.contains("show")) {
       dom.preLevelLoadoutHint.textContent = `${this.selected.length}/${this.maxItems} Items ausgewählt`;
@@ -760,7 +826,7 @@ function showUnlockedItemReward(levelNumber, wasAlreadyCompleted) {
     state.progress.itemUnlockAnimationsShown = {};
   }
 
-  const retroactiveItems = new Set(["colorbomb", "hourglass"]);
+  const retroactiveItems = new Set(["colorbomb", "hourglass", "frost"]);
   const animationAlreadyShown = Boolean(
     state.progress.itemUnlockAnimationsShown[itemKey]
   );
@@ -1559,6 +1625,7 @@ function startVictoryImpact(stars) {
         thunder: "Blitzball",
         colorbomb: "Farbbombe",
         hourglass: "Sanduhr",
+        frost: "Frostball",
         rainbow: "Regenbogenball",
         ballswitch: "Ball Switch",
         aim: "Lupe"
@@ -1575,6 +1642,7 @@ function startVictoryImpact(stars) {
         thunder: { label: "Blitzball", image: "assets/ui/thunder-ball.png" },
         colorbomb: { label: "Farbbombe", image: "assets/ui/color-bomb.png" },
         hourglass: { label: "Sanduhr", image: "assets/ui/hourglass.png" },
+        frost: { label: "Frostball", image: FROST_PLACEHOLDER_IMAGE },
         rainbow: { label: "Regenbogenball", image: "assets/ui/rainbow-ball.png" },
         ballswitch: { label: "Ball Switch", image: "assets/ui/ballswitch.png" },
         aim: { label: "Lupe", image: "assets/ui/lupe.png" }
@@ -2519,6 +2587,12 @@ window.BK_openMainLevel = (levelNumber) => {
     speedLastCountdownLabel: "",
     speedBonusSeconds: 0,
 
+    frostActive: false,
+    frostStartedAt: 0,
+    frostEndsAt: 0,
+    frostDurationMs: 20000,
+    frostSpeedPauseStartedAt: 0,
+
     activateBombBall() {
         if (
           !isItemUnlocked("bomb") ||
@@ -2533,6 +2607,7 @@ window.BK_openMainLevel = (levelNumber) => {
         this.shooter.isThunder = false;
         this.shooter.isRainbow = false;
         this.shooter.isColorBomb = false;
+        this.shooter.isFrost = false;
         return true;
     },
 
@@ -2550,6 +2625,7 @@ window.BK_openMainLevel = (levelNumber) => {
         this.shooter.isRainbow = false;
         this.shooter.isColorBomb = false;
         this.shooter.isThunder = true;
+        this.shooter.isFrost = false;
         return true;
     },
 
@@ -2567,6 +2643,7 @@ window.BK_openMainLevel = (levelNumber) => {
         this.shooter.isThunder = false;
         this.shooter.isColorBomb = false;
         this.shooter.isRainbow = true;
+        this.shooter.isFrost = false;
         return true;
     },
 
@@ -2584,6 +2661,7 @@ window.BK_openMainLevel = (levelNumber) => {
         this.shooter.isThunder = false;
         this.shooter.isRainbow = false;
         this.shooter.isColorBomb = true;
+        this.shooter.isFrost = false;
         return true;
     },
 
@@ -2621,6 +2699,118 @@ window.BK_openMainLevel = (levelNumber) => {
         showToast("Sanduhr: +10 Sekunden");
         updateItemBarLocks();
         return true;
+    },
+
+    activateFrost() {
+      // Frostball ist ein echter Schussball:
+      // Item auswählen -> aktueller Shooter wird Frostball -> erst beim Deckenaufprall
+      // startet der 20-Sekunden-Frost-Effekt.
+      if (
+        !isItemUnlocked("frost") ||
+        !this.running ||
+        this.levelFinished ||
+        !this.equippedItems?.has("frost") ||
+        !this.shooter ||
+        this.shooter.moving
+      ) return false;
+
+      if (this.frostActive) {
+        showToast("Frost ist bereits aktiv.");
+        return false;
+      }
+
+      if (this.shooter.isFrost) return false;
+      if (!consumeItem("frost")) return false;
+
+      // Andere Spezialschüsse werden sauber ersetzt.
+      this.shooter.isBomb = false;
+      this.shooter.isThunder = false;
+      this.shooter.isRainbow = false;
+      this.shooter.isColorBomb = false;
+      this.shooter.isFrost = true;
+      this.shooter.frostScale = 1;
+      this.shooter.frostStartY = this.shooter.y;
+
+      showToast("Frostball bereit – schieße ihn nach oben!");
+      updateItemBarLocks();
+      return true;
+    },
+
+    startFrostEffect() {
+      const now = performance.now();
+
+      this.frostActive = true;
+      this.frostStartedAt = now;
+      this.frostEndsAt = now + this.frostDurationMs;
+      this.frostSpeedPauseStartedAt =
+        this.speedMode && this.speedTimerStartedAt ? now : 0;
+
+      if (this.speedMode) {
+        dom.speedTimerHud?.classList.add("frost-timer-frozen");
+      }
+
+      showToast(
+        this.speedMode
+          ? "Frostball: Zeit und Nachrücken 20 Sekunden eingefroren!"
+          : "Frostball: Nachrücken 20 Sekunden eingefroren!"
+      );
+
+      updateItemBarLocks();
+    },
+
+    explodeFrostShot() {
+      if (!this.shooter?.isFrost) return;
+
+      const x = this.shooter.x;
+      const y = Math.max(this.radius, this.shooter.y);
+
+      // Großer Eis-Burst beim Aufprall.
+      for (let i = 0; i < 34; i++) {
+        const angle = (Math.PI * 2 * i) / 34 + Math.random() * 0.22;
+        const speed = 2.1 + Math.random() * 4.8;
+
+        this.particles.push({
+          x,
+          y,
+          vx: Math.cos(angle) * speed,
+          vy: Math.sin(angle) * speed,
+          size: 3 + Math.random() * 7,
+          life: 26 + Math.random() * 22,
+          color: i % 3 === 0 ? "#ffffff" : (i % 2 === 0 ? "#bff4ff" : "#68d5ff")
+        });
+      }
+
+      this.explosions.push({
+        x,
+        y,
+        radius: this.radius * 0.9,
+        alpha: 1
+      });
+
+      this.screenShake = Math.max(this.screenShake || 0, 7);
+      this.startFrostEffect();
+      this.createShooter();
+    },
+
+    updateFrostState(currentTime = performance.now()) {
+      if (!this.frostActive || currentTime < this.frostEndsAt) return;
+      if (this.speedMode && this.speedTimerStartedAt && this.frostSpeedPauseStartedAt) {
+        this.speedTimerStartedAt += Math.max(0, currentTime - this.frostSpeedPauseStartedAt);
+      }
+      this.frostActive = false;
+      this.frostStartedAt = 0;
+      this.frostEndsAt = 0;
+      this.frostSpeedPauseStartedAt = 0;
+      dom.speedTimerHud?.classList.remove("frost-timer-frozen");
+      updateItemBarLocks();
+    },
+
+    clearFrost() {
+      this.frostActive = false;
+      this.frostStartedAt = 0;
+      this.frostEndsAt = 0;
+      this.frostSpeedPauseStartedAt = 0;
+      dom.speedTimerHud?.classList.remove("frost-timer-frozen");
     },
 
     activateSwitchBall() {
@@ -2919,6 +3109,7 @@ window.BK_openMainLevel = (levelNumber) => {
       this.speedTimerStartedAt = 0;
       this.speedLastCountdownLabel = "";
       this.speedBonusSeconds = 0;
+      this.clearFrost();
 
       const gameHud = dom.gameCanvas?.closest("#playScreen")?.querySelector(".game-hud");
       gameHud?.classList.toggle("speedgame-active", this.speedMode);
@@ -3405,6 +3596,9 @@ window.BK_openMainLevel = (levelNumber) => {
      
     const levelConfig = getActiveLevelConfig(state.selectedLevel);
 
+    this.updateFrostState(performance.now());
+    if (this.frostActive) return;
+
     // Funktion für dieses Level ausgeschaltet
     if (levelConfig?.addRowAfterShot !== "y") {
         return;
@@ -3854,6 +4048,9 @@ createShooter() {
         isThunder: false,
         isRainbow: false,
         isColorBomb: false,
+        isFrost: false,
+        frostScale: 1,
+        frostStartY: 0,
         isAim: false,
         color: color,
         image: color.image || null
@@ -3900,6 +4097,12 @@ createShooter() {
 
       this.shooter.vx = dx / length * speed;
       this.shooter.vy = dy / length * speed;
+
+      if (this.shooter.isFrost) {
+        this.shooter.frostStartY = this.shooter.y;
+        this.shooter.frostScale = 1;
+      }
+
       this.shooter.moving = true;
 
       this.shots++;
@@ -3958,6 +4161,14 @@ createShooter() {
         this.speedTimerStartedAt = currentTime;
       }
 
+      if (this.frostActive) {
+        if (!this.frostSpeedPauseStartedAt) this.frostSpeedPauseStartedAt = currentTime;
+        if (dom.speedTimerDisplay) dom.speedTimerDisplay.textContent = String(Math.max(0, Math.ceil(this.speedTimeRemaining)));
+        dom.speedTimerHud?.classList.add("frost-timer-frozen");
+        dom.speedTimerHud?.classList.remove("speed-warning");
+        return;
+      }
+
       const elapsedSeconds = (currentTime - this.speedTimerStartedAt) / 1000;
       this.speedTimeRemaining = Math.max(0, this.speedTimeLimit - elapsedSeconds);
       const shownSeconds = Math.max(0, Math.ceil(this.speedTimeRemaining));
@@ -3975,7 +4186,9 @@ createShooter() {
     },
 
     update(deltaTime = 1) {
-      this.updateSpeedGame(performance.now());
+      const currentTime = performance.now();
+      this.updateFrostState(currentTime);
+      this.updateSpeedGame(currentTime);
       if (this.levelFinished || !this.running) return;
       let speedMultiplier = 1;
 
@@ -4093,6 +4306,16 @@ createShooter() {
 
       this.shooter.x += this.shooter.vx * deltaTime * speedMultiplier;
       this.shooter.y += this.shooter.vy * deltaTime * speedMultiplier;
+
+      if (this.shooter.isFrost) {
+        // Von normaler Größe bis 250 % aufblähen, während der Ball nach oben fliegt.
+        const startY = Number(this.shooter.frostStartY) || (this.height - 62);
+        const travel = Math.max(0, startY - this.shooter.y);
+        const maxTravel = Math.max(1, startY - this.radius);
+        const progress = Math.max(0, Math.min(1, travel / maxTravel));
+        const eased = 1 - Math.pow(1 - progress, 2);
+        this.shooter.frostScale = 1 + eased * 1.5;
+      }
       
       if (
         this.shooter.x <= this.radius ||
@@ -4128,6 +4351,16 @@ createShooter() {
 
       const bubbleHit = hitBubble !== null;
 
+      // Frostball fliegt durch/über alle vorhandenen Bälle hindurch.
+      // Nur die Decke beendet den Flug.
+      if (this.shooter.isFrost) {
+          if (ceilingHit) {
+              this.shooter.y = this.radius;
+              this.explodeFrostShot();
+          }
+          return;
+      }
+
       if (ceilingHit || bubbleHit) {
 
           this.lastHitBubble = hitBubble;
@@ -4155,6 +4388,13 @@ createShooter() {
 },
 
     attachShooter() {
+      if (this.shooter.isFrost) {
+        // Sollte nur als Sicherheitsnetz greifen – der Frostball wird
+        // normalerweise bereits im Update beim Deckenaufprall verarbeitet.
+        this.explodeFrostShot();
+        return;
+      }
+
       if(this.shooter.isBomb) {
         
         this.explodeBomb();
@@ -4894,6 +5134,63 @@ drawBubble(bubble) {
         return;
     }
 
+    // Frostball – echter Schussball, während des Flugs bis auf 250 % skaliert.
+    if (bubble.isFrost) {
+        const scale = Math.max(1, Math.min(2.5, Number(bubble.frostScale) || 1));
+        const size = this.radius * 2 * scale;
+
+        if (!this.frostBallImage) {
+            this.frostBallImage = new Image();
+            this.frostBallImage.src = FROST_PLACEHOLDER_IMAGE;
+        }
+
+        this.ctx.save();
+        this.ctx.shadowColor = "#8ceaff";
+        this.ctx.shadowBlur = 16 + 10 * scale;
+
+        if (this.frostBallImage.complete && this.frostBallImage.naturalWidth > 0) {
+            this.ctx.drawImage(
+                this.frostBallImage,
+                bubble.x - size / 2,
+                bubble.y - size / 2,
+                size,
+                size
+            );
+        } else {
+            const gradient = this.ctx.createRadialGradient(
+                bubble.x - size * .18,
+                bubble.y - size * .22,
+                size * .08,
+                bubble.x,
+                bubble.y,
+                size * .5
+            );
+            gradient.addColorStop(0, "#ffffff");
+            gradient.addColorStop(.35, "#c9f5ff");
+            gradient.addColorStop(1, "#3ab4e6");
+            this.ctx.fillStyle = gradient;
+            this.ctx.beginPath();
+            this.ctx.arc(bubble.x, bubble.y, size / 2, 0, Math.PI * 2);
+            this.ctx.fill();
+        }
+
+        // kleiner, eigener Frostglitter am fliegenden Ball
+        const t = performance.now() * .006;
+        for (let i = 0; i < 7; i++) {
+            const angle = t + i * (Math.PI * 2 / 7);
+            const rr = size * (.30 + (i % 2) * .07);
+            const sx = bubble.x + Math.cos(angle) * rr;
+            const sy = bubble.y + Math.sin(angle) * rr;
+            this.ctx.fillStyle = "rgba(255,255,255,.9)";
+            this.ctx.beginPath();
+            this.ctx.arc(sx, sy, Math.max(1.2, size * .018), 0, Math.PI * 2);
+            this.ctx.fill();
+        }
+
+        this.ctx.restore();
+        return;
+    }
+
     // Farbbombe
     if (bubble.isColorBomb && this.colorBombImage?.complete) {
         const size = this.radius * 2;
@@ -5138,6 +5435,54 @@ drawAimGuide() {
 
   this.ctx.restore();
 },
+    drawFrostOverlay() {
+      if (!this.frostActive || !this.ctx || !this.bubbles.length) return;
+      const normalBubbles = this.bubbles.filter((bubble) => !bubble.isSwordLock);
+      if (!normalBubbles.length) return;
+      const topY = Math.min(...normalBubbles.map((bubble) => bubble.y));
+      const topRow = normalBubbles.filter((bubble) => Math.abs(bubble.y - topY) <= this.rowHeight * .55);
+      if (!topRow.length) return;
+
+      const ctx = this.ctx;
+      const now = performance.now();
+      const coverRatio = .66;
+      const frostHeight = this.radius * 2 * coverRatio;
+      const minX = Math.max(0, Math.min(...topRow.map((b) => b.x)) - this.radius);
+      const maxX = Math.min(this.width, Math.max(...topRow.map((b) => b.x)) + this.radius);
+      const bandY = Math.max(0, topY - this.radius - 3);
+
+      ctx.save();
+      const band = ctx.createLinearGradient(0, bandY, 0, bandY + frostHeight + 8);
+      band.addColorStop(0, "rgba(240,253,255,.96)");
+      band.addColorStop(.32, "rgba(169,232,255,.73)");
+      band.addColorStop(.72, "rgba(92,192,234,.38)");
+      band.addColorStop(1, "rgba(47,143,190,0)");
+      ctx.fillStyle = band;
+      ctx.fillRect(minX, bandY, maxX - minX, frostHeight + 8);
+
+      topRow.forEach((bubble, index) => {
+        ctx.save();
+        ctx.beginPath(); ctx.arc(bubble.x, bubble.y, this.radius + 1, 0, Math.PI * 2); ctx.clip();
+        const ice = ctx.createLinearGradient(bubble.x, bubble.y - this.radius, bubble.x, bubble.y + this.radius);
+        ice.addColorStop(0, "rgba(248,255,255,.92)"); ice.addColorStop(.35, "rgba(174,237,255,.72)");
+        ice.addColorStop(.66, "rgba(97,205,244,.43)"); ice.addColorStop(.67, "rgba(97,205,244,0)");
+        ctx.fillStyle = ice;
+        ctx.fillRect(bubble.x - this.radius - 2, bubble.y - this.radius - 2, this.radius * 2 + 4, frostHeight + 3);
+        ctx.restore();
+
+        const phase = (now / 330 + index * 1.7) % (Math.PI * 2);
+        const sx = bubble.x + Math.sin(phase) * this.radius * .52;
+        const sy = bubble.y - this.radius * (.28 + .28 * Math.cos(phase * .7));
+        ctx.fillStyle = "rgba(255,255,255,.94)"; ctx.shadowColor = "#bdf3ff"; ctx.shadowBlur = 8;
+        ctx.beginPath(); ctx.arc(sx, sy, 1.7 + (Math.sin(phase * 1.8) + 1) * 1.2, 0, Math.PI * 2); ctx.fill();
+      });
+
+      ctx.shadowColor = "#9ae9ff"; ctx.shadowBlur = 10; ctx.strokeStyle = "rgba(222,250,255,.8)"; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.moveTo(minX, bandY + frostHeight * .72);
+      for (let x = minX; x <= maxX; x += 18) ctx.lineTo(x, bandY + frostHeight * .72 + Math.sin(x * .11 + now * .003) * 3);
+      ctx.stroke(); ctx.restore();
+    },
+
     draw() {
 
       if (!this.ctx) return;
@@ -5179,6 +5524,7 @@ drawAimGuide() {
         );
     }
 });
+      this.drawFrostOverlay();
       this.drawFallingGoldBall();
       this.drawParticles();
       this.drawChainBreaks();
@@ -5863,6 +6209,10 @@ const Shop = {
     BubbleGame.activateHourglass();
   });
 
+  dom.frostItemButton?.addEventListener("click", () => {
+    BubbleGame.activateFrost();
+  });
+
   dom.preLevelLoadoutSlots?.querySelectorAll(".prelevel-loadout-slot").forEach((slot) => {
     slot.addEventListener("click", () => {
       PreLevelLoadout.removeAt(Number(slot.dataset.slot));
@@ -6192,6 +6542,11 @@ const ITEM_INFO = {
     hourglass: {
         title: "Sanduhr",
         text: "Die Sanduhr ist ein Speedgame-Item. Jeder Einsatz schreibt dir sofort 10 Sekunden auf die aktuelle Restzeit gut. Sie kann während des gesamten Speedgames eingesetzt werden."
+    },
+
+    frost: {
+        title: "Frostball",
+        text: "Der Frostball wird als echter Spezialball abgeschossen. Er fliegt durch die vorhandenen Bälle hindurch, wächst während des Flugs bis auf 250 % an und platzt beim Aufprall an der Decke. Danach friert er für 20 Sekunden das Nachrücken neuer Reihen ein. In Speedgames bleibt zusätzlich die Restzeit 20 Sekunden vollständig stehen."
     }
 
 };
