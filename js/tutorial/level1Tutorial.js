@@ -10,7 +10,7 @@
 
 const ROOT_ID = "bk-level1-tutorial";
 const STYLE_ID = "bk-level1-tutorial-style";
-const DURATION = 7000;
+const DURATION = 5600; // ab hier wird der Start-Button freigegeben
 
 let active = false;
 let timer = null;
@@ -245,6 +245,7 @@ function addStyles() {
     }
 
     #${ROOT_ID} .bk-tut-ready {
+      display: block;
       margin: 14px auto 18px;
       width: fit-content;
       min-width: 220px;
@@ -256,10 +257,21 @@ function addStyles() {
       text-align: center;
       font-size: 18px;
       font-weight: 1000;
+      font-family: inherit;
+      cursor: pointer;
       opacity: 0;
       transform: scale(.75);
       animation: bkTutReadyIn .42s 5.40s cubic-bezier(.2,1.25,.3,1) forwards,
                  bkTutReadyPulse .55s 5.85s ease-in-out infinite alternate;
+    }
+
+    #${ROOT_ID} .bk-tut-ready:disabled {
+      cursor: default;
+      pointer-events: none;
+    }
+
+    #${ROOT_ID} .bk-tut-ready:not(:disabled) {
+      pointer-events: auto;
     }
 
     @keyframes bkTutOverlayIn { to { opacity: 1; } }
@@ -340,7 +352,7 @@ function createOverlay() {
         JEDER BALL = <strong>+100 PUNKTE</strong>
         <small>Je größer die Gruppe, desto mehr Punkte bekommst du.</small>
       </div>
-      <div class="bk-tut-ready">JETZT BIST DU DRAN!</div>
+      <button class="bk-tut-ready" type="button" disabled>JETZT BIST DU DRAN!</button>
     </div>
   `;
 
@@ -354,6 +366,30 @@ function createOverlay() {
 
   document.body.appendChild(root);
   return root;
+}
+
+function enableReadyButton() {
+  if (!active) return;
+
+  const root = document.getElementById(ROOT_ID);
+  const button = root?.querySelector(".bk-tut-ready");
+  if (!button) return;
+
+  button.disabled = false;
+  button.setAttribute("aria-label", "Tutorial verstanden – Level starten");
+
+  if (button.dataset.bound === "1") return;
+  button.dataset.bound = "1";
+
+  button.addEventListener("pointerdown", (event) => {
+    event.stopPropagation();
+  });
+
+  button.addEventListener("click", (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    finish();
+  });
 }
 
 function finish() {
@@ -378,7 +414,7 @@ export const Level1Tutorial = Object.freeze({
     addStyles();
     createOverlay();
     active = true;
-    timer = window.setTimeout(finish, DURATION);
+    timer = window.setTimeout(enableReadyButton, DURATION);
     return true;
   },
 

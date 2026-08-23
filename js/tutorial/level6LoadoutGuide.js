@@ -17,7 +17,7 @@ const STYLE_ID = "bk-level6-loadout-guide-style";
 const PROMPT_ID = "bk-level6-loadout-prompt";
 const STORAGE_KEY = "bandenkick_level6_loadout_intro_v1";
 
-const STEP_MS = 1750;
+const STEP_MS = 3200; // deutlich langsamer: jeder Hinweis bleibt 3,2 s sichtbar
 const TOTAL_STEPS = 3;
 
 let active = false;
@@ -42,9 +42,9 @@ function addStyles() {
       position: fixed;
       inset: 0;
       z-index: 26000;
-      background: rgba(5,8,13,.73);
-      backdrop-filter: blur(1.5px);
-      -webkit-backdrop-filter: blur(1.5px);
+      background: transparent;
+      backdrop-filter: none;
+      -webkit-backdrop-filter: none;
       pointer-events: all;
       touch-action: none;
       user-select: none;
@@ -58,13 +58,17 @@ function addStyles() {
       z-index: 2;
       border: 4px solid #ffd34d;
       border-radius: 18px;
+      /* Der gesamte Bildschirm wird über den riesigen Außen-Schatten
+         abgedunkelt. Der eigentliche Fokus-Ausschnitt bleibt transparent
+         und zeigt das echte Item / i / die Slots unverändert hell. */
       box-shadow:
-        0 0 0 4px rgba(134,0,0,.8),
-        0 0 24px rgba(255,211,77,.95),
-        0 0 55px rgba(255,211,77,.42);
+        0 0 0 9999px rgba(5,8,13,.76),
+        0 0 0 4px rgba(134,0,0,.88),
+        0 0 24px rgba(255,211,77,.98),
+        0 0 55px rgba(255,211,77,.48);
       pointer-events: none;
       animation: bkL6FocusPulse .7s ease-in-out infinite alternate;
-      transition: left .28s ease, top .28s ease, width .28s ease, height .28s ease;
+      transition: left .55s ease, top .55s ease, width .55s ease, height .55s ease;
     }
 
     #${ROOT_ID} .bk-l6-arrow {
@@ -173,7 +177,14 @@ function addStyles() {
 
     @keyframes bkL6FadeIn { to { opacity: 1; } }
     @keyframes bkL6FocusPulse {
-      to { transform: scale(1.025); box-shadow: 0 0 0 4px rgba(134,0,0,.92), 0 0 33px rgba(255,211,77,1), 0 0 68px rgba(255,211,77,.55); }
+      to {
+        transform: scale(1.025);
+        box-shadow:
+          0 0 0 9999px rgba(5,8,13,.76),
+          0 0 0 5px rgba(134,0,0,.96),
+          0 0 34px rgba(255,211,77,1),
+          0 0 70px rgba(255,211,77,.58);
+      }
     }
     @keyframes bkL6ArrowBounce { to { transform: translateY(10px); } }
     @keyframes bkL6InteractivePulse { to { outline-offset: 7px; box-shadow: 0 0 34px rgba(255,211,77,.95) !important; } }
@@ -316,7 +327,7 @@ function showPrompt(success = false) {
   }
 
   prompt.innerHTML = success
-    ? `<strong>PERFEKT!</strong>Der Ball Switch liegt im Slot. Du kannst Level 6 jetzt starten.`
+    ? `<strong>PERFEKT!</strong>Unten findest du jetzt <b>LEVEL STARTEN</b>. Tippe auf den Button, um Level 6 zu beginnen.`
     : `<strong>JETZT DU!</strong>Tippe auf den Ball Switch. Er wird automatisch in den ersten freien Slot gesetzt.`;
 }
 
@@ -347,15 +358,26 @@ function markDone() {
   gated = false;
   setStartDisabled(false);
   clearHighlights();
+
+  // Nach der Item-Auswahl den nächsten Schritt unmissverständlich zeigen:
+  // LEVEL STARTEN befindet sich unten auf der Vorschaukarte.
+  startButton?.classList.add("bk-l6-interactive-highlight");
   showPrompt(true);
+
+  // Den Button in den sichtbaren Bereich holen, damit der Spieler
+  // den Hinweis und den Zielbutton direkt miteinander verknüpft.
+  window.setTimeout(() => {
+    startButton?.scrollIntoView({
+      behavior: "smooth",
+      block: "center"
+    });
+  }, 250);
 
   try {
     localStorage.setItem(STORAGE_KEY, "1");
   } catch {}
 
-  window.setTimeout(() => {
-    document.getElementById(PROMPT_ID)?.remove();
-  }, 1700);
+  // Der Hinweis bleibt nun stehen, bis der Spieler LEVEL STARTEN drückt.
 }
 
 export const Level6LoadoutGuide = Object.freeze({
@@ -369,17 +391,9 @@ export const Level6LoadoutGuide = Object.freeze({
       return false;
     }
 
-    let seen = false;
-    try {
-      seen = localStorage.getItem(STORAGE_KEY) === "1";
-    } catch {}
-
-    // Wenn Einführung bereits abgeschlossen wurde, keine erneute Sperre.
-    if (seen) {
-      setStartDisabled(false);
-      return false;
-    }
-
+    // TESTMODUS:
+    // Die Einführung läuft vorübergehend bei JEDEM Öffnen von Level 6.
+    // Der gespeicherte Status wird absichtlich ignoriert.
     addStyles();
     setStartDisabled(true);
 

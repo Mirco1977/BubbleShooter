@@ -259,7 +259,7 @@ const THEME_PATH = [
       episodes: $("episodesScreen"),
       albums: $("albumsScreen"),
       settings: $("settingsScreen"),
-      wolrdMap2: $("worldMap2Screen")
+      worldMap2: $("worldMap2Screen")
     },
 
     profileName: $("profileName"),
@@ -5874,27 +5874,69 @@ const Shop = {
       Navigation.show("settings");
   });
 
+  function returnSafelyToMapOrHome() {
+    // Alle temporären Overlays/Tutorials sicher entfernen.
+    Level1Tutorial.stop();
+    Level6LoadoutGuide.close();
+
+    // Laufendes Spiel stoppen, falls vorhanden.
+    if (BubbleGame?.running) {
+      BubbleGame.stop();
+    }
+
+    // Level-Vorschau darf beim Rückweg niemals als unsichtbares Overlay
+    // über einer ebenfalls versteckten Karte hängen bleiben.
+    const levelScreen = document.getElementById("levelScreen");
+    levelScreen?.classList.remove("world2-level-overlay");
+    levelScreen?.classList.add("hidden");
+
+    // Kommt der Spieler aus der Endloskarte, ist diese immer das erste Ziel.
+    if (window.BK_levelOrigin === "worldMap2" && window.WorldMap2?.open) {
+      try {
+        window.WorldMap2.open();
+        return;
+      } catch (error) {
+        console.error("[Navigation] Rückkehr zur Levelkarte fehlgeschlagen:", error);
+      }
+    }
+
+    // Auch bei explizitem Karten-Back bevorzugt die Levelkarte.
+    if (window.WorldMap2?.open && state.gameMode !== "episode") {
+      try {
+        window.WorldMap2.open();
+        return;
+      } catch (error) {
+        console.error("[Navigation] Levelkarte konnte nicht geöffnet werden:", error);
+      }
+    }
+
+    // Absoluter Fallback: Startmenü. Damit gibt es keinen Blackscreen.
+    Navigation.show("home");
+  }
+
   document.querySelectorAll("[data-back]").forEach((button) => {
     button.addEventListener("click", () => {
 
         const target = button.dataset.back;
 
-        // Zurück aus Levelvorschau zur Levelkarte
+        // Zurück aus Levelvorschau / Spiel zur Levelkarte
         if (target === "worldMap2") {
-
-            document
-                .getElementById("levelScreen")
-                ?.classList.remove("world2-level-overlay");
-
-            if (window.WorldMap2) {
-                window.WorldMap2.open();
-            }
-
+            returnSafelyToMapOrHome();
             return;
         }
 
-        // Normale Navigation
-        Navigation.show(target);
+        // Nur auf tatsächlich vorhandene Screens navigieren.
+        // Ungültige/veraltete data-back-Werte führen sonst dazu,
+        // dass alle Screens versteckt werden -> Blackscreen.
+        if (target && dom.screens[target]) {
+            Level1Tutorial.stop();
+            Level6LoadoutGuide.close();
+            Navigation.show(target);
+            return;
+        }
+
+        // Letzter Sicherheitsanker: Startmenü statt leerer Seite.
+        Navigation.show("home");
     });
   });
 
@@ -5995,11 +6037,22 @@ const Shop = {
 
   dom.leaveGameButton.addEventListener("click", () => {
     BubbleGame.stop();
+    Level1Tutorial.stop();
+    Level6LoadoutGuide.close();
+
     if (state.gameMode === "episode") {
       EpisodeRace.exitToEpisodes();
-    } else {
-      Navigation.show("level");
+      return;
     }
+
+    // Standardlevel: niemals auf einen versteckten Level-Screen zurückgehen.
+    // Von der Endloskarte zurück auf die Karte, ansonsten ins Startmenü.
+    if (window.BK_levelOrigin === "worldMap2") {
+      returnSafelyToMapOrHome();
+      return;
+    }
+
+    Navigation.show("home");
   });
 
   dom.retryLevelButton.addEventListener("click", () => {
