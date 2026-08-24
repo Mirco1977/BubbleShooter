@@ -391,6 +391,16 @@ const THEME_PATH = [
 
   const SaveManager = new StorageManager();
 
+  // Episodenrennen bleibt technisch erhalten, ist derzeit aber ausgeblendet.
+  const HIDE_EPISODE_RACE = true;
+
+  if (HIDE_EPISODE_RACE && dom.openEpisodesButton) {
+    dom.openEpisodesButton.hidden = true;
+    dom.openEpisodesButton.style.display = "none";
+    dom.openEpisodesButton.setAttribute("aria-hidden", "true");
+    dom.openEpisodesButton.setAttribute("tabindex", "-1");
+  }
+
   const state = {
     progress: SaveManager.loadProgress(),
     settings: SaveManager.loadSettings(),
@@ -449,25 +459,7 @@ function ensureFrostItemButton() {
 
 dom.frostItemButton = ensureFrostItemButton();
 
-const FIREBALL_PLACEHOLDER_IMAGE =
-  "data:image/svg+xml;charset=UTF-8," + encodeURIComponent(`
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128">
-      <defs>
-        <radialGradient id="ball" cx="38%" cy="28%" r="72%">
-          <stop offset="0" stop-color="#ffffff"/>
-          <stop offset=".22" stop-color="#ffe786"/>
-          <stop offset=".54" stop-color="#ff8a18"/>
-          <stop offset=".82" stop-color="#d52b00"/>
-          <stop offset="1" stop-color="#6c0900"/>
-        </radialGradient>
-      </defs>
-      <path d="M64 5 C85 23 101 42 94 61 C112 53 120 73 108 91 C99 108 82 119 62 121 C39 122 18 106 13 84 C8 63 23 42 40 29 C45 20 54 11 64 5Z"
-            fill="#ff6d00" opacity=".93"/>
-      <circle cx="64" cy="69" r="42" fill="url(#ball)" stroke="#ffd25a" stroke-width="5"/>
-      <path d="M64 38 l11 8 -4 13 11 8 -4 13 -14 5 -13-6 -1-15 10-9 -4-13z"
-            fill="#38120a" opacity=".82"/>
-      <circle cx="64" cy="69" r="41" fill="none" stroke="#fff2b2" stroke-width="2" opacity=".7"/>
-    </svg>`);
+const FIREBALL_IMAGE = "assets/ui/fire-ball.png";
 
 function ensureFireballStyles() {
   if (document.getElementById("bk-fireball-item-styles")) return;
@@ -502,7 +494,7 @@ function ensureFireballItemButton() {
   button.disabled = true;
   button.setAttribute("aria-label", "Feuerball – gesperrt bis Level 75");
   button.innerHTML = `
-    <img src="${FIREBALL_PLACEHOLDER_IMAGE}" alt="Feuerball">
+    <img src="${FIREBALL_IMAGE}" alt="Feuerball">
     <span class="item-info-button" data-item="fireball">i</span>
     <span class="item-count">0</span>
     <span class="item-lock-icon" aria-hidden="true">🔒</span>
@@ -579,7 +571,7 @@ const ITEM_UNLOCKS = {
     button: dom.fireballItemButton,
     unlockLevel: 75,
     label: "Feuerball",
-    image: FIREBALL_PLACEHOLDER_IMAGE
+    image: FIREBALL_IMAGE
   },
 
   frost: {
@@ -1714,7 +1706,7 @@ function startVictoryImpact(stars) {
         thunder: { label: "Blitzball", image: "assets/ui/thunder-ball.png" },
         colorbomb: { label: "Farbbombe", image: "assets/ui/color-bomb.png" },
         hourglass: { label: "Sanduhr", image: "assets/ui/hourglass.png" },
-        fireball: { label: "Feuerball", image: FIREBALL_PLACEHOLDER_IMAGE },
+        fireball: { label: "Feuerball", image: FIREBALL_IMAGE },
         frost: { label: "Frostball", image: FROST_PLACEHOLDER_IMAGE },
         rainbow: { label: "Regenbogenball", image: "assets/ui/rainbow-ball.png" },
         ballswitch: { label: "Ball Switch", image: "assets/ui/ballswitch.png" },
@@ -1940,6 +1932,8 @@ function startVictoryImpact(stars) {
     stopTimerId: 0,
     autoStopTimerId: 0,
     victoryTimerId: 0,
+    countdownTimerId: 0,
+    freeSpinCooldownMs: 86400000,
 
     getTodayKey() {
       const now = new Date();
@@ -1951,34 +1945,97 @@ function startVictoryImpact(stars) {
 
     ensureState() {
       if (!state.progress.dailyWheel || typeof state.progress.dailyWheel !== "object") {
-        state.progress.dailyWheel = { lastSpinDate: "" };
+        state.progress.dailyWheel = {
+          lastSpinDate: "",
+          lastSpinAt: 0
+        };
+      }
+
+      const wheelState = state.progress.dailyWheel;
+      wheelState.lastSpinAt = Math.max(0, Number(wheelState.lastSpinAt) || 0);
+
+      // Migration vom bisherigen Tages-System.
+      if (
+        wheelState.lastSpinAt <= 0 &&
+        wheelState.lastSpinDate &&
+        wheelState.lastSpinDate === this.getTodayKey()
+      ) {
+        wheelState.lastSpinAt = Date.now();
+        SaveManager.saveProgress(state.progress);
       }
     },
 
+    getRemainingCooldownMs() {
+      this.ensureState();
+
+      const lastSpinAt = Math.max(
+        0,
+        Number(state.progress.dailyWheel.lastSpinAt) || 0
+      );
+
+      if (!lastSpinAt) return 0;
+
+      return Math.max(
+        0,
+        this.freeSpinCooldownMs - (Date.now() - lastSpinAt)
+      );
+    },
+
     canSpinToday() {
+      return this.getRemainingCooldownMs() <= 0;
+    },
 
-    /*
-    =========================================================
-    NORMALBETRIEB – NUR 1 GRATIS-DREH PRO KALENDERTAG
+    formatCooldown(ms) {
+      const totalSeconds = Math.max(0, Math.ceil(ms / 1000));
+      const hours = Math.floor(totalSeconds / 3600);
+      const minutes = Math.floor((totalSeconds % 3600) / 60);
+      const seconds = totalSeconds % 60;
 
-    this.ensureState();
+      return `${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
+    },
 
-    return (
-        state.progress.dailyWheel.lastSpinDate !==
-        this.getTodayKey()
-    );
+    stopCountdownTicker() {
+      window.clearTimeout(this.countdownTimerId);
+      this.countdownTimerId = 0;
+    },
 
-    =========================================================
-    */
+    updateCooldownDisplay() {
+      const available = this.canSpinToday();
+      const remainingMs = this.getRemainingCooldownMs();
 
-    /*
-     * DEMO-MODUS
-     *
-     * Für Tests darf unbegrenzt gedreht werden.
-     */
+      dom.wheelStatus.textContent = available
+        ? "Dein kostenloser Dreh ist bereit."
+        : `Nächster Gratis-Dreh in ${this.formatCooldown(remainingMs)}.`;
 
-    return true;
+      dom.wheelSpinButton.disabled = !available;
+      dom.wheelSpinButton.textContent = available
+        ? "JETZT DREHEN"
+        : "24H TIMER LÄUFT";
 
+      if (available) {
+        this.stopCountdownTicker();
+      }
+    },
+
+    scheduleCountdownTicker() {
+      this.stopCountdownTicker();
+
+      if (this.spinning || this.canSpinToday()) return;
+
+      this.countdownTimerId = window.setTimeout(() => {
+        this.countdownTimerId = 0;
+
+        if (dom.screens.wheel && !dom.screens.wheel.classList.contains("hidden")) {
+          // Nur Text/Button aktualisieren.
+          // Das Glücksrad selbst wird NICHT neu gerendert, damit Item-PNGs
+          // nicht jede Sekunde neu geladen/aufgeblitzt werden.
+          this.updateCooldownDisplay();
+
+          if (!this.canSpinToday()) {
+            this.scheduleCountdownTicker();
+          }
+        }
+      }, 1000);
     },
 
     isHourglassOnWheel() {
@@ -2097,15 +2154,12 @@ function startVictoryImpact(stars) {
         return;
       }
 
-      dom.wheelStatus.textContent = available
-        ? "Dein kostenloser Dreh für heute ist bereit."
-        : "Heute bereits gedreht – morgen gibt es den nächsten Gratis-Dreh.";
-
-      dom.wheelSpinButton.disabled = !available;
-      dom.wheelSpinButton.textContent = available ? "JETZT DREHEN" : "HEUTE VERBRAUCHT";
+      this.updateCooldownDisplay();
 
       if (available) {
         dom.wheelReward.classList.add("hidden");
+      } else {
+        this.scheduleCountdownTicker();
       }
     },
 
@@ -2246,6 +2300,7 @@ function startVictoryImpact(stars) {
     },
 
     startFreeSpin() {
+      this.stopCountdownTicker();
       this.spinning = true;
       this.stopping = false;
       this.lastFrameTime = performance.now();
@@ -2352,23 +2407,20 @@ function startVictoryImpact(stars) {
 
         this.grantReward(segment);
 
-        /*
-        =========================================================
-        NORMALBETRIEB – TÄGLICHEN DREH ALS VERBRAUCHT SPEICHERN
-
+        // GRATIS-DREH VERBRAUCHEN:
+        // Der Zeitpunkt wird direkt nach der Gewinnermittlung dauerhaft
+        // im Spielstand gespeichert. Ab jetzt läuft exakt 24 Stunden lang
+        // der Cooldown – auch nach Reload oder erneutem Öffnen des Spiels.
         this.ensureState();
 
         state.progress.dailyWheel.lastSpinDate =
             this.getTodayKey();
+        state.progress.dailyWheel.lastSpinAt =
+            Date.now();
 
         SaveManager.saveProgress(
             state.progress
         );
-
-        =========================================================
-        */
-
-        /* DEMO-MODUS: Kein Datum speichern. */
 
         this.spinning = false;
         this.stopping = false;
@@ -2469,6 +2521,11 @@ function startVictoryImpact(stars) {
 
   const LevelPreview = {
     open(levelNumber) {
+      if (!canReplayMainLevel(levelNumber)) {
+        showToast("Dieses Level ist mit 3 Sternen abgeschlossen und nicht mehr erneut spielbar.");
+        return;
+      }
+
       state.gameMode = "standard";
       state.activeEpisodeId = null;
       state.selectedLevel = levelNumber;
@@ -2534,11 +2591,23 @@ function startVictoryImpact(stars) {
 
 window.BK_getMainProgress = () => state.progress;
 
+function canReplayMainLevel(levelNumber) {
+  const result = state.progress?.results?.[Number(levelNumber)];
+  return !result || Number(result.stars) < 3;
+}
+
+window.BK_canReplayMainLevel = canReplayMainLevel;
+
 window.BK_openMainLevel = (levelNumber) => {
 
   const level = Number(levelNumber);
 
   if (!Number.isInteger(level) || level < 1) return;
+
+  if (!canReplayMainLevel(level)) {
+    showToast("Dieses Level ist mit 3 Sternen abgeschlossen und nicht mehr erneut spielbar.");
+    return;
+  }
 
   window.BK_levelOrigin = "worldMap2";
   state.gameMode = "standard";
@@ -6227,7 +6296,10 @@ const Shop = {
 
   dom.openWheelButton.addEventListener("click", () => Navigation.show("wheel"));
 
-  dom.openEpisodesButton.addEventListener("click", () => Navigation.show("episodes"));
+  dom.openEpisodesButton?.addEventListener("click", () => {
+    if (HIDE_EPISODE_RACE) return;
+    Navigation.show("episodes");
+  });
 
   dom.openAlbumsButton?.addEventListener("click", () => Navigation.show("albums"));
 
@@ -6271,6 +6343,14 @@ const Shop = {
   });
 
   // Der 0,99-€-Button ist absichtlich nur vorbereitet und noch ohne Kauffunktion.
+  // Der kostenlose Dreh bleibt an den 24h-Timer gebunden.
+  // Der Bezahl-Dreh und seine bestehende Animation bleiben davon unberührt
+  // und sind weiterhin jederzeit sichtbar/verfügbar.
+  if (dom.wheelPaidSpinButton) {
+    dom.wheelPaidSpinButton.hidden = false;
+    dom.wheelPaidSpinButton.style.display = "";
+  }
+
   dom.wheelPaidSpinButton?.addEventListener("click", (event) => {
     event.preventDefault();
   });
