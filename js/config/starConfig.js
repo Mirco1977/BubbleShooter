@@ -2868,33 +2868,19 @@ const STAR_CONFIG = {
 },
 
 157: {
-    // Stage 16 – automatisch abgestimmtes Level
-    ballTypes: 5,
+    // Stage 16 – Fußball-Speziallevel
+    // Die Bubbles bilden einen großen Fußball. Klassisches Punkte-Level.
+    boardPattern: "football",
+    ballTypes: 4,
     addRowAfterShot: "n",
-    rows: 6,
-    targetScore: 6600,
+    rows: 9,
+    targetScore: 7200,
     mode: "shots",
-    maxShots: 24,
-    chainedBalls: [
-        { row: 5, col: 4 },
-        { row: 5, col: 5 },
-        { row: 5, col: 6 },
-        { row: 5, col: 7 },
-        { row: 5, col: 8 },
-        { row: 5, col: 9 },
-        { row: 5, col: 10 },
-        { row: 4, col: 4 },
-        { row: 4, col: 5 },
-        { row: 4, col: 6 },
-        { row: 4, col: 7 },
-        { row: 3, col: 6 },
-        { row: 3, col: 7 },
-        { row: 3, col: 8 },
-    ],
+    maxShots: 28,
     shots: {
-        threeStars: 15,
-        twoStars: 20,
-        oneStar: 24
+        threeStars: 19,
+        twoStars: 23,
+        oneStar: 28
     }
 },
 
@@ -3102,33 +3088,21 @@ const STAR_CONFIG = {
 },
 
 167: {
-    // Stage 17 – automatisch abgestimmtes Level
-    ballTypes: 5,
+    // Stage 17 – Fußball-Speziallevel
+    // Schwarze Felder des großen Fußballs gezielt sammeln.
+    boardPattern: "football",
+    ballTypes: 4,
     addRowAfterShot: "n",
-    rows: 6,
-    targetScore: 6900,
-    mode: "shots",
-    maxShots: 24,
-    chainedBalls: [
-        { row: 5, col: 5 },
-        { row: 5, col: 6 },
-        { row: 5, col: 7 },
-        { row: 5, col: 8 },
-        { row: 5, col: 9 },
-        { row: 5, col: 10 },
-        { row: 5, col: 11 },
-        { row: 4, col: 5 },
-        { row: 4, col: 6 },
-        { row: 4, col: 7 },
-        { row: 4, col: 8 },
-        { row: 3, col: 6 },
-        { row: 3, col: 7 },
-        { row: 3, col: 8 },
-    ],
+    rows: 9,
+    targetScore: 5600,
+    mode: "colors",
+    only_color: "black",
+    need: 18,
+    maxShots: 27,
     shots: {
-        threeStars: 15,
-        twoStars: 20,
-        oneStar: 24
+        threeStars: 18,
+        twoStars: 22,
+        oneStar: 27
     }
 },
 
@@ -3336,33 +3310,19 @@ const STAR_CONFIG = {
 },
 
 177: {
-    // Stage 18 – automatisch abgestimmtes Level
-    ballTypes: 5,
+    // Stage 18 – Fußball-Speziallevel
+    // Zeit-Challenge auf dem großen Fußball; vier Farben halten das Muster spielerisch abwechslungsreich.
+    boardPattern: "football",
+    ballTypes: 4,
     addRowAfterShot: "n",
-    rows: 6,
-    targetScore: 7300,
-    mode: "shots",
-    maxShots: 25,
-    chainedBalls: [
-        { row: 5, col: 3 },
-        { row: 5, col: 4 },
-        { row: 5, col: 5 },
-        { row: 5, col: 6 },
-        { row: 5, col: 7 },
-        { row: 5, col: 8 },
-        { row: 5, col: 9 },
-        { row: 4, col: 4 },
-        { row: 4, col: 5 },
-        { row: 4, col: 6 },
-        { row: 4, col: 7 },
-        { row: 3, col: 6 },
-        { row: 3, col: 7 },
-        { row: 3, col: 8 },
-    ],
-    shots: {
-        threeStars: 16,
-        twoStars: 20,
-        oneStar: 25
+    rows: 9,
+    targetScore: 8000,
+    mode: "speed",
+    time: 72,
+    points: {
+        threeStars: 9600,
+        twoStars: 8800,
+        oneStar: 8000
     }
 },
 
@@ -3554,33 +3514,20 @@ const STAR_CONFIG = {
 },
 
 187: {
-    // Stage 19 – automatisch abgestimmtes Level
-    ballTypes: 5,
-    addRowAfterShot: "y",
-    rows: 7,
-    targetScore: 7700,
-    mode: "shots",
-    maxShots: 26,
-    chainedBalls: [
-        { row: 6, col: 4 },
-        { row: 6, col: 5 },
-        { row: 6, col: 6 },
-        { row: 6, col: 7 },
-        { row: 6, col: 8 },
-        { row: 6, col: 9 },
-        { row: 6, col: 10 },
-        { row: 5, col: 5 },
-        { row: 5, col: 6 },
-        { row: 5, col: 7 },
-        { row: 5, col: 8 },
-        { row: 4, col: 6 },
-        { row: 4, col: 7 },
-        { row: 4, col: 8 },
-    ],
+    // Stage 19 – Fußball-Speziallevel
+    // Der große Fußball wird reihenweise zerlegt.
+    boardPattern: "football",
+    ballTypes: 4,
+    addRowAfterShot: "n",
+    rows: 9,
+    targetScore: 0,
+    mode: "removeRows",
+    targetRows: 5,
+    maxShots: 28,
     shots: {
-        threeStars: 16,
-        twoStars: 21,
-        oneStar: 26
+        threeStars: 19,
+        twoStars: 23,
+        oneStar: 28
     }
 },
 

@@ -3260,24 +3260,29 @@ window.BK_openMainLevel = (levelNumber) => {
     this.activeColors = [];
 
     /*
-     * Bei Farbziel-Leveln muss die benötigte
-     * Zielfarbe zwingend vorhanden sein.
+     * Bei Farbziel-Leveln muss die benötigte Zielfarbe zwingend vorhanden sein.
+     * Fußball-Speziallevel benötigen zusätzlich Schwarz + Gelb, damit das
+     * große Fußballmuster im Raster zuverlässig erkennbar und spielbar bleibt.
      */
-    const requiredColorId =
-        levelConfig?.mode === "colors"
-            ? levelConfig.only_color
-            : null;
+    const requiredColorIds = [];
 
-    if (requiredColorId) {
+    if (levelConfig?.mode === "colors" && levelConfig.only_color) {
+        requiredColorIds.push(levelConfig.only_color);
+    }
 
+    if (levelConfig?.boardPattern === "football") {
+        requiredColorIds.push("black", "yellow");
+    }
+
+    [...new Set(requiredColorIds)].forEach((requiredColorId) => {
         const requiredColor = this.palette.find(
             (color) => color.id === requiredColorId
         );
 
-        if (requiredColor) {
+        if (requiredColor && this.activeColors.length < colorCount) {
             this.activeColors.push(requiredColor);
         }
-    }
+    });
 
     /*
      * Die restlichen Farben zufällig ergänzen.
@@ -3441,7 +3446,21 @@ window.BK_openMainLevel = (levelNumber) => {
 
     const levelConfig = getActiveLevelConfig(levelNumber);
 
-    const rows = levelConfig?.rows ?? 5;
+    const footballPattern = levelConfig?.boardPattern === "football"
+      ? [
+          "..XXXBBBXXX..",
+          ".XXXXBBXXXX.",
+          ".XXBBXXXBBXX.",
+          "XXBBXXXXBBXX",
+          "XXXXBBBBXXXXX",
+          "XXBBXXXXBBXX",
+          ".XXBBXXXBBXX.",
+          ".XXXXBBXXXX.",
+          "..XXXBBBXXX.."
+        ]
+      : null;
+
+    const rows = footballPattern?.length ?? levelConfig?.rows ?? 5;
       for (let row = 0; row < rows; row++) {
     const objectiveRowId = this.removeRowsMode
         ? this.removeRowsNextId++
@@ -3471,8 +3490,27 @@ window.BK_openMainLevel = (levelNumber) => {
             row * this.rowHeight;
 
           if (x > this.width - this.radius) continue;
-          
-    const color = this.randomColor();
+
+          // Speziallayout: Die Bubbles selbst bilden einen großen Fußball.
+          // X = helle Grundfläche, B = dunkle Fußballsegmente, . = Freiraum.
+          const footballCell = footballPattern?.[row]?.[col] ?? null;
+          if (footballPattern && footballCell === ".") continue;
+
+          let color = this.randomColor();
+
+          if (footballPattern) {
+              const blackColor = this.activeColors.find((entry) => entry.id === "black");
+              const baseColors = this.activeColors.filter((entry) => entry.id !== "black");
+              const fallbackBase = baseColors[0] || this.activeColors[0];
+              const baseColor = baseColors.length
+                  ? baseColors[(row * 2 + col) % baseColors.length]
+                  : fallbackBase;
+
+              color = footballCell === "B"
+                  ? (blackColor || fallbackBase)
+                  : baseColor;
+          }
+
           this.bubbles.push({
           x,
           y,
@@ -3517,11 +3555,20 @@ window.BK_openMainLevel = (levelNumber) => {
       const diameter = this.radius * 2;
       const swordWidth = diameter * 3;
       const swordHeight = diameter * 5;
+      const isCrownCollectible = swordConfig.albumId === "crowns";
 
-      // Goldball sitzt sichtbar ÜBER dem Schwert.
-      // Zwischen Ball und Schwert bleibt nur ein kleiner Abstand.
+      // Goldball sitzt sichtbar ÜBER dem Sammelstück.
+      // Der Anker beginnt direkt unter der sichtbaren Goldball-Kante.
       const swordTop = lockY + this.radius * 1.18;
       const swordLeft = lockX - swordWidth / 2;
+
+      // Schwerter benötigen weiterhin das hohe 3x5-Feld.
+      // Kronen sind breit und deutlich flacher. Für sie wird nur der
+      // tatsächlich benötigte obere Bereich freigehalten, damit darunter
+      // wieder normale/geschlossene Kugelreihen entstehen können.
+      const collectibleClearHeight = isCrownCollectible
+        ? diameter * 2.55
+        : swordHeight;
 
       this.swordFeature = {
         lockX,
@@ -3530,6 +3577,8 @@ window.BK_openMainLevel = (levelNumber) => {
         swordTop,
         swordWidth,
         swordHeight,
+        collectibleClearHeight,
+        anchorVisualToTop: isCrownCollectible,
         released: false,
         flashStart: 0,
         flashDuration: 420,
@@ -3543,12 +3592,13 @@ window.BK_openMainLevel = (levelNumber) => {
         hidden: false
       };
 
-      // Im 3x5-Feld um das Schwert Platz schaffen.
+      // Nur den Bereich freihalten, den das jeweilige Sammelstück braucht.
+      // Bei Kronen bleiben die unteren Reihen dadurch wieder vollständig.
       this.bubbles = this.bubbles.filter((bubble) => {
         const insideX = Math.abs(bubble.x - lockX) < swordWidth * 0.46;
         const insideY =
           bubble.y > swordTop - this.radius &&
-          bubble.y < swordTop + swordHeight + this.radius;
+          bubble.y < swordTop + collectibleClearHeight + this.radius;
 
         return !(insideX && insideY);
       });
@@ -3792,12 +3842,40 @@ window.BK_openMainLevel = (levelNumber) => {
         }
       }
 
-      const drawWidth = sword.swordWidth * scale;
-      const drawHeight = sword.swordHeight * scale;
+      // Sammelgrafik immer proportional zeichnen.
+      // Kronen sind deutlich breiter als Schwerter und wurden zuvor in das
+      // feste 3x5-Feld gezwungen – dadurch wirkten sie vertikal gequetscht.
+      // Das 3x5-Feld bleibt für Kollision/Freiraum bestehen, die PNG selbst
+      // wird aber per "contain" ohne Verzerrung in dieses Feld eingepasst.
+      let baseDrawWidth = sword.swordWidth;
+      let baseDrawHeight = sword.swordHeight;
+
+      if (this.swordImage?.complete && this.swordImage.naturalWidth > 0) {
+        const imageAspect =
+          this.swordImage.naturalWidth / this.swordImage.naturalHeight;
+        const boxAspect = sword.swordWidth / sword.swordHeight;
+
+        if (imageAspect > boxAspect) {
+          baseDrawWidth = sword.swordWidth;
+          baseDrawHeight = sword.swordWidth / imageAspect;
+        } else {
+          baseDrawHeight = sword.swordHeight;
+          baseDrawWidth = sword.swordHeight * imageAspect;
+        }
+      }
+
+      const drawWidth = baseDrawWidth * scale;
+      const drawHeight = baseDrawHeight * scale;
       const centerX = sword.swordLeft + sword.swordWidth / 2;
       const centerY = sword.swordTop + sword.swordHeight / 2;
       const drawLeft = centerX - drawWidth / 2;
-      const drawTop = centerY - drawHeight / 2;
+
+      // Breite Sammelstücke wie Kronen werden oben verankert. Dadurch beginnt
+      // die sichtbare PNG unmittelbar unter dem Goldball statt vertikal in
+      // der alten 3x5-Schwertbox zentriert und damit zu tief zu sitzen.
+      const drawTop = sword.anchorVisualToTop
+        ? sword.swordTop - (drawHeight - baseDrawHeight) / 2
+        : centerY - drawHeight / 2;
 
       this.ctx.save();
       this.ctx.globalAlpha = alpha;
