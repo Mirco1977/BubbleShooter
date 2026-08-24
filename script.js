@@ -3137,6 +3137,38 @@ window.BK_openMainLevel = (levelNumber) => {
     });
     },
 
+    preloadBallThemeImages() {
+      if (!this.ballImageCache) {
+        this.ballImageCache = {};
+      }
+
+      const themeAtStart = currentBallTheme;
+      const paletteAtStart = Array.isArray(this.palette) ? [...this.palette] : [];
+
+      const preloadJobs = paletteAtStart.map((ball) => {
+        const imagePath = `assets/balls/${themeAtStart}/${ball.id}.png`;
+        let img = this.ballImageCache[imagePath];
+
+        if (!img) {
+          img = new Image();
+          this.ballImageCache[imagePath] = img;
+          img.src = imagePath;
+        }
+
+        if (img.complete) {
+          return Promise.resolve();
+        }
+
+        return new Promise((resolve) => {
+          const done = () => resolve();
+          img.addEventListener("load", done, { once: true });
+          img.addEventListener("error", done, { once: true });
+        });
+      });
+
+      return Promise.all(preloadJobs);
+    },
+
     start(levelNumber) {
       Level1Tutorial.stop();
       Level6LoadoutGuide.close();
@@ -3152,7 +3184,7 @@ window.BK_openMainLevel = (levelNumber) => {
       this.swordReleaseStartedAt = 0;
       this.fallingGoldBall = null;
       const stageNumber = getActiveThemeStage(levelNumber);
-      this.ballImageCache = {};
+      this.ballImageCache = this.ballImageCache || {};
 
       currentBallTheme =
       stageNumber === 2
@@ -3183,6 +3215,11 @@ window.BK_openMainLevel = (levelNumber) => {
         { id:"black"}
     ];
   }
+
+      // Normale Ballgrafiken des aktiven Themes bereits vor dem ersten
+      // sichtbaren Spielframe laden. Der Cache bleibt levelübergreifend bestehen.
+      this.ballImagesReadyPromise = this.preloadBallThemeImages();
+
       this.switchImage = new Image();
       this.switchImage.src = "assets/ui/ballswitch.png";
 
@@ -3416,24 +3453,27 @@ window.BK_openMainLevel = (levelNumber) => {
       this.snapshotRemoveRowsPositions();
       this.createShooter();
 
-      Navigation.show("play");
+      const beginVisibleLevel = () => {
+        // Falls in der Zwischenzeit ein anderes Level gestartet/der Screen beendet
+        // wurde, keinen alten Loop nachträglich aktivieren.
+        if (!this.running || state.selectedLevel !== levelNumber) return;
 
-      // Level 1: reine DOM-Einführung über dem Spielfeld.
-      // Sie verändert weder BubbleGame.update/draw noch den Ball-Cache.
-      Level1Tutorial.start({
-        levelNumber,
-        gameMode: state.gameMode
-      });
+        Navigation.show("play");
 
-      /*setTimeout(() => {
-          window.scrollTo({
-              top: document.body.scrollHeight,
-              behavior: "smooth"
-          });
-      }, 300);*/
+        // Level 1: reine DOM-Einführung über dem Spielfeld.
+        // Sie verändert weder BubbleGame.update/draw noch den Ball-Cache.
+        Level1Tutorial.start({
+          levelNumber,
+          gameMode: state.gameMode
+        });
 
-      this.bindCanvasEvents();
-      this.startLoop();
+        this.bindCanvasEvents();
+        this.startLoop();
+      };
+
+      Promise.resolve(this.ballImagesReadyPromise)
+        .catch(() => {})
+        .then(beginVisibleLevel);
 
     },
     createBoard(levelNumber) {
@@ -4964,6 +5004,137 @@ createShooter() {
       }
 },
 
+    getGridAttachPoint(row, column) {
+      if (!Number.isInteger(row) || !Number.isInteger(column) || row < 0) {
+        return null;
+      }
+
+      const halfOffset = this.columnWidth / 2;
+      const offset =
+        row % 2 === 0
+          ? this.topRowOffset
+          : this.topRowOffset === 0
+            ? halfOffset
+            : 0;
+
+      const x = this.gridBaseX + column * this.columnWidth + offset;
+      const y = this.radius + row * this.rowHeight;
+
+      if (
+        x < this.radius - 0.5 ||
+        x > this.width - this.radius + 0.5 ||
+        y < this.radius - 0.5
+      ) {
+        return null;
+      }
+
+      return { x, y, row, column };
+    },
+
+    isAttachPointFree(point) {
+      if (!point) return false;
+
+      // Ein Rasterplatz gilt bereits dann als belegt, wenn dort ein normaler
+      // oder spezieller Ball sitzt. So können keine zwei Kugeln ineinander landen.
+      return !this.bubbles.some((bubble) =>
+        Math.hypot(bubble.x - point.x, bubble.y - point.y) < this.radius * 1.25
+      );
+    },
+
+    findBestAttachPoint() {
+      const shooter = this.shooter;
+      if (!shooter) return null;
+
+      const candidates = [];
+      const candidateKeys = new Set();
+
+      const addCandidate = (row, column, mustTouchBubble = null) => {
+        const point = this.getGridAttachPoint(row, column);
+        if (!point || !this.isAttachPointFree(point)) return;
+
+        const key = `${point.row}:${point.column}`;
+        if (candidateKeys.has(key)) return;
+
+        if (
+          mustTouchBubble &&
+          Math.hypot(
+            point.x - mustTouchBubble.x,
+            point.y - mustTouchBubble.y
+          ) > this.radius * 2.15
+        ) {
+          return;
+        }
+
+        candidateKeys.add(key);
+        candidates.push(point);
+      };
+
+      // Bei einem Balltreffer zuerst ausschließlich echte freie Nachbarplätze
+      // rund um den getroffenen Ball prüfen. Das verhindert seltene schiefe
+      // Andockpositionen nach Seiten-/Bandentreffern.
+      if (this.lastHitBubble) {
+        const hitRow = Math.max(
+          0,
+          Math.round((this.lastHitBubble.y - this.radius) / this.rowHeight)
+        );
+
+        for (let row = Math.max(0, hitRow - 1); row <= hitRow + 1; row++) {
+          const halfOffset = this.columnWidth / 2;
+          const offset =
+            row % 2 === 0
+              ? this.topRowOffset
+              : this.topRowOffset === 0
+                ? halfOffset
+                : 0;
+
+          const centerColumn = Math.round(
+            (this.lastHitBubble.x - this.gridBaseX - offset) / this.columnWidth
+          );
+
+          for (let column = centerColumn - 2; column <= centerColumn + 2; column++) {
+            addCandidate(row, column, this.lastHitBubble);
+          }
+        }
+      }
+
+      // Deckentreffer oder vollständig umschlossener Treffer: freie Rasterplätze
+      // in unmittelbarer Nähe der tatsächlichen Flugposition als Fallback suchen.
+      if (candidates.length === 0) {
+        const shooterRow = Math.max(
+          0,
+          Math.round((shooter.y - this.radius) / this.rowHeight)
+        );
+
+        for (let row = Math.max(0, shooterRow - 2); row <= shooterRow + 2; row++) {
+          const halfOffset = this.columnWidth / 2;
+          const offset =
+            row % 2 === 0
+              ? this.topRowOffset
+              : this.topRowOffset === 0
+                ? halfOffset
+                : 0;
+
+          const centerColumn = Math.round(
+            (shooter.x - this.gridBaseX - offset) / this.columnWidth
+          );
+
+          for (let column = centerColumn - 2; column <= centerColumn + 2; column++) {
+            addCandidate(row, column);
+          }
+        }
+      }
+
+      if (candidates.length === 0) return null;
+
+      candidates.sort((a, b) => {
+        const distanceA = Math.hypot(a.x - shooter.x, a.y - shooter.y);
+        const distanceB = Math.hypot(b.x - shooter.x, b.y - shooter.y);
+        return distanceA - distanceB;
+      });
+
+      return candidates[0];
+    },
+
     attachShooter() {
       if(this.shooter.isBomb) {
         
@@ -4985,40 +5156,19 @@ createShooter() {
         return;
       }
 
-      const row = Math.max(
-          0,
-          Math.round((this.shooter.y - this.radius) / this.rowHeight)
-      );
+      const attachPoint = this.findBestAttachPoint();
 
-      const halfOffset = this.columnWidth / 2;
+      if (!attachPoint) {
+        // Extrem seltener Sicherheitsfall: keinen Ball über einen belegten
+        // Rasterplatz legen. Der Schuss wird sauber neu erzeugt.
+        this.createShooter();
+        return;
+      }
 
-      const offset =
-          row % 2 === 0
-              ? this.topRowOffset
-              : this.topRowOffset === 0
-                  ? halfOffset
-                  : 0;
-
-      const column = Math.round(
-      (
-        this.shooter.x -
-        this.gridBaseX -
-        offset
-      ) / this.columnWidth
-      );
-
-     const placedY = this.radius + row * this.rowHeight;
+      const placedY = attachPoint.y;
 
       const placed = {
-          x: Math.max(
-              this.radius,
-              Math.min(
-                  this.width - this.radius,
-                  this.gridBaseX +
-                      column * this.columnWidth +
-                      offset
-              )
-          ),
+          x: attachPoint.x,
           y: placedY,
           color: this.shooter.color,
           isRainbow: this.shooter.isRainbow === true,
@@ -5818,21 +5968,9 @@ drawBubble(bubble) {
     }
 
 
-    // Fallback falls Bild noch lädt
-    this.ctx.beginPath();
-
-    this.ctx.arc(
-        bubble.x,
-        bubble.y,
-        this.radius,
-        0,
-        Math.PI * 2
-    );
-
-    this.ctx.fillStyle = "#ffffff";
-
-    this.ctx.fill();
-
+    // Kein weißer Lade-Fallback mehr: Die normalen Ballgrafiken werden vor
+    // dem ersten sichtbaren Frame vorgeladen. Sollte ein einzelnes Bild doch
+    // noch nicht bereit sein, wird es bis zum nächsten Frame nicht gezeichnet.
     this.drawNewRowFlash(bubble);
     },
 
