@@ -2002,6 +2002,24 @@ function startVictoryImpact(stars) {
       this.countdownTimerId = 0;
     },
 
+    updateCooldownDisplay() {
+      const available = this.canSpinToday();
+      const remainingMs = this.getRemainingCooldownMs();
+
+      dom.wheelStatus.textContent = available
+        ? "Dein kostenloser Dreh ist bereit."
+        : `Nächster Gratis-Dreh in ${this.formatCooldown(remainingMs)}.`;
+
+      dom.wheelSpinButton.disabled = !available;
+      dom.wheelSpinButton.textContent = available
+        ? "JETZT DREHEN"
+        : "24H TIMER LÄUFT";
+
+      if (available) {
+        this.stopCountdownTicker();
+      }
+    },
+
     scheduleCountdownTicker() {
       this.stopCountdownTicker();
 
@@ -2011,7 +2029,14 @@ function startVictoryImpact(stars) {
         this.countdownTimerId = 0;
 
         if (dom.screens.wheel && !dom.screens.wheel.classList.contains("hidden")) {
-          this.render();
+          // WICHTIG: Nur Timertext und Button aktualisieren.
+          // render() würde renderSegments() auslösen und damit die Item-PNGs
+          // jede Sekunde neu in den DOM schreiben -> sichtbares Aufblitzen.
+          this.updateCooldownDisplay();
+
+          if (!this.canSpinToday()) {
+            this.scheduleCountdownTicker();
+          }
         }
       }, 1000);
     },
@@ -2132,17 +2157,9 @@ function startVictoryImpact(stars) {
         return;
       }
 
-      const remainingMs = this.getRemainingCooldownMs();
-
-      dom.wheelStatus.textContent = available
-        ? "Dein kostenloser Dreh ist bereit."
-        : `Nächster Gratis-Dreh in ${this.formatCooldown(remainingMs)}.`;
-
-      dom.wheelSpinButton.disabled = !available;
-      dom.wheelSpinButton.textContent = available ? "JETZT DREHEN" : "24H TIMER LÄUFT";
+      this.updateCooldownDisplay();
 
       if (available) {
-        this.stopCountdownTicker();
         dom.wheelReward.classList.add("hidden");
       } else {
         this.scheduleCountdownTicker();
@@ -2287,6 +2304,16 @@ function startVictoryImpact(stars) {
 
     startFreeSpin() {
       this.stopCountdownTicker();
+
+      // Bereits beim Start des kostenlosen Drehs speichern. Gerade mobile Browser
+      // können während Animationen pausieren/den Tab in den Hintergrund schicken.
+      // So kann der 24h-Timer nicht verloren gehen, selbst wenn die Abschluss-
+      // Animation durch den Browser-Lifecycle unterbrochen wird.
+      this.ensureState();
+      state.progress.dailyWheel.lastSpinDate = this.getTodayKey();
+      state.progress.dailyWheel.lastSpinAt = Date.now();
+      SaveManager.saveProgress(state.progress);
+
       this.spinning = true;
       this.stopping = false;
       this.lastFrameTime = performance.now();
@@ -2393,25 +2420,10 @@ function startVictoryImpact(stars) {
 
         this.grantReward(segment);
 
-        /*
-        =========================================================
-        NORMALBETRIEB – TÄGLICHEN DREH ALS VERBRAUCHT SPEICHERN
-
-        this.ensureState();
-
-        state.progress.dailyWheel.lastSpinDate =
-            this.getTodayKey();
-        state.progress.dailyWheel.lastSpinAt =
-            Date.now();
-
-        SaveManager.saveProgress(
-            state.progress
-        );
-
-        =========================================================
-        */
-
-        /* DEMO-MODUS: Kein Datum speichern. */
+        // Der Gratis-Dreh wurde bereits in startFreeSpin() gespeichert.
+        // Hier nur nochmals den vorhandenen Spielstand sichern, ohne den
+        // 24h-Startpunkt nach hinten zu verschieben.
+        SaveManager.saveProgress(state.progress);
 
         this.spinning = false;
         this.stopping = false;
