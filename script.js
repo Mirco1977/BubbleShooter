@@ -1445,6 +1445,9 @@ function startVictoryImpact(stars) {
       if (config?.mode === "colors") {
         const colorNames = { red: "rote", green: "grüne", yellow: "gelbe", purple: "lila", blue: "blaue", pink: "pinke", black: "schwarze" };
         dom.levelGoalText.textContent = `Sammle ${config.need} ${colorNames[config.only_color] || config.only_color} Bälle`;
+      } else if (config?.mode === "removeRows") {
+        const targetRows = Math.max(1, Number(config.targetRows) || 1);
+        dom.levelGoalText.textContent = `Entferne ${targetRows} ${targetRows === 1 ? "Reihe" : "Reihen"}`;
       } else {
         dom.levelGoalText.textContent = `Erreiche mindestens ${target.toLocaleString("de-DE")} Punkte`;
       }
@@ -2540,6 +2543,10 @@ function startVictoryImpact(stars) {
         };
         dom.levelGoalText.textContent =
         `Sammle ${levelConfig.need} ${colorNames[levelConfig.only_color]} Bälle`;
+      } else if (levelConfig.mode === "removeRows") {
+          const targetRows = Math.max(1, Number(levelConfig.targetRows) || 1);
+          dom.levelGoalText.textContent =
+          `Entferne ${targetRows} ${targetRows === 1 ? "Reihe" : "Reihen"}`;
       } else if (levelConfig.mode === "speed") {
           dom.levelGoalText.textContent =
           `Erreiche ${target.toLocaleString("de-DE")} Punkte in ${Number(levelConfig.time) || 0} Sekunden`;
@@ -2555,7 +2562,9 @@ function startVictoryImpact(stars) {
       dom.levelTarget.textContent =
           levelConfig.mode === "sword"
               ? "GOLDBALL"
-              : target.toLocaleString("de-DE");
+              : levelConfig.mode === "removeRows"
+                  ? `${Math.max(1, Number(levelConfig.targetRows) || 1)} REIHEN`
+                  : target.toLocaleString("de-DE");
       dom.levelBest.textContent = result ? `${result.stars} ⭐` : "–";
     
       renderPreviewBalls(levelNumber);
@@ -3018,6 +3027,7 @@ window.BK_openMainLevel = (levelNumber) => {
       this.frostSpeedPauseStartedAt = 0;
       dom.speedTimerHud?.classList.remove("frost-timer-frozen");
       updateItemBarLocks();
+      this.flushPendingRemoveRows();
     },
 
     clearFrost() {
@@ -3314,6 +3324,19 @@ window.BK_openMainLevel = (levelNumber) => {
       
       this.targetScore = levelConfig?.targetScore ?? 1000;
 
+      this.removeRowsMode = levelConfig?.mode === "removeRows";
+      this.removeRowsTarget = this.removeRowsMode
+        ? Math.max(1, Number(levelConfig?.targetRows) || 1)
+        : 0;
+      this.removeRowsCleared = 0;
+      this.removeRowsNextId = 1;
+      this.removeRowsActiveIds = new Set();
+      this.removeRowsPendingReplacements = 0;
+
+      // Visuelles Feedback für erfolgreich entfernte Reihen.
+      this.removeRowsLastY = new Map();
+      this.removeRowsEffects = [];
+
       // SPEEDGAME vorbereiten. Der eigentliche Timer startet erst
       // nach 3, 2, 1 und dem kurzen START-Aufblinken.
       this.speedMode = levelConfig?.mode === "speed";
@@ -3355,6 +3378,9 @@ window.BK_openMainLevel = (levelNumber) => {
           const current = this.collectedColors?.[levelConfig.only_color] ?? 0;
           dom.targetScoreDisplay.textContent =
           `${current}/${levelConfig.need}`;
+      } else if (levelConfig?.mode === "removeRows") {
+          dom.targetScoreDisplay.textContent =
+          `0/${this.removeRowsTarget}`;
       } else if (levelConfig?.mode === "sword") {
           dom.targetScoreDisplay.textContent = "GOLDBALL";
       } else {
@@ -3370,6 +3396,7 @@ window.BK_openMainLevel = (levelNumber) => {
       ThemeManager.applyStageAssets(getActiveThemeStage(levelNumber));
 
       this.createBoard(levelNumber);
+      this.snapshotRemoveRowsPositions();
       this.createShooter();
 
       Navigation.show("play");
@@ -3404,6 +3431,14 @@ window.BK_openMainLevel = (levelNumber) => {
 
     const rows = levelConfig?.rows ?? 5;
       for (let row = 0; row < rows; row++) {
+    const objectiveRowId = this.removeRowsMode
+        ? this.removeRowsNextId++
+        : null;
+
+    if (objectiveRowId !== null) {
+        this.removeRowsActiveIds.add(objectiveRowId);
+    }
+
     const offset =
         row % 2
             ? this.columnWidth / 2
@@ -3431,6 +3466,7 @@ window.BK_openMainLevel = (levelNumber) => {
           y,
           color: color,
           image: color.image,
+          objectiveRowId,
 
           isChained: levelConfig?.chainedBalls?.some(
               (position) =>
@@ -3807,16 +3843,243 @@ window.BK_openMainLevel = (levelNumber) => {
       }
     },
 
-    addNewTopRow() {
+    snapshotRemoveRowsPositions() {
+      if (!this.removeRowsMode) return;
+
+      if (!(this.removeRowsLastY instanceof Map)) {
+        this.removeRowsLastY = new Map();
+      }
+
+      const sums = new Map();
+      const counts = new Map();
+
+      this.bubbles.forEach((bubble) => {
+        const rowId = bubble.objectiveRowId;
+        if (!Number.isInteger(rowId)) return;
+
+        sums.set(rowId, (sums.get(rowId) || 0) + bubble.y);
+        counts.set(rowId, (counts.get(rowId) || 0) + 1);
+      });
+
+      sums.forEach((sum, rowId) => {
+        const count = counts.get(rowId) || 1;
+        this.removeRowsLastY.set(rowId, sum / count);
+      });
+    },
+
+    addRemoveRowsSuccessEffect(rowY, totalCleared, delay = 0) {
+      if (!this.removeRowsMode) return;
+
+      if (!Array.isArray(this.removeRowsEffects)) {
+        this.removeRowsEffects = [];
+      }
+
+      this.removeRowsEffects.push({
+        rowY: Number.isFinite(rowY) ? rowY : this.height * 0.32,
+        totalCleared,
+        startedAt: performance.now() + Math.max(0, delay),
+        duration: 1350
+      });
+    },
+
+    drawRemoveRowsEffects() {
+      if (!this.ctx || !Array.isArray(this.removeRowsEffects) || this.removeRowsEffects.length === 0) {
+        return;
+      }
+
+      const now = performance.now();
+      const ctx = this.ctx;
+
+      this.removeRowsEffects = this.removeRowsEffects.filter((effect) => {
+        if (now < effect.startedAt) return true;
+
+        const elapsed = now - effect.startedAt;
+        const progress = elapsed / effect.duration;
+
+        if (progress >= 1) return false;
+
+        const flashProgress = Math.min(1, elapsed / 520);
+        const flashAlpha = flashProgress < .52
+          ? flashProgress / .52
+          : Math.max(0, 1 - (flashProgress - .52) / .48);
+
+        const y = Math.max(
+          this.radius + 4,
+          Math.min(this.height - 125, effect.rowY)
+        );
+
+        ctx.save();
+        ctx.globalCompositeOperation = "lighter";
+
+        // Horizontaler Blitz über praktisch die komplette Spielfeldbreite.
+        if (flashAlpha > 0) {
+          ctx.shadowColor = "#fff7a8";
+          ctx.shadowBlur = 22;
+          ctx.strokeStyle = `rgba(255,255,255,${.92 * flashAlpha})`;
+          ctx.lineWidth = 5;
+
+          ctx.beginPath();
+          ctx.moveTo(8, y);
+
+          const segments = 18;
+          for (let i = 1; i <= segments; i++) {
+            const x = 8 + (this.width - 16) * (i / segments);
+            const jitter =
+              Math.sin(i * 4.73 + effect.startedAt * .009) *
+              (i % 2 === 0 ? 6 : 10) *
+              flashAlpha;
+            ctx.lineTo(x, y + jitter);
+          }
+          ctx.stroke();
+
+          ctx.shadowBlur = 10;
+          ctx.strokeStyle = `rgba(255,211,77,${.95 * flashAlpha})`;
+          ctx.lineWidth = 2;
+          ctx.stroke();
+        }
+
+        // +1, +2, +3 ... schwebt vom geschafften Reihenbereich nach oben.
+        const floatProgress = Math.min(1, elapsed / effect.duration);
+        const floatY = y - 18 - floatProgress * 82;
+        const textAlpha =
+          floatProgress < .72
+            ? 1
+            : Math.max(0, 1 - (floatProgress - .72) / .28);
+        const scale =
+          floatProgress < .18
+            ? .72 + (floatProgress / .18) * .42
+            : 1.14 - Math.min(.14, (floatProgress - .18) * .16);
+
+        ctx.globalCompositeOperation = "source-over";
+        ctx.translate(this.width / 2, floatY);
+        ctx.scale(scale, scale);
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.font = "1000 36px Arial";
+        ctx.lineWidth = 7;
+        ctx.strokeStyle = `rgba(92,0,0,${textAlpha})`;
+        ctx.shadowColor = "#ffd34d";
+        ctx.shadowBlur = 18;
+        ctx.strokeText(`+${effect.totalCleared}`, 0, 0);
+
+        ctx.fillStyle = `rgba(255,218,74,${textAlpha})`;
+        ctx.fillText(`+${effect.totalCleared}`, 0, 0);
+
+        ctx.font = "900 12px Arial";
+        ctx.lineWidth = 4;
+        ctx.strokeStyle = `rgba(80,0,0,${textAlpha})`;
+        ctx.strokeText("REIHE GESCHAFFT", 0, 29);
+        ctx.fillStyle = `rgba(255,255,255,${textAlpha})`;
+        ctx.fillText("REIHE GESCHAFFT", 0, 29);
+
+        ctx.restore();
+        return true;
+      });
+    },
+
+    updateRemoveRowsProgress() {
+      const levelConfig = getActiveLevelConfig(state.selectedLevel);
+
+      if (levelConfig?.mode !== "removeRows" || !this.removeRowsMode) {
+        return false;
+      }
+
+      const presentRowIds = new Set(
+        this.bubbles
+          .map((bubble) => bubble.objectiveRowId)
+          .filter((rowId) => Number.isInteger(rowId))
+      );
+
+      const clearedNow = [];
+      this.removeRowsActiveIds.forEach((rowId) => {
+        if (!presentRowIds.has(rowId)) clearedNow.push(rowId);
+      });
+
+      if (clearedNow.length === 0) {
+        dom.targetScoreDisplay.textContent =
+          `${this.removeRowsCleared}/${this.removeRowsTarget}`;
+        return false;
+      }
+
+      clearedNow.forEach((rowId, index) => {
+        const rowY =
+          this.removeRowsLastY instanceof Map
+            ? this.removeRowsLastY.get(rowId)
+            : null;
+
+        this.removeRowsActiveIds.delete(rowId);
+        this.removeRowsCleared++;
+
+        // Bei der ersten geschafften Reihe +1, danach +2, +3 usw.
+        // Werden mehrere Reihen in einem Spielzug geleert, erscheinen die
+        // Hinweise leicht versetzt nacheinander.
+        this.addRemoveRowsSuccessEffect(
+          rowY,
+          this.removeRowsCleared,
+          index * 180
+        );
+
+        this.removeRowsLastY?.delete(rowId);
+      });
+
+      dom.targetScoreDisplay.textContent =
+        `${Math.min(this.removeRowsCleared, this.removeRowsTarget)}/${this.removeRowsTarget}`;
+
+      if (this.removeRowsCleared >= this.removeRowsTarget) {
+        this.victoryAnimation = true;
+        return true;
+      }
+
+      clearedNow.forEach(() => {
+        this.addNewTopRow({ forceObjective: true });
+      });
+
+      return true;
+    },
+
+    getObjectiveRowIdForY(y) {
+      if (!this.removeRowsMode || !Number.isFinite(y)) return null;
+
+      let best = null;
+      let bestDistance = Infinity;
+
+      this.bubbles.forEach((bubble) => {
+        if (!Number.isInteger(bubble.objectiveRowId)) return;
+        const distance = Math.abs(bubble.y - y);
+        if (distance < bestDistance && distance <= this.rowHeight * 0.6) {
+          best = bubble.objectiveRowId;
+          bestDistance = distance;
+        }
+      });
+
+      return best;
+    },
+
+    flushPendingRemoveRows() {
+      if (!this.removeRowsMode || this.frostActive || this.victoryAnimation || this.levelFinished) return;
+
+      while (this.removeRowsPendingReplacements > 0) {
+        this.removeRowsPendingReplacements--;
+        this.addNewTopRow({ forceObjective: true });
+      }
+    },
+
+    addNewTopRow(options = {}) {
      
     const levelConfig = getActiveLevelConfig(state.selectedLevel);
+    const forceObjective = options?.forceObjective === true;
 
     this.updateFrostState(performance.now());
-    if (this.frostActive) return;
 
-    // Funktion für dieses Level ausgeschaltet
-    if (levelConfig?.addRowAfterShot !== "y") {
-        return;
+    if (this.frostActive) {
+        if (forceObjective && this.removeRowsMode) {
+            this.removeRowsPendingReplacements++;
+        }
+        return false;
+    }
+
+    if (!forceObjective && levelConfig?.addRowAfterShot !== "y") {
+        return false;
     }
 
     // Vorhandene Bälle eine Reihe nach unten verschieben
@@ -3858,6 +4121,14 @@ window.BK_openMainLevel = (levelNumber) => {
         ? 13
         : 12;
 
+    const objectiveRowId = this.removeRowsMode
+        ? this.removeRowsNextId++
+        : null;
+
+    if (objectiveRowId !== null) {
+        this.removeRowsActiveIds.add(objectiveRowId);
+    }
+
     for (let col = 0; col < columns; col++) {
         const x =
         this.gridBaseX +
@@ -3875,12 +4146,15 @@ window.BK_openMainLevel = (levelNumber) => {
         y: this.radius,
         color,
         image: color.image,
+        objectiveRowId,
 
         isNewRow: true,
         rowFlashStart: performance.now(),
         rowFlashDuration: 450
     });
         }
+
+    return true;
     }, 
 
     randomColor() {
@@ -4397,6 +4671,12 @@ createShooter() {
       const currentTime = performance.now();
       this.updateFrostState(currentTime);
       this.updateSpeedGame(currentTime);
+
+      // Letzte sichtbare Y-Position jeder logischen Reihe merken.
+      // Dadurch kann der Erfolgsblitz exakt dort erscheinen, wo die Reihe
+      // unmittelbar vor ihrem Verschwinden lag.
+      this.snapshotRemoveRowsPositions();
+
       if (this.levelFinished || !this.running) return;
       let speedMultiplier = 1;
 
@@ -4637,7 +4917,9 @@ createShooter() {
       ) / this.columnWidth
       );
 
-     const placed = {
+     const placedY = this.radius + row * this.rowHeight;
+
+      const placed = {
           x: Math.max(
               this.radius,
               Math.min(
@@ -4647,9 +4929,10 @@ createShooter() {
                       offset
               )
           ),
-          y: this.radius + row * this.rowHeight,
+          y: placedY,
           color: this.shooter.color,
-          isRainbow: this.shooter.isRainbow === true
+          isRainbow: this.shooter.isRainbow === true,
+          objectiveRowId: this.getObjectiveRowIdForY(placedY)
       };
 
       this.bubbles.push(placed);
@@ -4738,7 +5021,7 @@ createShooter() {
           return;
       }
 
-      if (!levelConfig || !["colors", "speed", "sword"].includes(levelConfig.mode)) {
+      if (!levelConfig || !["colors", "speed", "sword", "removeRows"].includes(levelConfig.mode)) {
 
           if (this.score >= this.targetScore) {
               this.victoryAnimation = true;
@@ -4783,6 +5066,12 @@ checkObjectiveWin() {
       if (this.score >= this.targetScore && !this.speedCountdownActive) {
           this.victoryAnimation = true;
       }
+      return;
+  }
+
+  // Spezialmodus: vollständige Reihen entfernen
+  if (levelConfig?.mode === "removeRows") {
+      this.updateRemoveRowsProgress();
       return;
   }
 
@@ -5669,6 +5958,7 @@ drawAimGuide() {
 });
       this.drawFrostOverlay();
       this.drawFallingGoldBall();
+      this.drawRemoveRowsEffects();
       this.drawParticles();
       this.drawChainBreaks();
       this.drawThunders();

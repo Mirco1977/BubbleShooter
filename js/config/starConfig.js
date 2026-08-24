@@ -1681,12 +1681,15 @@ const STAR_CONFIG = {
 },
 
 100: {
-    // Stage 10 – automatisch abgestimmtes Level
-    ballTypes: 4,
+    // TESTVORLAGE – neuer Modus: vollständige Reihen entfernen
+    ballTypes: 5,
     addRowAfterShot: "y",
-    rows: 5,
-    targetScore: 4900,
-    mode: "shots",
+    rows: 4,
+
+    mode: "removeRows",
+    targetRows: 6,
+
+    // Optional: Schusslimit und Sternwertung können wie gewohnt genutzt werden.
     maxShots: 22,
     shots: {
         threeStars: 14,
@@ -1711,17 +1714,20 @@ const STAR_CONFIG = {
 },
 
 102: {
-    // Stage 11 – automatisch abgestimmtes Level
+    // TESTVORLAGE – neuer Modus: vollständige Reihen entfernen
     ballTypes: 4,
-    addRowAfterShot: "n",
+    addRowAfterShot: "y",
     rows: 4,
-    targetScore: 4300,
-    mode: "shots",
-    maxShots: 20,
+
+    mode: "removeRows",
+    targetRows: 2,
+
+    // Optional: Schusslimit und Sternwertung können wie gewohnt genutzt werden.
+    maxShots: 22,
     shots: {
-        threeStars: 12,
-        twoStars: 16,
-        oneStar: 20
+        threeStars: 14,
+        twoStars: 18,
+        oneStar: 22
     }
 },
 
