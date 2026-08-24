@@ -1999,24 +1999,6 @@ function startVictoryImpact(stars) {
       this.countdownTimerId = 0;
     },
 
-    updateCooldownDisplay() {
-      const available = this.canSpinToday();
-      const remainingMs = this.getRemainingCooldownMs();
-
-      dom.wheelStatus.textContent = available
-        ? "Dein kostenloser Dreh ist bereit."
-        : `Nächster Gratis-Dreh in ${this.formatCooldown(remainingMs)}.`;
-
-      dom.wheelSpinButton.disabled = !available;
-      dom.wheelSpinButton.textContent = available
-        ? "JETZT DREHEN"
-        : "24H TIMER LÄUFT";
-
-      if (available) {
-        this.stopCountdownTicker();
-      }
-    },
-
     scheduleCountdownTicker() {
       this.stopCountdownTicker();
 
@@ -2026,14 +2008,7 @@ function startVictoryImpact(stars) {
         this.countdownTimerId = 0;
 
         if (dom.screens.wheel && !dom.screens.wheel.classList.contains("hidden")) {
-          // Nur Text/Button aktualisieren.
-          // Das Glücksrad selbst wird NICHT neu gerendert, damit Item-PNGs
-          // nicht jede Sekunde neu geladen/aufgeblitzt werden.
-          this.updateCooldownDisplay();
-
-          if (!this.canSpinToday()) {
-            this.scheduleCountdownTicker();
-          }
+          this.render();
         }
       }, 1000);
     },
@@ -2154,9 +2129,17 @@ function startVictoryImpact(stars) {
         return;
       }
 
-      this.updateCooldownDisplay();
+      const remainingMs = this.getRemainingCooldownMs();
+
+      dom.wheelStatus.textContent = available
+        ? "Dein kostenloser Dreh ist bereit."
+        : `Nächster Gratis-Dreh in ${this.formatCooldown(remainingMs)}.`;
+
+      dom.wheelSpinButton.disabled = !available;
+      dom.wheelSpinButton.textContent = available ? "JETZT DREHEN" : "24H TIMER LÄUFT";
 
       if (available) {
+        this.stopCountdownTicker();
         dom.wheelReward.classList.add("hidden");
       } else {
         this.scheduleCountdownTicker();
@@ -2407,10 +2390,10 @@ function startVictoryImpact(stars) {
 
         this.grantReward(segment);
 
-        // GRATIS-DREH VERBRAUCHEN:
-        // Der Zeitpunkt wird direkt nach der Gewinnermittlung dauerhaft
-        // im Spielstand gespeichert. Ab jetzt läuft exakt 24 Stunden lang
-        // der Cooldown – auch nach Reload oder erneutem Öffnen des Spiels.
+        /*
+        =========================================================
+        NORMALBETRIEB – TÄGLICHEN DREH ALS VERBRAUCHT SPEICHERN
+
         this.ensureState();
 
         state.progress.dailyWheel.lastSpinDate =
@@ -2421,6 +2404,11 @@ function startVictoryImpact(stars) {
         SaveManager.saveProgress(
             state.progress
         );
+
+        =========================================================
+        */
+
+        /* DEMO-MODUS: Kein Datum speichern. */
 
         this.spinning = false;
         this.stopping = false;
@@ -2521,11 +2509,6 @@ function startVictoryImpact(stars) {
 
   const LevelPreview = {
     open(levelNumber) {
-      if (!canReplayMainLevel(levelNumber)) {
-        showToast("Dieses Level ist mit 3 Sternen abgeschlossen und nicht mehr erneut spielbar.");
-        return;
-      }
-
       state.gameMode = "standard";
       state.activeEpisodeId = null;
       state.selectedLevel = levelNumber;
@@ -2592,8 +2575,9 @@ function startVictoryImpact(stars) {
 window.BK_getMainProgress = () => state.progress;
 
 function canReplayMainLevel(levelNumber) {
-  const result = state.progress?.results?.[Number(levelNumber)];
-  return !result || Number(result.stars) < 3;
+  // Alle bereits freigeschalteten Level dürfen erneut gespielt werden,
+  // unabhängig davon, ob zuvor 3 Sterne erreicht wurden.
+  return true;
 }
 
 window.BK_canReplayMainLevel = canReplayMainLevel;
@@ -2603,11 +2587,6 @@ window.BK_openMainLevel = (levelNumber) => {
   const level = Number(levelNumber);
 
   if (!Number.isInteger(level) || level < 1) return;
-
-  if (!canReplayMainLevel(level)) {
-    showToast("Dieses Level ist mit 3 Sternen abgeschlossen und nicht mehr erneut spielbar.");
-    return;
-  }
 
   window.BK_levelOrigin = "worldMap2";
   state.gameMode = "standard";
@@ -5938,14 +5917,17 @@ dom.shotsMapButton.onclick = () => {
       }
       startVictoryImpact(stars);
 
-      if (!oldResult || stars > oldResult.stars || this.score > oldResult.score) {
-        state.progress.results[level] = {
-          stars,
-          score: this.score,
-          shots: this.shots,
-          completedAt: new Date().toISOString()
-        };
-      }
+      // Das LETZTE abgeschlossene Ergebnis ist verbindlich.
+      // Beispiel: vorher 3 Sterne / 4.550 Punkte, danach 2 Sterne / 3.800 Punkte
+      // -> gespeichert werden 2 Sterne / 3.800 Punkte.
+      // Dadurch werden auch alle Auswertungen, die state.progress.results nutzen,
+      // unmittelbar nach unten korrigiert.
+      state.progress.results[level] = {
+        stars,
+        score: this.score,
+        shots: this.shots,
+        completedAt: new Date().toISOString()
+      };
 
       if (
         level === state.progress.unlockedLevel &&
@@ -5968,7 +5950,10 @@ dom.shotsMapButton.onclick = () => {
           stars,
           score: this.score,
           shots: this.shots,
-          unlockedLevel: state.progress.unlockedLevel
+          unlockedLevel: state.progress.unlockedLevel,
+          previousStars: Number(oldResult?.stars) || 0,
+          previousScore: Number(oldResult?.score) || 0,
+          resultMode: "replace"
         });
       } catch (error) {
         console.warn("API-Speicherung fehlgeschlagen:", error);
