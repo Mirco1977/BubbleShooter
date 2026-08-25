@@ -87,6 +87,14 @@
   overflow-y: auto;
   overscroll-behavior: contain;
   scroll-behavior: smooth;
+
+  /* MOBILE-SCROLL-FIX:
+     Vertikales Finger-Scrolling immer explizit erlauben. Das verhindert,
+     dass ein zuvor gesetztes touch-action:none (z. B. aus der
+     Fortschrittsanimation) auf Android/Samsung Browser das weitere
+     Scrollen der Endloskarte blockiert. */
+  touch-action: pan-y;
+  -ms-touch-action: pan-y;
   -webkit-overflow-scrolling: touch;
   scrollbar-width: none;
 }

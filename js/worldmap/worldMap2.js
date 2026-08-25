@@ -134,9 +134,19 @@ getMapScale() {
 
     this.screen.classList.remove("hidden");
 
+    // MOBILE-SCROLL-FIX:
+    // Falls eine Fortschrittsanimation durch Navigation/Browserzustand
+    // unterbrochen wurde, kann auf Touch-Geraeten ein altes
+    // touchAction: none zurueckbleiben. Mausrad-Scrolling am Laptop
+    // funktioniert dann weiterhin, Touch-Scrolling auf dem Handy aber nicht.
+    // Beim normalen Oeffnen der Karte stellen wir deshalb garantiert den
+    // scrollbaren Grundzustand wieder her.
+    this.ensureViewportScrollable();
+
     this.render();
 
     requestAnimationFrame(() => {
+      this.ensureViewportScrollable();
       this.scrollToCurrent(false);
     });
   },
@@ -147,6 +157,28 @@ getMapScale() {
 
   document.querySelector(".app-header")?.classList.remove("world2-header-hidden");
 },
+
+  ensureViewportScrollable() {
+    if (!this.viewport || this.progressAnimating) return;
+
+    // Eventuell liegengebliebenen Animations-Lock entfernen.
+    this.animationLock?.remove();
+    this.animationLock = null;
+    this.screen?.classList.remove("world2-progress-moving");
+
+    // Wichtig fuer Samsung Browser / Android Chromium:
+    // touch-action:none blockiert Finger-Scrolling, waehrend das Mausrad am
+    // Desktop trotzdem funktionieren kann. Darum hier explizit pan-y setzen.
+    this.viewport.style.overflowY = "auto";
+    this.viewport.style.touchAction = "pan-y";
+    this.viewport.style.scrollBehavior = "smooth";
+
+    // Ein alter Body-Lock darf nach einer abgeschlossenen/unterbrochenen
+    // Kartenanimation nicht bestehen bleiben.
+    if (document.body.style.overflow === "hidden") {
+      document.body.style.overflow = "";
+    }
+  },
 
   render() {
     const progress = getProgress();
