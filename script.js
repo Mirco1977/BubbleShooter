@@ -3944,16 +3944,43 @@ window.BK_openMainLevel = (levelNumber) => {
         this.ctx.strokeStyle = "rgba(80,20,0,.92)";
         this.ctx.shadowColor = "#ffd34d";
         this.ctx.shadowBlur = 18;
-        this.ctx.strokeText(label, centerX, textY);
-        this.ctx.fillStyle = "#ffd34d";
-        this.ctx.fillText(label, centerX, textY);
 
+        // Nur in den Sammelobjekt-Spezialleveln (Schwerter/Kronen):
+        // lange Namen sauber auf mehrere Zeilen umbrechen, statt sie seitlich abzuschneiden.
+        const maxLabelWidth = Math.max(180, this.width - 42);
+        const labelWords = label.split(/\s+/).filter(Boolean);
+        const labelLines = [];
+        let currentLine = "";
+
+        labelWords.forEach((word) => {
+          const testLine = currentLine ? `${currentLine} ${word}` : word;
+          if (currentLine && this.ctx.measureText(testLine).width > maxLabelWidth) {
+            labelLines.push(currentLine);
+            currentLine = word;
+          } else {
+            currentLine = testLine;
+          }
+        });
+        if (currentLine) labelLines.push(currentLine);
+        if (!labelLines.length) labelLines.push(label);
+
+        const labelLineHeight = 27;
+        const firstLabelY = textY - ((labelLines.length - 1) * labelLineHeight) / 2;
+
+        labelLines.forEach((line, index) => {
+          const lineY = firstLabelY + index * labelLineHeight;
+          this.ctx.strokeText(line, centerX, lineY);
+          this.ctx.fillStyle = "#ffd34d";
+          this.ctx.fillText(line, centerX, lineY);
+        });
+
+        const subtitleY = firstLabelY + (labelLines.length - 1) * labelLineHeight + 29;
         this.ctx.shadowBlur = 8;
         this.ctx.font = "700 14px Arial";
         this.ctx.lineWidth = 4;
-        this.ctx.strokeText("DEM SAMMELALBUM HINZUGEFÜGT", centerX, textY + 29);
+        this.ctx.strokeText("DEM SAMMELALBUM HINZUGEFÜGT", centerX, subtitleY);
         this.ctx.fillStyle = "#ffffff";
-        this.ctx.fillText("DEM SAMMELALBUM HINZUGEFÜGT", centerX, textY + 29);
+        this.ctx.fillText("DEM SAMMELALBUM HINZUGEFÜGT", centerX, subtitleY);
         this.ctx.restore();
       }
     },
