@@ -515,8 +515,8 @@ function getHudTarget(stepIndex) {
   if (stepIndex === 1) {
     return {
       element: document.getElementById("shotsDisplay"),
-      title: "MITTE: DEINE SCHÜSSE",
-      text: "Hier wird jeder abgegebene Schuss gezählt. So behältst du deinen Spielverlauf im Blick."
+      title: "MITTE: ÜBRIGE SCHÜSSE",
+      text: "Hier siehst du, wie viele Schüsse dir noch bleiben. Die Anzeige startet mit der maximalen Anzahl und zählt bei jedem Schuss herunter."
     };
   }
 

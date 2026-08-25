@@ -1015,9 +1015,26 @@ marker.style.bottom =
       return `<i class="world2-stage-particle" style="--a:${angle}deg;--d:${distance}px;--delay:${(index % 5) * 45}ms"></i>`;
     }).join("");
 
+    // Nach "Stage geschafft" wird wieder die Vorschau der NEUEN Stage
+    // eingeblendet. getStage() arbeitet zyklisch mit den vorhandenen Themes,
+    // dadurch funktioniert die Vorschau auch bei Stage 13/14/15 usw.
+    const nextStageLevel = prepared.toLevel;
+    const nextStageNo = getStageIndex(nextStageLevel) + 1;
+    const nextStage = getStage(nextStageLevel);
+
     celebration.innerHTML = `
       <div class="world2-stage-finish-burst"></div>
       <div class="world2-stage-particles">${particles}</div>
+
+      <div class="world2-stage-unlock-card">
+        <span class="world2-stage-unlock-kicker">— NEUE STAGE FREIGESCHALTET —</span>
+        <div class="world2-stage-unlock-logo-wrap">
+          ${nextStage.logo ? `<img class="world2-stage-unlock-logo" src="${nextStage.logo}" alt="${nextStage.name || `Stage ${nextStageNo}`}" draggable="false">` : ""}
+        </div>
+        <strong class="world2-stage-unlock-name">${nextStage.name || `Stage ${nextStageNo}`}</strong>
+        <span class="world2-stage-unlock-number">STAGE ${nextStageNo}</span>
+      </div>
+
       <div class="world2-stage-finish-card">
         <div class="world2-stage-finish-crown" aria-hidden="true">
           <span></span><span></span><span></span>
@@ -1036,8 +1053,40 @@ marker.style.bottom =
       celebration.classList.add("show");
     });
 
-    // Celebration bewusst kurz stehen lassen, damit sie als Stage-Abschluss
-    // wahrgenommen wird. Danach geht die Kartenfahrt automatisch weiter.
+    // Phase 2: Erst nach der "Stage geschafft"-Animation erscheint darüber
+    // wieder die Vorschau der soeben freigeschalteten nächsten Stage.
+    this.stageUnlockTimer = window.setTimeout(() => {
+      if (this.stageFinishCelebration === celebration) {
+        const finishCard = celebration.querySelector(".world2-stage-finish-card");
+        const unlockCard = celebration.querySelector(".world2-stage-unlock-card");
+
+        if (finishCard && unlockCard) {
+          // Beide Karten als gemeinsames Paar im sichtbaren Kartenbereich zentrieren.
+          const shellCenterY = shell.clientHeight / 2;
+          const anchorY = Number.parseFloat(celebration.style.top) || celebration.offsetTop || 0;
+
+          const finishTop = finishCard.offsetTop;
+          const finishHeight = finishCard.offsetHeight;
+          const unlockTop = unlockCard.offsetTop;
+          const unlockHeight = unlockCard.offsetHeight;
+
+          const finishCenterY = anchorY + finishTop + (finishHeight * 0.33);
+          const unlockCenterY = anchorY + unlockTop - (unlockHeight * 1.40);
+          const pairCenterY = (finishCenterY + unlockCenterY) / 2;
+          const shiftY = shellCenterY - pairCenterY;
+
+          celebration.style.setProperty(
+            "--world2-stage-pair-shift",
+            `${shiftY.toFixed(2)}px`
+          );
+        }
+
+        celebration.classList.add("unlock-show");
+      }
+    }, 1050);
+
+    // Beide Karten kurz gemeinsam stehen lassen, danach fährt der Statuspunkt
+    // wie bisher automatisch zum ersten Level der neuen Stage weiter.
     this.stageFinishTimer = window.setTimeout(() => {
       celebration.classList.add("leave");
 
@@ -1045,10 +1094,15 @@ marker.style.bottom =
         this.removeStageFinishCelebration();
         onDone?.();
       }, 430);
-    }, 2450);
+    }, 3300);
   },
 
   removeStageFinishCelebration() {
+    if (this.stageUnlockTimer) {
+      clearTimeout(this.stageUnlockTimer);
+      this.stageUnlockTimer = null;
+    }
+
     if (this.stageFinishTimer) {
       clearTimeout(this.stageFinishTimer);
       this.stageFinishTimer = null;

@@ -3441,7 +3441,13 @@ window.BK_openMainLevel = (levelNumber) => {
           dom.targetScoreDisplay.textContent =
           this.targetScore.toLocaleString("de-DE");
       }
-      dom.shotsDisplay.textContent = "0";
+      // Anzeige zeigt die noch verfügbaren Schüsse absteigend an.
+      // Speed-Level besitzen bewusst kein Schusslimit und zeigen daher ∞.
+      const maxShotsForDisplay = Number(levelConfig?.maxShots);
+      dom.shotsDisplay.textContent =
+        Number.isFinite(maxShotsForDisplay) && maxShotsForDisplay > 0
+          ? String(maxShotsForDisplay)
+          : "∞";
       dom.colorsDisplay.textContent = String(colorCount);
       dom.winPopup?.classList.add("hidden");
       dom.loseShotsPopup?.classList.add("hidden");
@@ -4719,7 +4725,13 @@ createShooter() {
 
       this.shots++;
 
-      dom.shotsDisplay.textContent = String(this.shots);
+      // Statt verbrauchter Schüsse wird die verbleibende Anzahl angezeigt.
+      const activeConfig = getActiveLevelConfig(state.selectedLevel);
+      const maxShotsForDisplay = Number(activeConfig?.maxShots);
+      dom.shotsDisplay.textContent =
+        Number.isFinite(maxShotsForDisplay) && maxShotsForDisplay > 0
+          ? String(Math.max(0, maxShotsForDisplay - this.shots))
+          : "∞";
 
       /*if (this.aimItemActive) {
         this.aimItemActive = false;
