@@ -161,11 +161,14 @@ getMapScale() {
 
     const scale = this.getMapScale();
 
+const stageCount =
+  Math.ceil(CONFIG.totalLevels / CONFIG.levelsPerStage);
+
 const totalHeight =
   (
-    CONFIG.bottomPadding +
-    CONFIG.topPadding +
-    (CONFIG.totalLevels - 1) * CONFIG.levelSpacing
+    CONFIG.stageLayouts.first.height +
+    Math.max(0, stageCount - 1) * CONFIG.stageLayouts.standard.height +
+    CONFIG.topPadding
   ) * scale;
 
     this.world.style.height = `${totalHeight}px`;
