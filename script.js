@@ -1504,7 +1504,7 @@ function startVictoryImpact(stars) {
     const container = document.getElementById("previewBubbles");
     if (!container) return;
     container.innerHTML = "";
-    const previewTheme = stageNumber === 2 ? "world-cup-balls" : "bk-arena-balls";
+    const previewTheme = "bk-arena-balls";
     const balls = previewTheme === "world-cup-balls"
       ? ["usa", "germany", "brazil", "spain", "australia"]
       : ["red", "blue", "green", "yellow", "purple", "pink", "black"];
@@ -2461,13 +2461,8 @@ function startVictoryImpact(stars) {
 
   const stageNumber = getStageForLevel(levelNumber);
 
-  // Regel:
-  // Stage 2 = World Cup
-  // alles andere = BK Arena
-  const previewTheme =
-    stageNumber === 2
-      ? "world-cup-balls"
-      : "bk-arena-balls";
+  // Alle Stages verwenden die Standard-Bandenkick-Bälle.
+  const previewTheme = "bk-arena-balls";
 
 
   const balls =
@@ -3186,35 +3181,19 @@ window.BK_openMainLevel = (levelNumber) => {
       const stageNumber = getActiveThemeStage(levelNumber);
       this.ballImageCache = this.ballImageCache || {};
 
-      currentBallTheme =
-      stageNumber === 2
-      ? "world-cup-balls"
-      : "bk-arena-balls";
+      currentBallTheme = "bk-arena-balls";
       this.nextColor = null;
 
 
-      if (stageNumber === 2) {
-
-    this.palette = [
-        { id:"usa" },
-        { id:"germany" },
-        { id:"brazil" },
-        { id:"spain" },
-        { id:"australia" }
-    ];
-
-    } else {
-
-    this.palette = [
+      this.palette = [
         { id:"red" },
         { id:"blue" },
         { id:"green" },
         { id:"yellow" },
         { id:"purple" },
-        { id:"pink"},
-        { id:"black"}
-    ];
-  }
+        { id:"pink" },
+        { id:"black" }
+      ];
 
       // Normale Ballgrafiken des aktiven Themes bereits vor dem ersten
       // sichtbaren Spielframe laden. Der Cache bleibt levelübergreifend bestehen.
