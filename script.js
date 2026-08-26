@@ -265,7 +265,6 @@ const THEME_PATH = [
     profileName: $("profileName"),
     loginButton: $("loginButton"),
     continueButton: $("continueButton"),
-    newGameButton: $("newGameButton"),
     openMapButton: $("openMapButton"),
   
     openRankingButton: $("openRankingButton"),
@@ -6786,24 +6785,6 @@ const Shop = {
     if (window.WorldMap2) {
       window.WorldMap2.open();
     }
-  });
-
-  dom.newGameButton.addEventListener("click", () => {
-    const confirmed = confirm(
-      "Soll der aktuelle Fortschritt wirklich gelöscht werden?"
-    );
-
-    if (!confirmed) return;
-
-    const episodeProgressBackup = localStorage.getItem(EpisodeRace.storageKey);
-    localStorage.clear();
-    if (episodeProgressBackup !== null) {
-      localStorage.setItem(EpisodeRace.storageKey, episodeProgressBackup);
-    }
-    state.progress = SaveManager.loadProgress();
-    ThemeManager.apply(state.progress.activeTheme);
-    updateItemBarLocks();
-    showToast("Neuer Spielstand wurde angelegt.");
   });
 
   // Alte Stage-Levelkarte bleibt im Projekt, ist auf der Startseite aber deaktiviert.
