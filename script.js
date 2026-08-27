@@ -4918,14 +4918,14 @@ createShooter() {
       this.snapshotRemoveRowsPositions();
 
       if (this.levelFinished || !this.running) return;
-      let speedMultiplier = 1;
+      let speedMultiplier = 1.25;
 
       switch (state.settings.gameSpeed) {
           case "slow":
-              speedMultiplier = 0.75;
+              speedMultiplier = 1.00;
               break;
           case "fast":
-              speedMultiplier = 1.25;
+              speedMultiplier = 1.50;
               break;
       }
     this.updateParticles(deltaTime);
