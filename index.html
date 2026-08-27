@@ -6,11 +6,19 @@
 
   <title>Bandenkick Bubble Challenge</title>
 
-  <link rel="stylesheet" href="style.css?v=20260826-1">
-  <link rel="stylesheet" href="css/worldMap2.css?v=20260826-1">
+  <link rel="stylesheet" href="style.css?v=20260827-1">
+  <link rel="stylesheet" href="css/worldMap2.css?v=20260827-1">
+  <link rel="stylesheet" href="css/loader.css?v=20260827-1">
 </head>
 
 <body>
+<div id="bkLoader" role="status" aria-live="polite" aria-hidden="false">
+  <div class="bk-loader-card">
+    <div class="bk-loader-spinner" aria-hidden="true"></div>
+    <div id="bkLoaderText" class="bk-loader-text">Spiel wird geladen…</div>
+    <div id="bkLoaderSubtext" class="bk-loader-subtext">Grafiken werden vorbereitet</div>
+  </div>
+</div>
 <div id="app">
   <header class="app-header">
     <div class="brand-block">
@@ -993,9 +1001,10 @@
   <div id="toast" class="toast hidden"></div>
 </div>
 
-<script type="module" src="./script.js?v=20260826-1"></script>
-<script type="module" src="./js/main.js?v=20260826-1"></script>
-<script type="module" src="./js/worldmap/worldMap2.js?v=20260826-1"></script>
+<script src="js/loader.js?v=20260827-1" defer></script>
+<script type="module" src="./script.js?v=20260827-1"></script>
+<script type="module" src="./js/main.js?v=20260827-1"></script>
+<script type="module" src="./js/worldmap/worldMap2.js?v=20260827-1"></script>
 
 </body>
 </html>

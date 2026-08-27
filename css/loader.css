@@ -1,0 +1,70 @@
+/* =========================================================
+   BANDENKICK – ZENTRALER LADE-OVERLAY
+   ========================================================= */
+#bkLoader {
+  position: fixed;
+  inset: 0;
+  z-index: 999999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(10, 12, 16, 0.88);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  opacity: 1;
+  visibility: visible;
+  transition: opacity 180ms ease, visibility 180ms ease;
+  touch-action: none;
+}
+
+#bkLoader.bk-loader-hidden {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.bk-loader-card {
+  min-width: 150px;
+  max-width: 78vw;
+  padding: 16px 20px 15px;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 18px;
+  background: rgba(20, 23, 30, 0.96);
+  box-shadow: 0 14px 38px rgba(0, 0, 0, 0.42);
+  text-align: center;
+}
+
+.bk-loader-spinner {
+  width: 38px;
+  height: 38px;
+  margin: 0 auto 10px;
+  border: 4px solid rgba(255, 255, 255, 0.18);
+  border-top-color: #ffffff;
+  border-radius: 50%;
+  animation: bk-loader-spin 0.78s linear infinite;
+}
+
+.bk-loader-text {
+  color: #ffffff;
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  line-height: 1.25;
+}
+
+.bk-loader-subtext {
+  margin-top: 4px;
+  color: rgba(255, 255, 255, 0.62);
+  font-size: 10px;
+  font-weight: 600;
+}
+
+@keyframes bk-loader-spin {
+  to { transform: rotate(360deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bk-loader-spinner {
+    animation-duration: 1.5s;
+  }
+}

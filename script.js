@@ -1881,19 +1881,11 @@ function startVictoryImpact(stars) {
 
   const Navigation = {
   show(screenName) {
-    Object.entries(dom.screens).forEach(([name, element]) => {
-      element.classList.toggle("hidden", name !== screenName);
-    });
+    const targetScreen = dom.screens[screenName];
 
-    const headerAusblenden =
-      screenName === "level" ||
-      screenName === "play";
-
-    document
-      .querySelector(".app-header")
-      ?.classList.toggle("hidden", headerAusblenden);
-
-
+    // Dynamische Inhalte zuerst noch im unsichtbaren Zielscreen aufbauen.
+    // So kann der zentrale Loader die dort tatsächlich verwendeten Bilder
+    // erkennen und fertig laden, bevor der Nutzer sie sieht.
     if (screenName === "themes") {
       ThemeManager.renderList();
     }
@@ -1918,10 +1910,58 @@ function startVictoryImpact(stars) {
       CollectorAlbum.render();
     }
 
+    let loaderToken = null;
+    let pendingImages = [];
+
+    // Beim eigentlichen Spielfeld übernimmt BubbleGame.start() den Loader,
+    // damit wirklich Bälle + Levelgrafiken gemeinsam abgewartet werden.
+    if (screenName !== "play" && window.BKLoader && targetScreen) {
+      pendingImages = window.BKLoader.getPendingImages(
+        window.BKLoader.collectImages(targetScreen)
+      );
+
+      if (pendingImages.length) {
+        const labels = {
+          level: "Levelvorschau wird geladen…",
+          shop: "Shop wird geladen…",
+          wheel: "Glücksrad wird geladen…",
+          episodes: "Episodenrennen wird geladen…",
+          albums: "Sammelalbum wird geladen…",
+          ranking: "Ranking wird geladen…",
+          settings: "Einstellungen werden geladen…",
+          home: "Startseite wird geladen…"
+        };
+
+        loaderToken = window.BKLoader.show(
+          labels[screenName] || "Inhalt wird geladen…",
+          "Grafiken werden vorbereitet"
+        );
+      }
+    }
+
+    Object.entries(dom.screens).forEach(([name, element]) => {
+      element.classList.toggle("hidden", name !== screenName);
+    });
+
+    const headerAusblenden =
+      screenName === "level" ||
+      screenName === "play";
+
+    document
+      .querySelector(".app-header")
+      ?.classList.toggle("hidden", headerAusblenden);
+
     window.scrollTo({
       top: 0,
       behavior: "smooth"
     });
+
+    if (loaderToken !== null && pendingImages.length) {
+      window.BKLoader
+        .preloadImages(pendingImages)
+        .catch(() => {})
+        .finally(() => window.BKLoader.hide(loaderToken));
+    }
   }
 };
 
@@ -3164,6 +3204,11 @@ window.BK_openMainLevel = (levelNumber) => {
     },
 
     start(levelNumber) {
+      const levelLoaderToken = window.BKLoader?.show(
+        `Level ${levelNumber} wird geladen…`,
+        "Bälle und Grafiken werden vorbereitet"
+      );
+
       Level1Tutorial.stop();
       Level6LoadoutGuide.close();
       state.selectedLevel = levelNumber;
@@ -3227,6 +3272,49 @@ window.BK_openMainLevel = (levelNumber) => {
 
       this.goldBallImage = new Image();
       this.goldBallImage.src = "assets/ui/gold-ball.png";
+
+      // Nicht nur die normalen Bälle, sondern auch alle Grafiken abwarten,
+      // die direkt im ersten Spielframe vorkommen können. Dadurch werden
+      // Items, Ketten, Goldball und Sammelobjekte nicht nachträglich sichtbar.
+      const immediateLevelImages = [
+        this.switchImage,
+        this.bombImage,
+        this.thunderImage,
+        this.rainbowImage,
+        this.colorBombImage,
+        this.aimImage,
+        this.chainLockImage,
+        this.swordImage,
+        this.goldBallImage
+      ];
+
+      const waitForImageObject = (img) => {
+        if (!img?.src || (img.complete && img.naturalWidth > 0)) {
+          return Promise.resolve();
+        }
+
+        return new Promise((resolve) => {
+          let settled = false;
+          const timeout = window.setTimeout(done, 9000);
+
+          function done() {
+            if (settled) return;
+            settled = true;
+            window.clearTimeout(timeout);
+            img.removeEventListener("load", done);
+            img.removeEventListener("error", done);
+            resolve();
+          }
+
+          img.addEventListener("load", done, { once: true });
+          img.addEventListener("error", done, { once: true });
+        });
+      };
+
+      this.levelAssetsReadyPromise = Promise.all([
+        Promise.resolve(this.ballImagesReadyPromise).catch(() => {}),
+        ...immediateLevelImages.map(waitForImageObject)
+      ]);
 
       this.canvas = dom.gameCanvas;
       this.ctx = this.canvas.getContext("2d");
@@ -3455,9 +3543,14 @@ window.BK_openMainLevel = (levelNumber) => {
         this.startLoop();
       };
 
-      Promise.resolve(this.ballImagesReadyPromise)
+      Promise.resolve(this.levelAssetsReadyPromise || this.ballImagesReadyPromise)
         .catch(() => {})
-        .then(beginVisibleLevel);
+        .then(beginVisibleLevel)
+        .finally(() => {
+          if (levelLoaderToken !== undefined && levelLoaderToken !== null) {
+            window.BKLoader?.hide(levelLoaderToken, 320);
+          }
+        });
 
     },
     createBoard(levelNumber) {
