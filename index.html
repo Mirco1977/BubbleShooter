@@ -27,7 +27,7 @@
 
     <div class="profile-block">
       <span id="profileName">Gast</span>
-      <button id="loginButton" class="small-button">Login-Demo</button>
+      <button id="loginButton" class="small-button">Login</button>
     </div>
   </header>
 
@@ -769,16 +769,46 @@
         <button class="back-button" data-back="home">← Start</button>
         <div>
           <span class="eyebrow">BANDENKICK</span>
-          <h2>Ranking-Demo</h2>
+          <h2>Ranking</h2>
         </div>
-        <span>Top 10</span>
+        <span id="rankingPlayerCount">0 Spieler</span>
       </div>
 
-      <div id="rankingList" class="ranking-list"></div>
+      <section class="ranking-card">
+        <div class="ranking-card-head">
+          <div>
+            <span class="eyebrow">BESTENLISTE</span>
+            <h3>Top 10</h3>
+          </div>
+          <span class="ranking-card-badge">Gesamtpunkte</span>
+        </div>
+        <div id="rankingList" class="ranking-list"></div>
+      </section>
+
+      <section class="ranking-card ranking-card-personal">
+        <div class="ranking-card-head">
+          <div>
+            <span class="eyebrow">DEINE POSITION</span>
+            <h3>Mein Ranking</h3>
+          </div>
+          <span class="ranking-card-badge">± 2 Plätze</span>
+        </div>
+        <div id="rankingAroundList" class="ranking-list"></div>
+      </section>
+
+      <section class="ranking-card ranking-card-team">
+        <div class="ranking-card-head">
+          <div>
+            <span class="eyebrow">TEAMWERTUNG</span>
+            <h3>Teamranking</h3>
+          </div>
+          <span class="ranking-card-badge">Top 10 Teams</span>
+        </div>
+        <div id="teamRankingList" class="ranking-list"></div>
+      </section>
 
       <p class="info-note">
-        Aktuell sind dies Demodaten. Später kommen sie über die
-        Bandenkick-API aus eurer Datenbank.
+        Angezeigt werden alle Bandenkick-Spieler, die mindestens ein Level gespielt haben.
       </p>
     </section>
 
@@ -1002,7 +1032,7 @@
 </div>
 
 <script src="js/loader.js?v=20260827-1" defer></script>
-<script type="module" src="./script.js?v=20260827-1"></script>
+<script type="module" src="./script.js?v=20260828-5"></script>
 <script type="module" src="./js/main.js?v=20260827-1"></script>
 <script type="module" src="./js/worldmap/worldMap2.js?v=20260827-1"></script>
 
