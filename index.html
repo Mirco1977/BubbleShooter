@@ -3,8 +3,29 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Bubbleshooter ist der ultimative Ballspaß mit Schußkraft. Sammle Sterne, erspiele Bonus Items, steigere dein Ranking">
+  <meta name="keywords" content="esport, gaming, eafc, clubs, 1vs1, league, tournament, bel">
+  <meta name="author" content="Bandenkick">
+  <meta name="theme-color" content="#b30000">
 
-  <title>Bandenkick Bubble Challenge</title>
+  <meta property="og:title" content="Bubbleshooter • Bandenkick">
+  <meta property="og:description" content="Bubbleshooter ist der ultimative Ballspaß mit Schußkraft. Sammle Sterne, erspiele Bonus Items, steigere dein Ranking">
+
+  <meta property="og:image" content="https://bandenkick.de/images/heading/main-title.jpg">
+  <meta property="og:image:width" content="3556">
+  <meta property="og:image:height" content="2000">
+
+  <meta property="og:url" content="https://bandenkick.de/esport/dashboard">
+  <meta property="og:type" content="website">
+
+  <link rel="icon" type="image/png" sizes="32x32" href="https://bandenkick.de/images/favicon/favicon-32x32.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="https://bandenkick.de/images/favicon/favicon-16x16.png">
+  <link rel="shortcut icon" href="https://bandenkick.de/images/favicon/favicon.ico">
+  <link rel="apple-touch-icon" href="https://bandenkick.de/images/favicon/apple-touch-icon.png">
+  <link rel="icon" type="image/png" sizes="192x192" href="https://bandenkick.de/images/favicon/android-chrome-192x192.png">
+  <link rel="icon" type="image/png" sizes="512x512" href="https://bandenkick.de/images/favicon/android-chrome-512x512.png">
+  <link rel="manifest" href="https://bandenkick.de/images/favicon/site.webmanifest">
+  <title>Bubbleshooter • Bandenkick</title>
 
   <link rel="stylesheet" href="style.css?v=20260827-1">
   <link rel="stylesheet" href="css/worldMap2.css?v=20260827-1">
@@ -27,7 +48,7 @@
 
     <div class="profile-block">
       <span id="profileName">Gast</span>
-      <button id="loginButton" class="small-button">Login-Demo</button>
+      <button id="loginButton" class="small-button">Login</button>
     </div>
   </header>
 
@@ -103,7 +124,7 @@
         <button id="openRankingButton" class="menu-card has-image">
           <div class="menu-card-text">
             <strong>Ranking</strong>
-            <span>Demo der späteren API</span>
+            <span>Spieler- und Team-Bestenliste</span>
           </div>
           <img
             class="menu-card-image"
@@ -769,16 +790,46 @@
         <button class="back-button" data-back="home">← Start</button>
         <div>
           <span class="eyebrow">BANDENKICK</span>
-          <h2>Ranking-Demo</h2>
+          <h2>Ranking</h2>
         </div>
-        <span>Top 10</span>
+        <span id="rankingPlayerCount">0 Spieler</span>
       </div>
 
-      <div id="rankingList" class="ranking-list"></div>
+      <section class="ranking-card">
+        <div class="ranking-card-head">
+          <div>
+            <span class="eyebrow">BESTENLISTE</span>
+            <h3>Top 10</h3>
+          </div>
+          <span class="ranking-card-badge">Gesamtpunkte</span>
+        </div>
+        <div id="rankingList" class="ranking-list"></div>
+      </section>
+
+      <section class="ranking-card ranking-card-personal">
+        <div class="ranking-card-head">
+          <div>
+            <span class="eyebrow">DEINE POSITION</span>
+            <h3>Mein Ranking</h3>
+          </div>
+          <span class="ranking-card-badge">± 2 Plätze</span>
+        </div>
+        <div id="rankingAroundList" class="ranking-list"></div>
+      </section>
+
+      <section class="ranking-card ranking-card-team">
+        <div class="ranking-card-head">
+          <div>
+            <span class="eyebrow">TEAMWERTUNG</span>
+            <h3>Teamranking</h3>
+          </div>
+          <span class="ranking-card-badge">Top 10 Teams</span>
+        </div>
+        <div id="teamRankingList" class="ranking-list"></div>
+      </section>
 
       <p class="info-note">
-        Aktuell sind dies Demodaten. Später kommen sie über die
-        Bandenkick-API aus eurer Datenbank.
+        Angezeigt werden alle Bandenkick-Spieler, die mindestens ein Level gespielt haben.
       </p>
     </section>
 
@@ -1002,7 +1053,7 @@
 </div>
 
 <script src="js/loader.js?v=20260827-1" defer></script>
-<script type="module" src="./script.js?v=20260827-1"></script>
+<script type="module" src="./script.js?v=20260828-5"></script>
 <script type="module" src="./js/main.js?v=20260827-1"></script>
 <script type="module" src="./js/worldmap/worldMap2.js?v=20260827-1"></script>
 

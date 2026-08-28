@@ -10,6 +10,7 @@
   import { applyAlbumLevelConfig } from "./js/config/albumLevel.js";
   import { Level1Tutorial } from "./js/tutorial/level1Tutorial.js";
   import { Level6LoadoutGuide } from "./js/tutorial/level6LoadoutGuide.js";
+  import { syncBandenkickUser, saveLevelResult, flushPendingLevelResults, getRanking as getSupabaseRanking, redirectToBandenkickLogin } from "./js/api/bandenkickSupabase.js?v=20260828-5";
 
   (() => {
 
@@ -363,6 +364,9 @@ const THEME_PATH = [
     activeThemeLabel: $("activeThemeLabel"),
     themeList: $("themeList"),
     rankingList: $("rankingList"),
+    rankingAroundList: $("rankingAroundList"),
+    teamRankingList: $("teamRankingList"),
+    rankingPlayerCount: $("rankingPlayerCount"),
     shopOffers: $("shopOffers"),
     wheelStatus: $("wheelStatus"),
     wheelDisc: $("wheelDisc"),
@@ -975,32 +979,16 @@ function startVictoryImpact(stars) {
     },
 
     async login() {
-      if (GAME_CONFIG.backendMode === "mock") {
-        const user = {
-          id: 77,
-          username: "Bandenkick-Spieler"
-        };
-
-        SaveManager.saveUser(user);
-        return user;
-      }
-
-      window.location.href = "https://bandenkick.de/login";
+      // Echte Bandenkick-Anmeldung. Kein Demo-User mehr.
+      redirectToBandenkickLogin();
       return null;
     },
 
     async getRanking() {
-      if (GAME_CONFIG.backendMode === "mock") {
-        return DEMO_RANKING
-          .slice()
-          .sort((a, b) => b.score - a.score)
-          .map((entry, index) => ({
-            ...entry,
-            rank: index + 1
-          }));
-      }
-
-      return this.request(GAME_CONFIG.api.endpoints.ranking);
+      // Das Ranking kommt ab jetzt immer aus Supabase.
+      // Die TOP-10 sind auch ohne Login sichtbar; das persönliche Fenster
+      // wird vom Server ergänzt, wenn eine Bandenkick-User-ID vorhanden ist.
+      return getSupabaseRanking();
     },
 
     async saveProgress(payload) {
@@ -6572,6 +6560,26 @@ dom.shotsMapButton.onclick = () => {
       SaveManager.saveProgress(state.progress);
       updateItemBarLocks();
 
+      // Online-Speicherung: nur Standardlevel. Lokaler Spielstand bleibt der sofortige Fallback.
+      try {
+        const onlineResult = await saveLevelResult({
+          level,
+          stars,
+          score: this.score,
+          completed: true
+        });
+        if (onlineResult?.skipped) {
+          console.info("Online-Speicherung übersprungen: Bandenkick-Nutzer nicht angemeldet.");
+          showToast("Online-Speicherung nicht möglich – nicht angemeldet.");
+        } else if (onlineResult?.success) {
+          console.info(`[Supabase] Level ${level} erfolgreich gespeichert.`, onlineResult);
+          showToast(`Level ${level} online gespeichert.`);
+        }
+      } catch (error) {
+        console.warn("Supabase-Levelspeicherung fehlgeschlagen; Ergebnis bleibt für erneuten Sync vorgemerkt:", error);
+        showToast(`Level ${level} lokal gespeichert – Online-Sync wird erneut versucht.`);
+      }
+
       try {
         await Backend.saveProgress({
           level,
@@ -6734,22 +6742,94 @@ dom.shotsMapButton.onclick = () => {
   };
 
   const Ranking = {
+    row(entry, currentUserId = 0) {
+      const isMe = Number(entry.bandenkick_user_id) === Number(currentUserId);
+      const level = Math.max(1, Number(entry.current_level) || 1);
+      const stars = Math.max(0, Number(entry.stars) || 0);
+      return `
+        <div class="ranking-row ranking-player-row ${isMe ? "me" : ""}">
+          <strong class="ranking-place">#${Number(entry.rank) || "–"}</strong>
+          <span class="ranking-player-name">${escapeHtml(entry.username || "Bandenkick-Spieler")}</span>
+          <span class="ranking-level">Level ${level}</span>
+          <span class="ranking-stars">★ ${stars.toLocaleString("de-DE")}</span>
+          <b class="ranking-score">${Number(entry.score || 0).toLocaleString("de-DE")}</b>
+        </div>
+      `;
+    },
+
+    teamRow(entry) {
+      const crestRaw = String(entry?.crest || "").trim();
+      const crest = crestRaw
+        ? (crestRaw.startsWith("http://") || crestRaw.startsWith("https://")
+          ? crestRaw
+          : `https://bandenkick.de/${crestRaw.replace(/^\/+/, "")}`)
+        : "";
+      const stars = Math.max(0, Number(entry?.stars) || 0);
+      return `
+        <div class="ranking-row ranking-team-row">
+          <strong class="ranking-place">#${Number(entry?.rank) || "–"}</strong>
+          <span class="ranking-team-crest-wrap">${crest ? `<img class="ranking-team-crest" src="${escapeHtml(crest)}" alt="" loading="lazy">` : `<span class="ranking-team-crest-fallback">⚽</span>`}</span>
+          <span class="ranking-team-name">${escapeHtml(entry?.teamname || "Bandenkick-Team")}</span>
+          <span class="ranking-stars">★ ${stars.toLocaleString("de-DE")}</span>
+          <b class="ranking-score">${Number(entry?.score || 0).toLocaleString("de-DE")}</b>
+        </div>
+      `;
+    },
+
     async render() {
-      dom.rankingList.innerHTML = "<p style='padding:16px'>Ranking wird geladen …</p>";
+      dom.rankingList.innerHTML = "<p class='ranking-message'>Ranking wird geladen …</p>";
+      if (dom.rankingAroundList) {
+        dom.rankingAroundList.innerHTML = "<p class='ranking-message'>Dein Rang wird geladen …</p>";
+      }
+      if (dom.teamRankingList) {
+        dom.teamRankingList.innerHTML = "<p class='ranking-message'>Teamranking wird geladen …</p>";
+      }
 
       try {
-        const entries = await Backend.getRanking();
+        const data = await Backend.getRanking();
+        const top10 = Array.isArray(data?.top10) ? data.top10 : [];
+        const aroundMe = Array.isArray(data?.around_me) ? data.around_me : [];
+        const teamTop10 = Array.isArray(data?.team_top10) ? data.team_top10 : [];
+        const currentUserId = Number(data?.me?.bandenkick_user_id) || 0;
 
-        dom.rankingList.innerHTML = entries.map((entry) => `
-          <div class="ranking-row ${entry.me ? "me" : ""}">
-            <strong>#${entry.rank}</strong>
-            <span>${escapeHtml(entry.username)}</span>
-            <b>${Number(entry.score).toLocaleString("de-DE")}</b>
-          </div>
-        `).join("");
-      } catch {
+        dom.rankingList.innerHTML = top10.length
+          ? top10.map((entry) => this.row(entry, currentUserId)).join("")
+          : "<p class='ranking-message'>Noch hat niemand ein Level gespielt.</p>";
+
+        if (dom.rankingAroundList) {
+          if (!data?.me) {
+            dom.rankingAroundList.innerHTML = state.user?.id
+              ? "<p class='ranking-message'>Spiele mindestens ein Level, um hier deinen Rang zu sehen.</p>"
+              : "<p class='ranking-message'>Melde dich an und spiele mindestens ein Level, um hier deinen Rang zu sehen.</p>";
+          } else {
+            dom.rankingAroundList.innerHTML = aroundMe
+              .map((entry) => this.row(entry, currentUserId))
+              .join("");
+          }
+        }
+
+        if (dom.teamRankingList) {
+          dom.teamRankingList.innerHTML = teamTop10.length
+            ? teamTop10.map((entry) => this.teamRow(entry)).join("")
+            : "<p class='ranking-message'>Noch ist kein Team im Ranking vertreten.</p>";
+        }
+
+        if (dom.rankingPlayerCount) {
+          const count = Math.max(0, Number(data?.total_players) || 0);
+          dom.rankingPlayerCount.textContent = `${count} ${count === 1 ? "Spieler" : "Spieler"}`;
+        }
+      } catch (error) {
+        console.warn("Ranking konnte nicht geladen werden:", error);
         dom.rankingList.innerHTML =
-          "<p style='padding:16px'>Ranking konnte nicht geladen werden.</p>";
+          "<p class='ranking-message'>Ranking konnte nicht geladen werden.</p>";
+        if (dom.rankingAroundList) {
+          dom.rankingAroundList.innerHTML =
+            "<p class='ranking-message'>Persönliches Ranking konnte nicht geladen werden.</p>";
+        }
+        if (dom.teamRankingList) {
+          dom.teamRankingList.innerHTML =
+            "<p class='ranking-message'>Teamranking konnte nicht geladen werden.</p>";
+        }
       }
     }
   };
@@ -6853,19 +6933,35 @@ const Shop = {
   }
 
   function updateUserUi() {
-    dom.profileName.textContent =
-      state.user?.username || "Gast";
+    const isLoggedIn = Boolean(state.user?.id);
+    const username = String(state.user?.username || "").trim();
 
-    dom.loginButton.textContent =
-      state.user ? "Angemeldet" : "Login-Demo";
+    if (dom.profileName) {
+      dom.profileName.textContent = isLoggedIn ? "" : "Gast";
+      dom.profileName.style.display = isLoggedIn ? "none" : "";
+    }
 
-    dom.loginButton.disabled = Boolean(state.user);
+    if (dom.loginButton) {
+      dom.loginButton.textContent =
+        isLoggedIn ? (username || "Bandenkick-Spieler") : "Login";
+
+      // Eingeloggt bleibt der Button nur als gut sichtbare Nutzeranzeige stehen.
+      // Ein erneuter Klick soll nicht wieder zum Login weiterleiten.
+      dom.loginButton.disabled = isLoggedIn;
+      dom.loginButton.setAttribute(
+        "aria-label",
+        isLoggedIn
+          ? `Eingeloggt als ${username || "Bandenkick-Spieler"}`
+          : "Bei Bandenkick einloggen"
+      );
+      dom.loginButton.title =
+        isLoggedIn ? `Eingeloggt als ${username || "Bandenkick-Spieler"}` : "Login";
+    }
   }
 
-  dom.loginButton.addEventListener("click", async () => {
-    state.user = await Backend.login();
-    updateUserUi();
-    showToast("Demo-Nutzer wurde angemeldet.");
+  dom.loginButton.addEventListener("click", () => {
+    if (state.user?.id) return;
+    Backend.login();
   });
 
   dom.continueButton.addEventListener("click", () => {
@@ -7263,7 +7359,37 @@ const Shop = {
     location.reload();
 });
 
-  function init() {
+  async function init() {
+    // Bandenkick-Session einmal beim Start laden und in Supabase synchronisieren.
+    // Fehler blockieren den Spielstart nicht.
+    try {
+      const synced = await syncBandenkickUser();
+      const remoteUser = synced?.session?.user;
+      if (remoteUser?.id) {
+        state.user = {
+          id: Number(remoteUser.id),
+          username: remoteUser.username || "Bandenkick-Spieler"
+        };
+      } else {
+        // Kein gültiger Bandenkick-Login: alte Demo-/Cache-User nicht weiterverwenden.
+        state.user = null;
+      }
+      SaveManager.saveUser(state.user);
+      if (state.user?.id) {
+        try {
+          const pending = await flushPendingLevelResults();
+          if (pending?.saved) console.info(`[Supabase] ${pending.saved} ausstehende Level nachsynchronisiert.`);
+        } catch (error) {
+          console.warn("Nachsynchronisierung ausstehender Level fehlgeschlagen:", error);
+        }
+      }
+    } catch (error) {
+      // Bei fehlender Auth-Abfrage niemals einen alten lokalen User als echten Login anzeigen.
+      state.user = null;
+      SaveManager.saveUser(null);
+      console.warn("Bandenkick/Supabase-Synchronisierung beim Start fehlgeschlagen:", error);
+    }
+
     ThemeManager.apply(state.progress.activeTheme);
     ThemeManager.applyStageAssets(state.progress.selectedStage);
     ensureItemInventory();
