@@ -10,7 +10,8 @@
   import { applyAlbumLevelConfig } from "./js/config/albumLevel.js";
   import { Level1Tutorial } from "./js/tutorial/level1Tutorial.js";
   import { Level6LoadoutGuide } from "./js/tutorial/level6LoadoutGuide.js";
-  import { syncBandenkickUser, saveLevelResult, flushPendingLevelResults, getRanking as getSupabaseRanking, redirectToBandenkickLogin } from "./js/api/bandenkickSupabase.js?v=20260828-5";
+  import { syncBandenkickUser, saveLevelResult, flushPendingLevelResults, getRanking as getSupabaseRanking, redirectToBandenkickLogin } from "./js/api/bandenkickSupabase.js?v=20260829-1";
+  import { evaluateLogin, approveCurrentDevice, getPrimaryDevice, readAccountSecurity, maskEmail, createTestEmailCode } from "./js/api/accountSecurity.js?v=20260829-1";
 
   (() => {
 
@@ -387,6 +388,24 @@ const THEME_PATH = [
     aimSetting: $("aimSetting"),
     speedOptions: document.querySelectorAll(".speed-option"),
     resetProgressButton: $("resetProgressButton"),
+    accountUsername: $("accountUsername"),
+    accountEmail: $("accountEmail"),
+    accountDeviceName: $("accountDeviceName"),
+    accountDeviceSystem: $("accountDeviceSystem"),
+    accountDeviceScreen: $("accountDeviceScreen"),
+    accountDeviceStatus: $("accountDeviceStatus"),
+    deviceLoginOverlay: $("deviceLoginOverlay"),
+    deviceLoginText: $("deviceLoginText"),
+    deviceLoginDetails: $("deviceLoginDetails"),
+    deviceLoginChoice: $("deviceLoginChoice"),
+    deviceLoginYes: $("deviceLoginYes"),
+    deviceLoginNo: $("deviceLoginNo"),
+    deviceCodeStep: $("deviceCodeStep"),
+    deviceTestCodeHint: $("deviceTestCodeHint"),
+    deviceEmailCode: $("deviceEmailCode"),
+    deviceCodeError: $("deviceCodeError"),
+    deviceCodeConfirm: $("deviceCodeConfirm"),
+    deviceCodeCancel: $("deviceCodeCancel"),
 
     toast: $("toast")
   };
@@ -7357,13 +7376,81 @@ const Shop = {
     if (!confirmed) return;
 
     const episodeProgressBackup = localStorage.getItem(EpisodeRace.storageKey);
+    // Account- und Geräteverknüpfung gehört nicht zum Spielstand und bleibt erhalten.
+    const accountSecurityBackup = localStorage.getItem("bk_account_security_v1");
+    const deviceIdBackup = localStorage.getItem("bk_device_id_v1");
     localStorage.clear();
     if (episodeProgressBackup !== null) {
       localStorage.setItem(EpisodeRace.storageKey, episodeProgressBackup);
     }
+    if (accountSecurityBackup !== null) {
+      localStorage.setItem("bk_account_security_v1", accountSecurityBackup);
+    }
+    if (deviceIdBackup !== null) {
+      localStorage.setItem("bk_device_id_v1", deviceIdBackup);
+    }
 
     location.reload();
 });
+
+  function refreshAccountDeviceUi() {
+    const account = readAccountSecurity();
+    const device = getPrimaryDevice();
+    if (dom.accountUsername) dom.accountUsername.value = account?.username || state.user?.username || "–";
+    if (dom.accountEmail) dom.accountEmail.value = account?.email ? maskEmail(account.email) : "–";
+    if (dom.accountDeviceName) dom.accountDeviceName.value = device?.device_name || "–";
+    if (dom.accountDeviceSystem) dom.accountDeviceSystem.value = device ? `${device.os || "–"} · ${device.browser || "–"}` : "–";
+    if (dom.accountDeviceScreen) dom.accountDeviceScreen.value = device ? `${device.screen || "–"} · ${device.language || "–"}` : "–";
+    if (dom.accountDeviceStatus) dom.accountDeviceStatus.textContent = account?.bandenkick_user_id ? "aktiv" : "nicht verknüpft";
+  }
+
+  function askForNewDeviceApproval(user, device) {
+    return new Promise((resolve) => {
+      let expectedCode = "";
+      const account = readAccountSecurity();
+      dom.deviceLoginOverlay?.classList.remove("hidden");
+      dom.deviceLoginChoice?.classList.remove("hidden");
+      dom.deviceCodeStep?.classList.add("hidden");
+      dom.deviceCodeError?.classList.add("hidden");
+      if (dom.deviceEmailCode) dom.deviceEmailCode.value = "";
+      if (dom.deviceLoginDetails) {
+        dom.deviceLoginDetails.innerHTML = `${escapeHtml(device.device_name)}<br>${escapeHtml(device.screen)} · ${escapeHtml(device.language)}<br>${escapeHtml(device.timezone)}`;
+      }
+
+      const cleanup = (result) => {
+        dom.deviceLoginOverlay?.classList.add("hidden");
+        dom.deviceLoginYes?.removeEventListener("click", onYes);
+        dom.deviceLoginNo?.removeEventListener("click", onNo);
+        dom.deviceCodeConfirm?.removeEventListener("click", onConfirm);
+        dom.deviceCodeCancel?.removeEventListener("click", onNo);
+        resolve(result);
+      };
+      const onNo = () => cleanup(false);
+      const onYes = () => {
+        expectedCode = createTestEmailCode();
+        dom.deviceLoginChoice?.classList.add("hidden");
+        dom.deviceCodeStep?.classList.remove("hidden");
+        if (dom.deviceTestCodeHint) {
+          dom.deviceTestCodeHint.textContent = `TESTMODUS – E-Mail-API folgt später. Code für ${maskEmail(account?.email || user.email || "")}: ${expectedCode}`;
+          dom.deviceTestCodeHint.classList.remove("hidden");
+        }
+        setTimeout(() => dom.deviceEmailCode?.focus(), 50);
+      };
+      const onConfirm = () => {
+        const entered = String(dom.deviceEmailCode?.value || "").trim();
+        if (entered !== expectedCode) {
+          dom.deviceCodeError?.classList.remove("hidden");
+          return;
+        }
+        approveCurrentDevice(user);
+        cleanup(true);
+      };
+      dom.deviceLoginYes?.addEventListener("click", onYes);
+      dom.deviceLoginNo?.addEventListener("click", onNo);
+      dom.deviceCodeConfirm?.addEventListener("click", onConfirm);
+      dom.deviceCodeCancel?.addEventListener("click", onNo);
+    });
+  }
 
   async function init() {
     // Bandenkick-Session einmal beim Start laden und in Supabase synchronisieren.
@@ -7372,9 +7459,37 @@ const Shop = {
       const synced = await syncBandenkickUser();
       const remoteUser = synced?.session?.user;
       if (remoteUser?.id) {
+        const loginCheck = evaluateLogin(remoteUser);
+        if (loginCheck.status === "new_device") {
+          const approved = await askForNewDeviceApproval(remoteUser, loginCheck.device);
+          if (!approved) {
+            state.user = null;
+            SaveManager.saveUser(null);
+            refreshAccountDeviceUi();
+            ThemeManager.apply(state.progress.activeTheme);
+            ThemeManager.applyStageAssets(state.progress.selectedStage);
+            ensureItemInventory();
+            grantUnlockedItemStarterRewards();
+            CollectorAlbum.syncFromResults();
+            LuckyWheel.ensureState();
+            updateItemBarLocks();
+            applySettingsToForm();
+            updateUserUi();
+            EpisodeRace.renderHomeStatus();
+            Navigation.show("home");
+            return;
+          }
+        } else if (loginCheck.status === "different_account") {
+          alert("Inkorrekter Login. Dieses Gerät ist bereits mit einem anderen Bandenkick-Account verknüpft.");
+          state.user = null;
+          SaveManager.saveUser(null);
+          Navigation.show("home");
+          return;
+        }
         state.user = {
           id: Number(remoteUser.id),
-          username: remoteUser.username || "Bandenkick-Spieler"
+          username: remoteUser.username || "Bandenkick-Spieler",
+          email: remoteUser.email || ""
         };
       } else {
         // Kein gültiger Bandenkick-Login: alte Demo-/Cache-User nicht weiterverwenden.
@@ -7405,6 +7520,7 @@ const Shop = {
     updateItemBarLocks();
     applySettingsToForm();
     updateUserUi();
+    refreshAccountDeviceUi();
     EpisodeRace.renderHomeStatus();
     Navigation.show("home");
   }

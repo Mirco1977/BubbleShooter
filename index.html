@@ -980,6 +980,37 @@
               <div class="speed-option" data-speed="fast">Schnell</div>
         </div>
 
+        <section class="account-device-card" aria-labelledby="accountDeviceTitle">
+          <div class="account-device-head">
+            <div>
+              <span class="eyebrow">ACCOUNT</span>
+              <h3 id="accountDeviceTitle">Verknüpftes Gerät</h3>
+            </div>
+            <span id="accountDeviceStatus" class="account-device-status">aktiv</span>
+          </div>
+
+          <label class="readonly-setting">
+            <span>Bandenkick User</span>
+            <input id="accountUsername" type="text" readonly value="–">
+          </label>
+          <label class="readonly-setting">
+            <span>E-Mail</span>
+            <input id="accountEmail" type="text" readonly value="–">
+          </label>
+          <label class="readonly-setting">
+            <span>Gerät</span>
+            <input id="accountDeviceName" type="text" readonly value="–">
+          </label>
+          <label class="readonly-setting">
+            <span>System</span>
+            <input id="accountDeviceSystem" type="text" readonly value="–">
+          </label>
+          <label class="readonly-setting">
+            <span>Anzeige</span>
+            <input id="accountDeviceScreen" type="text" readonly value="–">
+          </label>
+        </section>
+
         <button id="resetProgressButton" class="danger-button">
           Spielstand zurücksetzen
         </button>
@@ -1003,6 +1034,29 @@
       </div>
     </section>
   </main>
+
+  <div id="deviceLoginOverlay" class="device-login-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="deviceLoginTitle">
+    <div class="device-login-card">
+      <span class="device-login-kicker">SICHERHEIT</span>
+      <h2 id="deviceLoginTitle">Neues Gerät erkannt</h2>
+      <p id="deviceLoginText">Du hast dich mit einem neuen Gerät angemeldet. Daten übernehmen?</p>
+      <div id="deviceLoginDetails" class="device-login-details"></div>
+      <div id="deviceLoginChoice" class="device-login-actions">
+        <button id="deviceLoginYes" class="primary-button" type="button">Ja</button>
+        <button id="deviceLoginNo" class="secondary-button" type="button">Nein</button>
+      </div>
+      <div id="deviceCodeStep" class="device-code-step hidden">
+        <p>Wir haben einen 6-stelligen Code an die bereits hinterlegte E-Mail-Adresse gesendet.</p>
+        <div id="deviceTestCodeHint" class="device-test-code-hint hidden"></div>
+        <input id="deviceEmailCode" class="device-code-input" type="text" inputmode="numeric" maxlength="6" autocomplete="one-time-code" placeholder="000000">
+        <p id="deviceCodeError" class="device-code-error hidden">Der Code ist nicht korrekt.</p>
+        <div class="device-login-actions">
+          <button id="deviceCodeConfirm" class="primary-button" type="button">Bestätigen</button>
+          <button id="deviceCodeCancel" class="secondary-button" type="button">Abbrechen</button>
+        </div>
+      </div>
+    </div>
+  </div>
 
   <div id="itemInfoPopup" class="item-info-popup hidden">
 
@@ -1032,7 +1086,7 @@
 </div>
 
 <script src="js/loader.js?v=20260827-1" defer></script>
-<script type="module" src="./script.js?v=20260828-5"></script>
+<script type="module" src="./script.js?v=20260829-1"></script>
 <script type="module" src="./js/main.js?v=20260827-1"></script>
 <script type="module" src="./js/worldmap/worldMap2.js?v=20260827-1"></script>
 

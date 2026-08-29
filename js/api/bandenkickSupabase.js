@@ -6,6 +6,24 @@ const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_gAyM09EEq5TgdkUcxdYaJw_q1TINDYi
 let userPromise = null;
 let syncedUser = null;
 const PENDING_LEVELS_KEY = "bk_supabase_pending_levels_v1";
+const EXTERNAL_TEST_USER = {
+  "logged-in": true,
+  user: {
+    id: 101,
+    username: "Mirco Djerdak",
+    email: "djerdakmirco@web.de",
+    teams: {
+      clubs: {
+        id: 386,
+        name: "Stuttgarter Kickers E-Sports",
+        short: "SKW",
+        crest: "team/crest/1740231710.png"
+      },
+      oneone: null
+    }
+  }
+};
+const USE_EXTERNAL_TEST_USER = !window.location.hostname.endsWith("bandenkick.de");
 async function readJson(response) {
   const text = await response.text();
   let data = null;
@@ -24,6 +42,11 @@ async function callEdgeFunction(name, body) {
 export async function getBandenkickUser({ force = false } = {}) {
   if (!force && userPromise) return userPromise;
   userPromise = (async () => {
+    if (USE_EXTERNAL_TEST_USER) {
+      // GitHub-Pages-Testbetrieb: bis der Login-Handshake/API-Endpunkt vorliegt,
+      // verwenden wir ausschließlich den vereinbarten Testaccount.
+      return structuredClone(EXTERNAL_TEST_USER);
+    }
     const response = await fetch(BANDENKICK_USER_URL, { method: "GET", credentials: "include", headers: { Accept: "application/json" } });
     const data = await readJson(response);
     if (data?.["logged-in"] !== true || !data?.user?.id) return null;
