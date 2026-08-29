@@ -1420,7 +1420,7 @@ function startVictoryImpact(stars) {
       dom.levelBackButton.textContent = "← Episode";
 
       if (config?.mode === "colors") {
-        const colorNames = { red: "rote", green: "grüne", yellow: "gelbe", purple: "lila", blue: "blaue", pink: "pinke", black: "schwarze" };
+        const colorNames = { red: "rote", green: "grüne", yellow: "gelbe", purple: "lila", blue: "blaue", pink: "pinke", black: "schwarze", cyan: "türkise", orange: "orange" };
         dom.levelGoalText.textContent = `Sammle ${config.need} ${colorNames[config.only_color] || config.only_color} Bälle`;
       } else {
         dom.levelGoalText.textContent = `Erreiche mindestens ${target.toLocaleString("de-DE")} Punkte`;
@@ -1481,7 +1481,7 @@ function startVictoryImpact(stars) {
     const previewTheme = stageNumber === 2 ? "world-cup-balls" : "bk-arena-balls";
     const balls = previewTheme === "world-cup-balls"
       ? ["usa", "germany", "brazil", "spain", "australia"]
-      : ["red", "blue", "green", "yellow", "purple", "pink", "black"];
+      : ["red", "blue", "green", "yellow", "purple", "pink", "black", "cyan", "orange"];
     const amount = Math.min(levelConfig?.ballTypes ?? 3, 5, balls.length);
     balls.slice(0, amount).forEach((ball) => {
       const img = document.createElement("img");
@@ -2466,7 +2466,9 @@ function startVictoryImpact(stars) {
           purple: "lila",
           blue: "blaue",
           pink: "pinke",
-          black: "schwarze"
+          black: "schwarze",
+          cyan: "türkise",
+          orange: "orange"
         };
         dom.levelGoalText.textContent =
         `Sammle ${levelConfig.need} ${colorNames[levelConfig.only_color]} Bälle`;
@@ -3266,7 +3268,9 @@ window.BK_openMainLevel = (levelNumber) => {
         { id:"yellow" },
         { id:"purple" },
         { id:"pink"},
-        { id:"black"}
+        { id:"black"},
+        { id:"cyan"},
+        { id:"orange"}
     ];
   }
       this.switchImage = new Image();
@@ -3340,7 +3344,9 @@ window.BK_openMainLevel = (levelNumber) => {
      */
     const forbiddenColorPairs = [
         ["blue", "purple"],
-        ["red", "pink"]
+        ["red", "pink"],
+        ["black", "purple"],
+        ["red", "orange"]
     ];
 
     this.activeColors = [];
