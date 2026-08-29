@@ -23,7 +23,7 @@ const EXTERNAL_TEST_USER = {
     }
   }
 };
-const USE_EXTERNAL_TEST_USER = !window.location.hostname.endsWith("bandenkick.de");
+const USE_EXTERNAL_TEST_USER = false; // Nur manuell fuer Offline-Tests aktivieren.
 async function readJson(response) {
   const text = await response.text();
   let data = null;
@@ -42,17 +42,32 @@ async function callEdgeFunction(name, body) {
 export async function getBandenkickUser({ force = false } = {}) {
   if (!force && userPromise) return userPromise;
   userPromise = (async () => {
-    if (USE_EXTERNAL_TEST_USER) {
-      // GitHub-Pages-Testbetrieb: bis der Login-Handshake/API-Endpunkt vorliegt,
-      // verwenden wir ausschließlich den vereinbarten Testaccount.
-      return structuredClone(EXTERNAL_TEST_USER);
+    // WICHTIG: Bei jedem Seitenstart/Reload zuerst den echten Bandenkick-Loginstatus pruefen.
+    // Nur wenn "logged-in" wirklich true ist, wird ein Benutzer als eingeloggt behandelt.
+    try {
+      const response = await fetch(BANDENKICK_USER_URL, {
+        method: "GET",
+        credentials: "include",
+        headers: { Accept: "application/json" },
+        cache: "no-store"
+      });
+      const data = await readJson(response);
+      if (data?.["logged-in"] !== true || !data?.user?.id) return null;
+      return data;
+    } catch (error) {
+      if (USE_EXTERNAL_TEST_USER) return structuredClone(EXTERNAL_TEST_USER);
+      throw error;
     }
-    const response = await fetch(BANDENKICK_USER_URL, { method: "GET", credentials: "include", headers: { Accept: "application/json" } });
-    const data = await readJson(response);
-    if (data?.["logged-in"] !== true || !data?.user?.id) return null;
-    return data;
   })().catch((error) => { userPromise = null; throw error; });
   return userPromise;
+}
+
+export async function isUserLoggedIn({ force = true } = {}) {
+  const session = await getBandenkickUser({ force });
+  return {
+    loggedIn: Boolean(session?.["logged-in"] === true && session?.user?.id),
+    user: session?.user || null
+  };
 }
 export async function syncBandenkickUser({ force = false } = {}) {
   if (syncedUser && !force) return syncedUser;

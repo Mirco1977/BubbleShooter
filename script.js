@@ -10,7 +10,7 @@
   import { applyAlbumLevelConfig } from "./js/config/albumLevel.js";
   import { Level1Tutorial } from "./js/tutorial/level1Tutorial.js";
   import { Level6LoadoutGuide } from "./js/tutorial/level6LoadoutGuide.js";
-  import { syncBandenkickUser, saveLevelResult, flushPendingLevelResults, getRanking as getSupabaseRanking, redirectToBandenkickLogin } from "./js/api/bandenkickSupabase.js?v=20260829-1";
+  import { isUserLoggedIn, syncBandenkickUser, saveLevelResult, flushPendingLevelResults, getRanking as getSupabaseRanking, redirectToBandenkickLogin } from "./js/api/bandenkickSupabase.js?v=20260829-2";
   import { evaluateLogin, approveCurrentDevice, getPrimaryDevice, readAccountSecurity, maskEmail, createTestEmailCode } from "./js/api/accountSecurity.js?v=20260829-1";
 
   (() => {
@@ -7453,11 +7453,36 @@ const Shop = {
   }
 
   async function init() {
-    // Bandenkick-Session einmal beim Start laden und in Supabase synchronisieren.
+    // ERSTER STEP bei jedem Oeffnen/Aktualisieren:
+    // echten Bandenkick-Loginstatus abfragen und bei Erfolg den Username sofort anzeigen.
+    let remoteUser = null;
+    try {
+      const loginState = await isUserLoggedIn({ force: true });
+      remoteUser = loginState?.loggedIn ? loginState.user : null;
+
+      if (remoteUser?.id) {
+        state.user = {
+          id: Number(remoteUser.id),
+          username: remoteUser.username || "Bandenkick-Spieler",
+          email: remoteUser.email || ""
+        };
+      } else {
+        state.user = null;
+      }
+      SaveManager.saveUser(state.user);
+      updateUserUi();
+    } catch (error) {
+      state.user = null;
+      SaveManager.saveUser(null);
+      updateUserUi();
+      console.warn("Bandenkick-Loginstatus konnte beim Start nicht abgefragt werden:", error);
+    }
+
+    // Erst danach Supabase synchronisieren und die Geraetepruefung ausfuehren.
     // Fehler blockieren den Spielstart nicht.
     try {
-      const synced = await syncBandenkickUser();
-      const remoteUser = synced?.session?.user;
+      const synced = remoteUser?.id ? await syncBandenkickUser({ force: false }) : null;
+      remoteUser = synced?.session?.user || remoteUser;
       if (remoteUser?.id) {
         const loginCheck = evaluateLogin(remoteUser);
         if (loginCheck.status === "new_device") {
