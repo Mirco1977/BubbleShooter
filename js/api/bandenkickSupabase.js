@@ -2,7 +2,7 @@ const BANDENKICK_USER_URL = window.location.hostname.endsWith("bandenkick.de")
   ? "/api/v1/user/logged-in"
   : "https://bandenkick.de/api/v1/user/logged-in";
 const SUPABASE_FUNCTIONS_URL = "https://mvlxkwsdqxinwfkxxbgp.supabase.co/functions/v1";
-const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_gAyM09EEq5TgdkUcxdYaJw_q1TINDYi";
+const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_gAyMO9EEq5TgdkUcxdYaJw_q1TlNDYi";
 let userPromise = null;
 let syncedUser = null;
 const PENDING_LEVELS_KEY = "bk_supabase_pending_levels_v1";
