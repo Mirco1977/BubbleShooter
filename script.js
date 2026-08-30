@@ -6560,6 +6560,14 @@ dom.shotsMapButton.onclick = () => {
       /* =====================================================
          STANDARDLEVEL – bisheriges Verhalten
          ===================================================== */
+      // Direkt nach einem erfolgreichen Standardlevel sichtbar machen,
+      // dass der Spielstand im Hintergrund gesichert wird. Erst wenn dieser
+      // Schritt abgeschlossen ist, erscheint die normale Ergebnis-Karte.
+      const levelSaveLoaderToken = window.BKLoader?.show?.(
+        "Spielstand wird gespeichert …",
+        "Level wird gesichert"
+      );
+
       const oldResult = (state.progress.results || {})[level];
       const newAlbumCard = CollectorAlbum.collectLevel(level, !oldResult);
       CollectorAlbum.showVictoryReward(newAlbumCard);
@@ -6573,7 +6581,7 @@ dom.shotsMapButton.onclick = () => {
         dom.winResultText.textContent =
           `${this.score.toLocaleString("de-DE")} Punkte mit ${this.shots} Schüssen.`;
       }
-      startVictoryImpact(stars);
+      // Die Victory-Karte wird bewusst erst NACH der Speicherung eingeblendet.
 
       // Das LETZTE abgeschlossene Ergebnis ist verbindlich.
       // Beispiel: vorher 3 Sterne / 4.550 Punkte, danach 2 Sterne / 3.800 Punkte
@@ -6636,6 +6644,13 @@ dom.shotsMapButton.onclick = () => {
       } catch (error) {
         console.warn("API-Speicherung fehlgeschlagen:", error);
       }
+
+      // Speicher-Loader ausblenden und danach erst die bekannte
+      // "Level geschafft!"-Karte mit Zur Karte / Nächstes Level zeigen.
+      if (levelSaveLoaderToken !== undefined && levelSaveLoaderToken !== null) {
+        window.BKLoader?.hide?.(levelSaveLoaderToken, 0);
+      }
+      startVictoryImpact(stars);
 
       dom.winResultTitle.textContent = "Level geschafft!";
       dom.nextLevelButton.classList.remove("hidden");
@@ -6799,18 +6814,66 @@ dom.shotsMapButton.onclick = () => {
       `;
     },
 
+    getTeamCrestUrls(crestValue) {
+      const crestRaw = String(crestValue || "").trim();
+      if (!crestRaw) return { primary: "", fallback: "" };
+
+      // Vollständige URLs aus der API unverändert übernehmen.
+      if (/^https?:\/\//i.test(crestRaw)) {
+        return { primary: crestRaw, fallback: "" };
+      }
+
+      // Bandenkick liefert aktuell teilweise nur den Storage-Pfad, z. B.
+      // "team/crest/1740231710.png". Dieser liegt im öffentlichen
+      // Laravel-Storage unter /storage/. Als Rückfallebene probieren wir
+      // zusätzlich den bisherigen direkten Root-Pfad.
+      const cleanPath = crestRaw.replace(/^\/+/, "");
+      if (cleanPath.startsWith("storage/")) {
+        return {
+          primary: `https://bandenkick.de/${cleanPath}`,
+          fallback: `https://bandenkick.de/${cleanPath.replace(/^storage\//, "")}`
+        };
+      }
+
+      return {
+        primary: `https://bandenkick.de/storage/${cleanPath}`,
+        fallback: `https://bandenkick.de/${cleanPath}`
+      };
+    },
+
+    bindTeamCrestFallbacks() {
+      if (!dom.teamRankingList) return;
+
+      dom.teamRankingList.querySelectorAll("img.ranking-team-crest").forEach((img) => {
+        img.addEventListener("error", () => {
+          const fallback = String(img.dataset.fallbackSrc || "").trim();
+          const fallbackTried = img.dataset.fallbackTried === "1";
+
+          if (fallback && !fallbackTried) {
+            img.dataset.fallbackTried = "1";
+            img.src = fallback;
+            return;
+          }
+
+          const wrap = img.closest(".ranking-team-crest-wrap");
+          img.remove();
+          if (wrap && !wrap.querySelector(".ranking-team-crest-fallback")) {
+            const fallbackIcon = document.createElement("span");
+            fallbackIcon.className = "ranking-team-crest-fallback";
+            fallbackIcon.textContent = "⚽";
+            wrap.appendChild(fallbackIcon);
+          }
+        });
+      });
+    },
+
     teamRow(entry) {
-      const crestRaw = String(entry?.crest || "").trim();
-      const crest = crestRaw
-        ? (crestRaw.startsWith("http://") || crestRaw.startsWith("https://")
-          ? crestRaw
-          : `https://bandenkick.de/${crestRaw.replace(/^\/+/, "")}`)
-        : "";
+      const crestUrls = this.getTeamCrestUrls(entry?.crest);
       const stars = Math.max(0, Number(entry?.stars) || 0);
       return `
         <div class="ranking-row ranking-team-row">
           <strong class="ranking-place">#${Number(entry?.rank) || "–"}</strong>
-          <span class="ranking-team-crest-wrap">${crest ? `<img class="ranking-team-crest" src="${escapeHtml(crest)}" alt="" loading="lazy">` : `<span class="ranking-team-crest-fallback">⚽</span>`}</span>
+          <span class="ranking-team-crest-wrap">${crestUrls.primary ? `<img class="ranking-team-crest" src="${escapeHtml(crestUrls.primary)}" data-fallback-src="${escapeHtml(crestUrls.fallback)}" alt="" loading="lazy" decoding="async">` : `<span class="ranking-team-crest-fallback">⚽</span>`}</span>
           <span class="ranking-team-name">${escapeHtml(entry?.teamname || "Bandenkick-Team")}</span>
           <span class="ranking-stars">★ ${stars.toLocaleString("de-DE")}</span>
           <b class="ranking-score">${Number(entry?.score || 0).toLocaleString("de-DE")}</b>
@@ -6854,6 +6917,7 @@ dom.shotsMapButton.onclick = () => {
           dom.teamRankingList.innerHTML = teamTop10.length
             ? teamTop10.map((entry) => this.teamRow(entry)).join("")
             : "<p class='ranking-message'>Noch ist kein Team im Ranking vertreten.</p>";
+          this.bindTeamCrestFallbacks();
         }
 
         if (dom.rankingPlayerCount) {

@@ -5667,14 +5667,21 @@ body.wheel-win-sequence-active {
 .ranking-team-crest-wrap {
   width: 38px;
   height: 38px;
+  min-width: 38px;
+  min-height: 38px;
   display: grid;
   place-items: center;
+  overflow: hidden;
 }
 
 .ranking-team-crest {
   width: 36px;
   height: 36px;
+  max-width: 36px;
+  max-height: 36px;
+  aspect-ratio: 1 / 1;
   object-fit: contain;
+  object-position: center;
   display: block;
 }
 
@@ -5738,11 +5745,15 @@ body.wheel-win-sequence-active {
   .ranking-team-crest-wrap {
     width: 34px;
     height: 34px;
+    min-width: 34px;
+    min-height: 34px;
   }
 
   .ranking-team-crest {
     width: 32px;
     height: 32px;
+    max-width: 32px;
+    max-height: 32px;
   }
 }
 
