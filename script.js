@@ -10,7 +10,7 @@
   import { applyAlbumLevelConfig } from "./js/config/albumLevel.js";
   import { Level1Tutorial } from "./js/tutorial/level1Tutorial.js";
   import { Level6LoadoutGuide } from "./js/tutorial/level6LoadoutGuide.js";
-  import { isUserLoggedIn, syncBandenkickUser, saveLevelResult, flushPendingLevelResults, getRanking as getSupabaseRanking, redirectToBandenkickLogin } from "./js/api/bandenkickSupabase.js?v=20260829-2";
+  import { saveLevelResult, flushPendingLevelResults, getRanking as getSupabaseRanking, setActivePlayer, betaRegisterBandenkickUser, betaRegisterGuest } from "./js/api/bandenkickSupabase.js?v=20260830-beta-login";
   import { evaluateLogin, approveCurrentDevice, getPrimaryDevice, readAccountSecurity, maskEmail, createTestEmailCode } from "./js/api/accountSecurity.js?v=20260829-1";
 
   (() => {
@@ -406,6 +406,25 @@ const THEME_PATH = [
     deviceCodeError: $("deviceCodeError"),
     deviceCodeConfirm: $("deviceCodeConfirm"),
     deviceCodeCancel: $("deviceCodeCancel"),
+
+    betaLoginOverlay: $("betaLoginOverlay"),
+    betaLoginQuestion: $("betaLoginQuestion"),
+    betaHasBkYes: $("betaHasBkYes"),
+    betaHasBkNo: $("betaHasBkNo"),
+    betaBkStep: $("betaBkStep"),
+    betaBkUsername: $("betaBkUsername"),
+    betaBkUserId: $("betaBkUserId"),
+    betaBkError: $("betaBkError"),
+    betaBkSubmit: $("betaBkSubmit"),
+    betaBkBack: $("betaBkBack"),
+    betaNotFoundStep: $("betaNotFoundStep"),
+    betaRetryBk: $("betaRetryBk"),
+    betaContinueGuest: $("betaContinueGuest"),
+    betaGuestStep: $("betaGuestStep"),
+    betaGuestUsername: $("betaGuestUsername"),
+    betaGuestError: $("betaGuestError"),
+    betaGuestSubmit: $("betaGuestSubmit"),
+    betaLoginBusy: $("betaLoginBusy"),
 
     toast: $("toast")
   };
@@ -998,9 +1017,7 @@ function startVictoryImpact(stars) {
     },
 
     async login() {
-      // Echte Bandenkick-Anmeldung. Kein Demo-User mehr.
-      redirectToBandenkickLogin();
-      return null;
+      return openBetaLogin();
     },
 
     async getRanking() {
@@ -7452,88 +7469,126 @@ const Shop = {
     });
   }
 
-  async function init() {
-    // ERSTER STEP bei jedem Oeffnen/Aktualisieren:
-    // echten Bandenkick-Loginstatus abfragen und bei Erfolg den Username sofort anzeigen.
-    let remoteUser = null;
-    try {
-      const loginState = await isUserLoggedIn({ force: true });
-      remoteUser = loginState?.loggedIn ? loginState.user : null;
 
-      if (remoteUser?.id) {
-        state.user = {
-          id: Number(remoteUser.id),
-          username: remoteUser.username || "Bandenkick-Spieler",
-          email: remoteUser.email || ""
-        };
-      } else {
-        state.user = null;
-      }
-      SaveManager.saveUser(state.user);
-      updateUserUi();
-    } catch (error) {
+  function showBetaLoginStep(step) {
+    [dom.betaLoginQuestion, dom.betaBkStep, dom.betaNotFoundStep, dom.betaGuestStep].forEach((el) => el?.classList.add("hidden"));
+    step?.classList.remove("hidden");
+    dom.betaBkError?.classList.add("hidden");
+    dom.betaGuestError?.classList.add("hidden");
+  }
+
+  function setBetaBusy(busy) {
+    dom.betaLoginBusy?.classList.toggle("hidden", !busy);
+    [dom.betaHasBkYes, dom.betaHasBkNo, dom.betaBkSubmit, dom.betaBkBack, dom.betaRetryBk, dom.betaContinueGuest, dom.betaGuestSubmit]
+      .forEach((btn) => { if (btn) btn.disabled = busy; });
+  }
+
+  function betaError(element, message) {
+    if (!element) return;
+    element.textContent = message;
+    element.classList.remove("hidden");
+  }
+
+  function normalizeBetaUser(user) {
+    return {
+      id: Number(user.id),
+      username: String(user.username || "Spieler"),
+      email: String(user.email || ""),
+      account_type: user.account_type || (Number(user.id) < 0 ? "guest" : "bandenkick"),
+      teams: user.teams || { clubs: null, oneone: null }
+    };
+  }
+
+  function finishBetaLogin(user) {
+    state.user = normalizeBetaUser(user);
+    setActivePlayer(state.user);
+    SaveManager.saveUser(state.user);
+    updateUserUi();
+    refreshAccountDeviceUi();
+    dom.betaLoginOverlay?.classList.add("hidden");
+  }
+
+  function openBetaLogin() {
+    return new Promise((resolve) => {
+      dom.betaLoginOverlay?.classList.remove("hidden");
+      showBetaLoginStep(dom.betaLoginQuestion);
+      setBetaBusy(false);
+
+      const cleanup = () => {
+        dom.betaHasBkYes?.removeEventListener("click", onBkYes);
+        dom.betaHasBkNo?.removeEventListener("click", onBkNo);
+        dom.betaBkBack?.removeEventListener("click", onBack);
+        dom.betaRetryBk?.removeEventListener("click", onRetry);
+        dom.betaContinueGuest?.removeEventListener("click", onGuest);
+        dom.betaBkSubmit?.removeEventListener("click", onBkSubmit);
+        dom.betaGuestSubmit?.removeEventListener("click", onGuestSubmit);
+      };
+      const done = (user) => { cleanup(); finishBetaLogin(user); resolve(user); };
+      const onBkYes = () => { showBetaLoginStep(dom.betaBkStep); setTimeout(() => dom.betaBkUsername?.focus(), 40); };
+      const onBkNo = () => onGuest();
+      const onBack = () => showBetaLoginStep(dom.betaLoginQuestion);
+      const onRetry = () => showBetaLoginStep(dom.betaBkStep);
+      const onGuest = () => { showBetaLoginStep(dom.betaGuestStep); setTimeout(() => dom.betaGuestUsername?.focus(), 40); };
+
+      const onBkSubmit = async () => {
+        const username = String(dom.betaBkUsername?.value || "").trim();
+        const id = Number(dom.betaBkUserId?.value || 0);
+        if (username.length < 2 || !Number.isInteger(id) || id <= 0) {
+          betaError(dom.betaBkError, "Bitte Username und gültige Bandenkick User-ID eingeben."); return;
+        }
+        setBetaBusy(true);
+        try {
+          const result = await betaRegisterBandenkickUser({ id, username });
+          if (result?.success && result?.user) { done(result.user); return; }
+          if (result?.code === "username_taken") { betaError(dom.betaBkError, "Dieser Username ist bereits vergeben."); }
+          else if (result?.code === "not_found" || result?.code === "username_mismatch") showBetaLoginStep(dom.betaNotFoundStep);
+          else betaError(dom.betaBkError, result?.error || "Spieler konnte nicht geprüft werden.");
+        } catch (error) { betaError(dom.betaBkError, error?.message || "Verbindung zu Supabase fehlgeschlagen."); }
+        finally { setBetaBusy(false); }
+      };
+
+      const onGuestSubmit = async () => {
+        const username = String(dom.betaGuestUsername?.value || "").trim();
+        if (username.length < 2) { betaError(dom.betaGuestError, "Bitte mindestens 2 Zeichen eingeben."); return; }
+        setBetaBusy(true);
+        try {
+          const result = await betaRegisterGuest(username);
+          if (result?.success && result?.user) { done(result.user); return; }
+          if (result?.code === "username_taken") betaError(dom.betaGuestError, "Dieser Username ist bereits vergeben.");
+          else betaError(dom.betaGuestError, result?.error || "Username konnte nicht gespeichert werden.");
+        } catch (error) { betaError(dom.betaGuestError, error?.message || "Verbindung zu Supabase fehlgeschlagen."); }
+        finally { setBetaBusy(false); }
+      };
+
+      dom.betaHasBkYes?.addEventListener("click", onBkYes);
+      dom.betaHasBkNo?.addEventListener("click", onBkNo);
+      dom.betaBkBack?.addEventListener("click", onBack);
+      dom.betaRetryBk?.addEventListener("click", onRetry);
+      dom.betaContinueGuest?.addEventListener("click", onGuest);
+      dom.betaBkSubmit?.addEventListener("click", onBkSubmit);
+      dom.betaGuestSubmit?.addEventListener("click", onGuestSubmit);
+    });
+  }
+
+  async function init() {
+    // BETA: Existiert bereits ein lokal gespeicherter Spieler, wird er direkt verwendet.
+    // Andernfalls erscheint die neue Bandenkick/Gast-Abfrage.
+    if (state.user?.id && state.user?.username) {
+      setActivePlayer(state.user);
+    } else {
       state.user = null;
       SaveManager.saveUser(null);
       updateUserUi();
-      console.warn("Bandenkick-Loginstatus konnte beim Start nicht abgefragt werden:", error);
+      await openBetaLogin();
     }
 
-    // Erst danach Supabase synchronisieren und die Geraetepruefung ausfuehren.
-    // Fehler blockieren den Spielstart nicht.
-    try {
-      const synced = remoteUser?.id ? await syncBandenkickUser({ force: false }) : null;
-      remoteUser = synced?.session?.user || remoteUser;
-      if (remoteUser?.id) {
-        const loginCheck = evaluateLogin(remoteUser);
-        if (loginCheck.status === "new_device") {
-          const approved = await askForNewDeviceApproval(remoteUser, loginCheck.device);
-          if (!approved) {
-            state.user = null;
-            SaveManager.saveUser(null);
-            refreshAccountDeviceUi();
-            ThemeManager.apply(state.progress.activeTheme);
-            ThemeManager.applyStageAssets(state.progress.selectedStage);
-            ensureItemInventory();
-            grantUnlockedItemStarterRewards();
-            CollectorAlbum.syncFromResults();
-            LuckyWheel.ensureState();
-            updateItemBarLocks();
-            applySettingsToForm();
-            updateUserUi();
-            EpisodeRace.renderHomeStatus();
-            Navigation.show("home");
-            return;
-          }
-        } else if (loginCheck.status === "different_account") {
-          alert("Inkorrekter Login. Dieses Gerät ist bereits mit einem anderen Bandenkick-Account verknüpft.");
-          state.user = null;
-          SaveManager.saveUser(null);
-          Navigation.show("home");
-          return;
-        }
-        state.user = {
-          id: Number(remoteUser.id),
-          username: remoteUser.username || "Bandenkick-Spieler",
-          email: remoteUser.email || ""
-        };
-      } else {
-        // Kein gültiger Bandenkick-Login: alte Demo-/Cache-User nicht weiterverwenden.
-        state.user = null;
+    if (state.user?.id) {
+      try {
+        const pending = await flushPendingLevelResults();
+        if (pending?.saved) console.info(`[Supabase] ${pending.saved} ausstehende Level nachsynchronisiert.`);
+      } catch (error) {
+        console.warn("Nachsynchronisierung ausstehender Level fehlgeschlagen:", error);
       }
-      SaveManager.saveUser(state.user);
-      if (state.user?.id) {
-        try {
-          const pending = await flushPendingLevelResults();
-          if (pending?.saved) console.info(`[Supabase] ${pending.saved} ausstehende Level nachsynchronisiert.`);
-        } catch (error) {
-          console.warn("Nachsynchronisierung ausstehender Level fehlgeschlagen:", error);
-        }
-      }
-    } catch (error) {
-      // Bei fehlender Auth-Abfrage niemals einen alten lokalen User als echten Login anzeigen.
-      state.user = null;
-      SaveManager.saveUser(null);
-      console.warn("Bandenkick/Supabase-Synchronisierung beim Start fehlgeschlagen:", error);
     }
 
     ThemeManager.apply(state.progress.activeTheme);

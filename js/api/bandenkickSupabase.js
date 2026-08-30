@@ -149,6 +149,38 @@ export async function getRanking() {
   });
 }
 
+
+export function setActivePlayer(user) {
+  if (!user?.id) { syncedUser = null; return; }
+  syncedUser = {
+    session: { "logged-in": true, user },
+    result: { success: true, beta: true }
+  };
+}
+
+export async function betaRegisterBandenkickUser({ id, username }) {
+  const result = await callEdgeFunction("beta-player", {
+    action: "register_bandenkick",
+    id: Number(id),
+    username: String(username || "").trim()
+  });
+  if (result?.success && result?.user) setActivePlayer(result.user);
+  return result;
+}
+
+export async function betaRegisterGuest(username) {
+  const result = await callEdgeFunction("beta-player", {
+    action: "register_guest",
+    username: String(username || "").trim()
+  });
+  if (result?.success && result?.user) setActivePlayer(result.user);
+  return result;
+}
+
+export async function betaCheckUsername(username) {
+  return callEdgeFunction("beta-player", { action: "check_username", username: String(username || "").trim() });
+}
+
 export function redirectToBandenkickLogin() {
   const currentUrl = window.location.href;
   const loginUrl = `https://bandenkick.de/esport/auth/login?redirect=${encodeURIComponent(currentUrl)}`;
