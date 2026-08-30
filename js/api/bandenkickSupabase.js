@@ -169,10 +169,38 @@ export async function betaRegisterBandenkickUser({ id, username }) {
   return result;
 }
 
-export async function betaRegisterGuest(username) {
+export async function betaGetGuestStatus(username) {
+  return callEdgeFunction("beta-player", {
+    action: "guest_status",
+    username: String(username || "").trim()
+  });
+}
+
+export async function betaRegisterGuest(username, pin) {
   const result = await callEdgeFunction("beta-player", {
     action: "register_guest",
-    username: String(username || "").trim()
+    username: String(username || "").trim(),
+    pin: String(pin || "")
+  });
+  if (result?.success && result?.user) setActivePlayer(result.user);
+  return result;
+}
+
+export async function betaLoginGuest(username, pin) {
+  const result = await callEdgeFunction("beta-player", {
+    action: "login_guest",
+    username: String(username || "").trim(),
+    pin: String(pin || "")
+  });
+  if (result?.success && result?.user) setActivePlayer(result.user);
+  return result;
+}
+
+export async function betaSetLegacyGuestPin(username, pin) {
+  const result = await callEdgeFunction("beta-player", {
+    action: "set_guest_pin",
+    username: String(username || "").trim(),
+    pin: String(pin || "")
   });
   if (result?.success && result?.user) setActivePlayer(result.user);
   return result;

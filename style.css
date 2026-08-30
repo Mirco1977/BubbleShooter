@@ -5667,21 +5667,14 @@ body.wheel-win-sequence-active {
 .ranking-team-crest-wrap {
   width: 38px;
   height: 38px;
-  min-width: 38px;
-  min-height: 38px;
   display: grid;
   place-items: center;
-  overflow: hidden;
 }
 
 .ranking-team-crest {
   width: 36px;
   height: 36px;
-  max-width: 36px;
-  max-height: 36px;
-  aspect-ratio: 1 / 1;
   object-fit: contain;
-  object-position: center;
   display: block;
 }
 
@@ -5745,15 +5738,11 @@ body.wheel-win-sequence-active {
   .ranking-team-crest-wrap {
     width: 34px;
     height: 34px;
-    min-width: 34px;
-    min-height: 34px;
   }
 
   .ranking-team-crest {
     width: 32px;
     height: 32px;
-    max-width: 32px;
-    max-height: 32px;
   }
 }
 
@@ -5894,6 +5883,36 @@ body.wheel-win-sequence-active {
 .beta-login-actions button { min-height:44px; }
 .beta-login-error { color:#ff8585 !important; font-size:13px; font-weight:800; margin:9px 0 0; }
 .beta-login-busy { margin-top:14px; color:#f0cf55; font-weight:800; }
+.beta-login-hero-frame {
+  margin: 12px 0 14px; padding: 4px; border-radius: 16px; overflow: hidden;
+  border: 1px solid rgba(240,207,85,.65);
+  background: linear-gradient(145deg, rgba(240,207,85,.26), rgba(134,0,0,.22));
+  box-shadow: 0 8px 24px rgba(0,0,0,.42), inset 0 0 0 1px rgba(255,255,255,.07);
+}
+.beta-login-hero { display:block; width:100%; height:auto; aspect-ratio:16/9; object-fit:cover; border-radius:12px; }
+.beta-login-card h2 { font-size: clamp(24px, 5.2vw, 34px); line-height:1.08; }
+.beta-login-step > p { font-size: clamp(15px, 3.7vw, 18px); }
+.beta-label-row { display:flex !important; align-items:center; gap:7px; margin-bottom:6px !important; }
+.beta-label-row > span { margin:0 !important; }
+.beta-bel-info-button {
+  width:22px; height:22px; min-width:22px; padding:0; border-radius:50%;
+  border:1.5px solid #f0cf55; background:transparent; color:#f0cf55;
+  font-size:14px; font-weight:900; line-height:19px; cursor:pointer;
+}
+.beta-userid-label { position:relative; }
+.beta-bel-info-popup {
+  position:absolute; z-index:5; left:0; right:0; top:54px; padding:14px;
+  border-radius:14px; border:1px solid rgba(240,207,85,.72);
+  background:linear-gradient(180deg,#181818,#090909); box-shadow:0 14px 34px rgba(0,0,0,.64);
+  text-align:left;
+}
+.beta-bel-info-popup strong { display:block; margin-bottom:10px; color:#f0cf55; font-size:15px; }
+.beta-bel-info-popup a {
+  display:inline-block; margin-bottom:10px; padding:8px 12px; border-radius:9px;
+  background:#860000; color:#fff; font-weight:900; text-decoration:none;
+}
+.beta-bel-info-popup span { display:block !important; margin:0 !important; color:#fff !important; font-size:14px !important; font-weight:700 !important; }
+
 
 /* Mobile: Beta-Login bei geoeffneter Bildschirmtastatur oben halten */
 @media (max-width: 520px) {
@@ -5907,8 +5926,9 @@ body.wheel-win-sequence-active {
 
   .beta-login-card {
     margin-top: 0;
-    padding-top: 18px;
+    padding-top: 16px;
   }
+  .beta-login-hero-frame { margin: 8px 0 10px; }
 }
 
 /* Auf sehr niedriger sichtbarer Hoehe (z. B. Mobile-Tastatur offen)
@@ -5921,90 +5941,4 @@ body.wheel-win-sequence-active {
   .beta-login-step label { margin: 8px 0; }
   .beta-login-actions { margin-top: 10px; }
   .beta-login-actions button { min-height: 40px; }
-}
-
-
-/* =========================================================
-   ACCOUNT – BETA PROFIL / LOGIN-DATEN
-   ========================================================= */
-.account-profile-card {
-  overflow: hidden;
-}
-.account-device-status.guest {
-  background: rgba(255,255,255,.08);
-  border-color: rgba(255,255,255,.16);
-  color: rgba(255,255,255,.72);
-}
-.account-team-summary {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  min-height: 62px;
-  margin: 4px 0 14px;
-  padding: 10px 12px;
-  border-radius: 14px;
-  background: rgba(255,255,255,.055);
-  border: 1px solid rgba(255,255,255,.09);
-}
-.account-team-crest-wrap {
-  width: 46px;
-  height: 46px;
-  flex: 0 0 46px;
-  display: grid;
-  place-items: center;
-  border-radius: 10px;
-  background: rgba(255,255,255,.92);
-  overflow: hidden;
-}
-.account-team-crest {
-  display: block;
-  width: 38px;
-  height: 38px;
-  object-fit: contain;
-  object-position: center;
-}
-.account-team-copy {
-  min-width: 0;
-  display: grid;
-  gap: 2px;
-}
-.account-team-copy strong {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.account-team-copy span {
-  color: rgba(255,255,255,.58);
-  font-size: 12px;
-  font-weight: 800;
-}
-.account-actions {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 9px;
-  margin-top: 14px;
-}
-.account-action-button {
-  min-width: 0;
-  min-height: 44px;
-  padding: 10px 12px;
-  font-size: 13px;
-  line-height: 1.15;
-}
-.account-action-button:disabled {
-  opacity: .62;
-  cursor: wait;
-}
-.account-refresh-status {
-  min-height: 18px;
-  margin: 8px 2px 0;
-  color: rgba(255,255,255,.58);
-  font-size: 12px;
-  line-height: 1.35;
-}
-.account-refresh-status.success { color: #8ee6a3; }
-.account-refresh-status.error { color: #ff9e9e; }
-@media (max-width: 430px) {
-  .account-actions { grid-template-columns: 1fr; }
-  .account-action-button { width: 100%; }
 }

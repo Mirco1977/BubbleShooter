@@ -10,7 +10,7 @@
   import { applyAlbumLevelConfig } from "./js/config/albumLevel.js";
   import { Level1Tutorial } from "./js/tutorial/level1Tutorial.js";
   import { Level6LoadoutGuide } from "./js/tutorial/level6LoadoutGuide.js";
-  import { saveLevelResult, flushPendingLevelResults, getRanking as getSupabaseRanking, setActivePlayer, betaRegisterBandenkickUser, betaRegisterGuest, betaRefreshBandenkickUser } from "./js/api/bandenkickSupabase.js?v=20260830-account-settings";
+  import { saveLevelResult, flushPendingLevelResults, getRanking as getSupabaseRanking, setActivePlayer, betaRegisterBandenkickUser, betaGetGuestStatus, betaRegisterGuest, betaLoginGuest, betaSetLegacyGuestPin, betaRefreshBandenkickUser } from "./js/api/bandenkickSupabase.js?v=20260830-guest-pin";
   import { evaluateLogin, approveCurrentDevice, getPrimaryDevice, readAccountSecurity, maskEmail, createTestEmailCode } from "./js/api/accountSecurity.js?v=20260829-1";
 
   (() => {
@@ -419,6 +419,8 @@ const THEME_PATH = [
     betaBkStep: $("betaBkStep"),
     betaBkUsername: $("betaBkUsername"),
     betaBkUserId: $("betaBkUserId"),
+    betaBelInfoButton: $("betaBelInfoButton"),
+    betaBelInfoPopup: $("betaBelInfoPopup"),
     betaBkError: $("betaBkError"),
     betaBkSubmit: $("betaBkSubmit"),
     betaBkBack: $("betaBkBack"),
@@ -426,9 +428,16 @@ const THEME_PATH = [
     betaRetryBk: $("betaRetryBk"),
     betaContinueGuest: $("betaContinueGuest"),
     betaGuestStep: $("betaGuestStep"),
+    betaGuestIntro: $("betaGuestIntro"),
     betaGuestUsername: $("betaGuestUsername"),
+    betaGuestPinWrap: $("betaGuestPinWrap"),
+    betaGuestPin: $("betaGuestPin"),
+    betaGuestPinConfirmWrap: $("betaGuestPinConfirmWrap"),
+    betaGuestPinConfirm: $("betaGuestPinConfirm"),
+    betaGuestPinWarning: $("betaGuestPinWarning"),
     betaGuestError: $("betaGuestError"),
     betaGuestSubmit: $("betaGuestSubmit"),
+    betaGuestReset: $("betaGuestReset"),
     betaLoginBusy: $("betaLoginBusy"),
 
     toast: $("toast")
@@ -7639,7 +7648,7 @@ const Shop = {
 
   function setBetaBusy(busy) {
     dom.betaLoginBusy?.classList.toggle("hidden", !busy);
-    [dom.betaHasBkYes, dom.betaHasBkNo, dom.betaBkSubmit, dom.betaBkBack, dom.betaRetryBk, dom.betaContinueGuest, dom.betaGuestSubmit]
+    [dom.betaHasBkYes, dom.betaHasBkNo, dom.betaBkSubmit, dom.betaBkBack, dom.betaRetryBk, dom.betaContinueGuest, dom.betaGuestSubmit, dom.betaGuestReset]
       .forEach((btn) => { if (btn) btn.disabled = busy; });
   }
 
@@ -7682,13 +7691,52 @@ const Shop = {
         dom.betaContinueGuest?.removeEventListener("click", onGuest);
         dom.betaBkSubmit?.removeEventListener("click", onBkSubmit);
         dom.betaGuestSubmit?.removeEventListener("click", onGuestSubmit);
+        dom.betaGuestReset?.removeEventListener("click", onGuestReset);
+        dom.betaBelInfoButton?.removeEventListener("click", onBelInfoToggle);
       };
       const done = (user) => { cleanup(); finishBetaLogin(user); resolve(user); };
-      const onBkYes = () => { showBetaLoginStep(dom.betaBkStep); setTimeout(() => dom.betaBkUsername?.focus(), 40); };
+      const onBelInfoToggle = () => {
+        const isHidden = dom.betaBelInfoPopup?.classList.contains("hidden");
+        dom.betaBelInfoPopup?.classList.toggle("hidden", !isHidden);
+        dom.betaBelInfoButton?.setAttribute("aria-expanded", String(Boolean(isHidden)));
+      };
+      const onBkYes = () => {
+        dom.betaBelInfoPopup?.classList.add("hidden");
+        dom.betaBelInfoButton?.setAttribute("aria-expanded", "false");
+        showBetaLoginStep(dom.betaBkStep);
+        setTimeout(() => dom.betaBkUsername?.focus(), 40);
+      };
       const onBkNo = () => onGuest();
       const onBack = () => showBetaLoginStep(dom.betaLoginQuestion);
       const onRetry = () => showBetaLoginStep(dom.betaBkStep);
-      const onGuest = () => { showBetaLoginStep(dom.betaGuestStep); setTimeout(() => dom.betaGuestUsername?.focus(), 40); };
+      let guestMode = "username";
+      let guestUsername = "";
+
+      const resetGuestForm = () => {
+        guestMode = "username";
+        guestUsername = "";
+        if (dom.betaGuestIntro) dom.betaGuestIntro.textContent = "Gib deinen Gast-Username ein.";
+        if (dom.betaGuestUsername) { dom.betaGuestUsername.disabled = false; dom.betaGuestUsername.value = ""; }
+        if (dom.betaGuestPin) dom.betaGuestPin.value = "";
+        if (dom.betaGuestPinConfirm) dom.betaGuestPinConfirm.value = "";
+        dom.betaGuestPinWrap?.classList.add("hidden");
+        dom.betaGuestPinConfirmWrap?.classList.add("hidden");
+        dom.betaGuestPinWarning?.classList.add("hidden");
+        dom.betaGuestReset?.classList.add("hidden");
+        dom.betaGuestError?.classList.add("hidden");
+        if (dom.betaGuestSubmit) dom.betaGuestSubmit.textContent = "Weiter";
+      };
+
+      const onGuest = () => {
+        showBetaLoginStep(dom.betaGuestStep);
+        resetGuestForm();
+        setTimeout(() => dom.betaGuestUsername?.focus(), 40);
+      };
+
+      const onGuestReset = () => {
+        resetGuestForm();
+        setTimeout(() => dom.betaGuestUsername?.focus(), 40);
+      };
 
       const onBkSubmit = async () => {
         const username = String(dom.betaBkUsername?.value || "").trim();
@@ -7708,14 +7756,71 @@ const Shop = {
       };
 
       const onGuestSubmit = async () => {
-        const username = String(dom.betaGuestUsername?.value || "").trim();
-        if (username.length < 2) { betaError(dom.betaGuestError, "Bitte mindestens 2 Zeichen eingeben."); return; }
+        dom.betaGuestError?.classList.add("hidden");
+
+        if (guestMode === "username") {
+          const username = String(dom.betaGuestUsername?.value || "").trim();
+          if (username.length < 2) { betaError(dom.betaGuestError, "Bitte mindestens 2 Zeichen eingeben."); return; }
+          setBetaBusy(true);
+          try {
+            const status = await betaGetGuestStatus(username);
+            if (!status?.success) {
+              if (status?.code === "username_taken_bandenkick") betaError(dom.betaGuestError, "Dieser Username gehört zu einem Bandenkick-Account.");
+              else betaError(dom.betaGuestError, status?.error || "Gast-Account konnte nicht geprüft werden.");
+              return;
+            }
+
+            guestUsername = username;
+            if (dom.betaGuestUsername) dom.betaGuestUsername.disabled = true;
+            dom.betaGuestPinWrap?.classList.remove("hidden");
+            dom.betaGuestReset?.classList.remove("hidden");
+
+            if (status.status === "existing") {
+              guestMode = "login";
+              if (dom.betaGuestIntro) dom.betaGuestIntro.textContent = `Willkommen zurück ${username}. Gib deinen 6-stelligen Zahlencode ein.`;
+              dom.betaGuestPinConfirmWrap?.classList.add("hidden");
+              dom.betaGuestPinWarning?.classList.add("hidden");
+              if (dom.betaGuestSubmit) dom.betaGuestSubmit.textContent = "Anmelden";
+            } else if (status.status === "legacy") {
+              guestMode = "legacy_setup";
+              if (dom.betaGuestIntro) dom.betaGuestIntro.textContent = `Für ${username} wurde bisher noch kein Zahlencode hinterlegt. Lege ihn jetzt einmalig fest.`;
+              dom.betaGuestPinConfirmWrap?.classList.remove("hidden");
+              dom.betaGuestPinWarning?.classList.remove("hidden");
+              if (dom.betaGuestSubmit) dom.betaGuestSubmit.textContent = "Code festlegen";
+            } else {
+              guestMode = "register";
+              if (dom.betaGuestIntro) dom.betaGuestIntro.textContent = `Gast-Account ${username} neu erstellen. Lege einen 6-stelligen Zahlencode fest.`;
+              dom.betaGuestPinConfirmWrap?.classList.remove("hidden");
+              dom.betaGuestPinWarning?.classList.remove("hidden");
+              if (dom.betaGuestSubmit) dom.betaGuestSubmit.textContent = "Gast erstellen";
+            }
+            setTimeout(() => dom.betaGuestPin?.focus(), 40);
+          } catch (error) {
+            betaError(dom.betaGuestError, error?.message || "Verbindung zu Supabase fehlgeschlagen.");
+          } finally { setBetaBusy(false); }
+          return;
+        }
+
+        const pin = String(dom.betaGuestPin?.value || "").trim();
+        const pinConfirm = String(dom.betaGuestPinConfirm?.value || "").trim();
+        if (!/^\d{6}$/.test(pin)) { betaError(dom.betaGuestError, "Bitte einen 6-stelligen Zahlencode eingeben."); return; }
+        if ((guestMode === "register" || guestMode === "legacy_setup") && pin !== pinConfirm) {
+          betaError(dom.betaGuestError, "Die beiden Zahlencodes stimmen nicht überein."); return;
+        }
+
         setBetaBusy(true);
         try {
-          const result = await betaRegisterGuest(username);
+          let result;
+          if (guestMode === "login") result = await betaLoginGuest(guestUsername, pin);
+          else if (guestMode === "legacy_setup") result = await betaSetLegacyGuestPin(guestUsername, pin);
+          else result = await betaRegisterGuest(guestUsername, pin);
+
           if (result?.success && result?.user) { done(result.user); return; }
-          if (result?.code === "username_taken") betaError(dom.betaGuestError, "Dieser Username ist bereits vergeben.");
-          else betaError(dom.betaGuestError, result?.error || "Username konnte nicht gespeichert werden.");
+          if (result?.code === "invalid_pin") betaError(dom.betaGuestError, "Der Zahlencode ist nicht korrekt.");
+          else if (result?.code === "guest_locked") betaError(dom.betaGuestError, result?.error || "Zu viele Fehlversuche. Bitte später erneut versuchen.");
+          else if (result?.code === "username_taken_bandenkick") betaError(dom.betaGuestError, "Dieser Username gehört zu einem Bandenkick-Account.");
+          else if (result?.code === "guest_pin_already_set") { betaError(dom.betaGuestError, "Für diesen Gast wurde inzwischen bereits ein Code festgelegt. Bitte neu anmelden."); onGuestReset(); }
+          else betaError(dom.betaGuestError, result?.error || "Gast-Account konnte nicht geladen werden.");
         } catch (error) { betaError(dom.betaGuestError, error?.message || "Verbindung zu Supabase fehlgeschlagen."); }
         finally { setBetaBusy(false); }
       };
@@ -7727,6 +7832,8 @@ const Shop = {
       dom.betaContinueGuest?.addEventListener("click", onGuest);
       dom.betaBkSubmit?.addEventListener("click", onBkSubmit);
       dom.betaGuestSubmit?.addEventListener("click", onGuestSubmit);
+      dom.betaGuestReset?.addEventListener("click", onGuestReset);
+      dom.betaBelInfoButton?.addEventListener("click", onBelInfoToggle);
     });
   }
 
