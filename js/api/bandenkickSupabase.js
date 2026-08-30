@@ -216,6 +216,18 @@ export async function betaRefreshBandenkickUser(id) {
   return result;
 }
 
+
+export async function betaResetPlayerProgress(userId) {
+  const id = Number(userId);
+  if (!Number.isInteger(id) || id === 0) {
+    return { success: false, error: "Ungültige User-ID." };
+  }
+  return callEdgeFunction("beta-player", {
+    action: "reset_progress",
+    id
+  });
+}
+
 export async function betaCheckUsername(username) {
   return callEdgeFunction("beta-player", { action: "check_username", username: String(username || "").trim() });
 }

@@ -7483,12 +7483,29 @@ const Shop = {
     });
   });
 
-  dom.resetProgressButton.addEventListener("click", () => {
+  dom.resetProgressButton.addEventListener("click", async () => {
     const confirmed = confirm(
         "Alle Level, Sterne und Freischaltungen löschen?"
     );
 
     if (!confirmed) return;
+
+    const activeUser = state.user ? { ...state.user } : null;
+
+    // Zuerst auch den Online-Spielstand des aktuell angemeldeten Accounts löschen.
+    // Dadurch bleibt z. B. ein Gast nicht mit seinem alten current_level im Ranking stehen.
+    if (activeUser?.id) {
+      try {
+        const result = await betaResetPlayerProgress(activeUser.id);
+        if (!result?.success) {
+          throw new Error(result?.error || "Online-Spielstand konnte nicht zurückgesetzt werden.");
+        }
+      } catch (error) {
+        console.error("Online-Spielstand zurücksetzen fehlgeschlagen:", error);
+        showToast(error?.message || "Online-Spielstand konnte nicht zurückgesetzt werden.");
+        return;
+      }
+    }
 
     const episodeProgressBackup = localStorage.getItem(EpisodeRace.storageKey);
     // Account- und Geräteverknüpfung gehört nicht zum Spielstand und bleibt erhalten.
@@ -7503,6 +7520,10 @@ const Shop = {
     }
     if (deviceIdBackup !== null) {
       localStorage.setItem("bk_device_id_v1", deviceIdBackup);
+    }
+    // Den Account selbst beibehalten; nur sein Spielstand wird gelöscht.
+    if (activeUser) {
+      SaveManager.saveUser(activeUser);
     }
 
     location.reload();
