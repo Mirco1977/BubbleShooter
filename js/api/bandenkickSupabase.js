@@ -177,6 +177,15 @@ export async function betaRegisterGuest(username) {
   return result;
 }
 
+export async function betaRefreshBandenkickUser(id) {
+  const result = await callEdgeFunction("beta-player", {
+    action: "refresh_bandenkick",
+    id: Number(id)
+  });
+  if (result?.success && result?.user) setActivePlayer(result.user);
+  return result;
+}
+
 export async function betaCheckUsername(username) {
   return callEdgeFunction("beta-player", { action: "check_username", username: String(username || "").trim() });
 }

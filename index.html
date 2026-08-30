@@ -35,7 +35,7 @@
 
   <link rel="stylesheet" href="style.css?v=20260827-1">
 
-  <link rel="stylesheet" href="style.css?v=20260830-beta-login">
+  <link rel="stylesheet" href="style.css?v=20260830-account-settings">
   <link rel="stylesheet" href="css/worldMap2.css?v=20260827-1">
   <link rel="stylesheet" href="css/loader.css?v=20260827-1">
 </head>
@@ -1009,35 +1009,47 @@
               <div class="speed-option" data-speed="fast">Schnell</div>
         </div>
 
-        <section class="account-device-card" aria-labelledby="accountDeviceTitle">
+        <section class="account-device-card account-profile-card" aria-labelledby="accountDeviceTitle">
           <div class="account-device-head">
             <div>
               <span class="eyebrow">ACCOUNT</span>
-              <h3 id="accountDeviceTitle">Verknüpftes Gerät</h3>
+              <h3 id="accountDeviceTitle">Spielerkonto</h3>
             </div>
             <span id="accountDeviceStatus" class="account-device-status">aktiv</span>
           </div>
 
+          <div class="account-team-summary">
+            <div id="accountTeamCrestWrap" class="account-team-crest-wrap hidden" aria-hidden="true">
+              <img id="accountTeamCrest" class="account-team-crest" alt="Teamwappen">
+            </div>
+            <div class="account-team-copy">
+              <strong id="accountTeamName">Kein Team</strong>
+              <span id="accountTeamShort">–</span>
+            </div>
+          </div>
+
           <label class="readonly-setting">
-            <span>Bandenkick User</span>
+            <span>Username</span>
             <input id="accountUsername" type="text" readonly value="–">
           </label>
           <label class="readonly-setting">
-            <span>E-Mail</span>
-            <input id="accountEmail" type="text" readonly value="–">
+            <span>Account</span>
+            <input id="accountType" type="text" readonly value="–">
           </label>
           <label class="readonly-setting">
-            <span>Gerät</span>
-            <input id="accountDeviceName" type="text" readonly value="–">
+            <span>User-ID</span>
+            <input id="accountUserId" type="text" readonly value="–">
           </label>
-          <label class="readonly-setting">
-            <span>System</span>
-            <input id="accountDeviceSystem" type="text" readonly value="–">
-          </label>
-          <label class="readonly-setting">
-            <span>Anzeige</span>
-            <input id="accountDeviceScreen" type="text" readonly value="–">
-          </label>
+
+          <div class="account-actions">
+            <button id="refreshAccountButton" class="primary-button account-action-button" type="button">
+              Login-Daten aktualisieren
+            </button>
+            <button id="switchAccountButton" class="secondary-button account-action-button" type="button">
+              Account wechseln
+            </button>
+          </div>
+          <p id="accountRefreshStatus" class="account-refresh-status" aria-live="polite"></p>
         </section>
 
         <button id="resetProgressButton" class="danger-button">
@@ -1170,7 +1182,7 @@
 </div>
 
 <script src="js/loader.js?v=20260827-1" defer></script>
-<script type="module" src="./script.js?v=20260830-beta-login"></script>
+<script type="module" src="./script.js?v=20260830-account-settings"></script>
 <script type="module" src="./js/main.js?v=20260827-1"></script>
 <script type="module" src="./js/worldmap/worldMap2.js?v=20260827-1"></script>
 

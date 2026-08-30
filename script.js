@@ -10,7 +10,7 @@
   import { applyAlbumLevelConfig } from "./js/config/albumLevel.js";
   import { Level1Tutorial } from "./js/tutorial/level1Tutorial.js";
   import { Level6LoadoutGuide } from "./js/tutorial/level6LoadoutGuide.js";
-  import { saveLevelResult, flushPendingLevelResults, getRanking as getSupabaseRanking, setActivePlayer, betaRegisterBandenkickUser, betaRegisterGuest } from "./js/api/bandenkickSupabase.js?v=20260830-beta-login";
+  import { saveLevelResult, flushPendingLevelResults, getRanking as getSupabaseRanking, setActivePlayer, betaRegisterBandenkickUser, betaRegisterGuest, betaRefreshBandenkickUser } from "./js/api/bandenkickSupabase.js?v=20260830-account-settings";
   import { evaluateLogin, approveCurrentDevice, getPrimaryDevice, readAccountSecurity, maskEmail, createTestEmailCode } from "./js/api/accountSecurity.js?v=20260829-1";
 
   (() => {
@@ -389,11 +389,16 @@ const THEME_PATH = [
     speedOptions: document.querySelectorAll(".speed-option"),
     resetProgressButton: $("resetProgressButton"),
     accountUsername: $("accountUsername"),
-    accountEmail: $("accountEmail"),
-    accountDeviceName: $("accountDeviceName"),
-    accountDeviceSystem: $("accountDeviceSystem"),
-    accountDeviceScreen: $("accountDeviceScreen"),
+    accountType: $("accountType"),
+    accountUserId: $("accountUserId"),
     accountDeviceStatus: $("accountDeviceStatus"),
+    accountTeamCrestWrap: $("accountTeamCrestWrap"),
+    accountTeamCrest: $("accountTeamCrest"),
+    accountTeamName: $("accountTeamName"),
+    accountTeamShort: $("accountTeamShort"),
+    refreshAccountButton: $("refreshAccountButton"),
+    switchAccountButton: $("switchAccountButton"),
+    accountRefreshStatus: $("accountRefreshStatus"),
     deviceLoginOverlay: $("deviceLoginOverlay"),
     deviceLoginText: $("deviceLoginText"),
     deviceLoginDetails: $("deviceLoginDetails"),
@@ -7475,15 +7480,101 @@ const Shop = {
 });
 
   function refreshAccountDeviceUi() {
-    const account = readAccountSecurity();
-    const device = getPrimaryDevice();
-    if (dom.accountUsername) dom.accountUsername.value = account?.username || state.user?.username || "–";
-    if (dom.accountEmail) dom.accountEmail.value = account?.email ? maskEmail(account.email) : "–";
-    if (dom.accountDeviceName) dom.accountDeviceName.value = device?.device_name || "–";
-    if (dom.accountDeviceSystem) dom.accountDeviceSystem.value = device ? `${device.os || "–"} · ${device.browser || "–"}` : "–";
-    if (dom.accountDeviceScreen) dom.accountDeviceScreen.value = device ? `${device.screen || "–"} · ${device.language || "–"}` : "–";
-    if (dom.accountDeviceStatus) dom.accountDeviceStatus.textContent = account?.bandenkick_user_id ? "aktiv" : "nicht verknüpft";
+    const user = state.user || null;
+    const isBandenkick = Boolean(user?.id && Number(user.id) > 0 && user?.account_type !== "guest");
+    const team = user?.teams?.clubs || user?.teams?.oneone || null;
+
+    if (dom.accountUsername) dom.accountUsername.value = user?.username || "–";
+    if (dom.accountType) dom.accountType.value = isBandenkick ? "Bandenkick Account" : "Gast Account";
+    if (dom.accountUserId) dom.accountUserId.value = user?.id ? String(user.id) : "–";
+    if (dom.accountDeviceStatus) {
+      dom.accountDeviceStatus.textContent = isBandenkick ? "Bandenkick" : "Gast";
+      dom.accountDeviceStatus.classList.toggle("guest", !isBandenkick);
+    }
+
+    if (dom.accountTeamName) dom.accountTeamName.textContent = team?.name || (isBandenkick ? "Kein Team verknüpft" : "Gastkonto");
+    if (dom.accountTeamShort) dom.accountTeamShort.textContent = team?.short || "–";
+
+    if (dom.accountTeamCrestWrap && dom.accountTeamCrest) {
+      const urls = Ranking.getTeamCrestUrls(team?.crest || "");
+      if (urls.primary) {
+        dom.accountTeamCrestWrap.classList.remove("hidden");
+        dom.accountTeamCrest.src = urls.primary;
+        dom.accountTeamCrest.onerror = () => {
+          if (urls.fallback && dom.accountTeamCrest.src !== urls.fallback) {
+            dom.accountTeamCrest.src = urls.fallback;
+            return;
+          }
+          dom.accountTeamCrestWrap.classList.add("hidden");
+        };
+      } else {
+        dom.accountTeamCrest.removeAttribute("src");
+        dom.accountTeamCrestWrap.classList.add("hidden");
+      }
+    }
+
+    if (dom.refreshAccountButton) {
+      dom.refreshAccountButton.classList.toggle("hidden", !isBandenkick);
+      dom.refreshAccountButton.disabled = false;
+      dom.refreshAccountButton.textContent = "Login-Daten aktualisieren";
+    }
   }
+
+  async function refreshBandenkickAccount() {
+    const userId = Number(state.user?.id || 0);
+    if (userId <= 0 || state.user?.account_type === "guest") return;
+
+    if (dom.refreshAccountButton) {
+      dom.refreshAccountButton.disabled = true;
+      dom.refreshAccountButton.textContent = "Daten werden aktualisiert …";
+    }
+    if (dom.accountRefreshStatus) {
+      dom.accountRefreshStatus.textContent = "Bandenkick-Daten werden abgeglichen …";
+      dom.accountRefreshStatus.classList.remove("error", "success");
+    }
+
+    try {
+      const result = await betaRefreshBandenkickUser(userId);
+      if (!result?.success || !result?.user) throw new Error(result?.error || "Aktualisierung fehlgeschlagen.");
+      state.user = normalizeBetaUser(result.user);
+      SaveManager.saveUser(state.user);
+      setActivePlayer(state.user);
+      updateUserUi();
+      refreshAccountDeviceUi();
+      if (dom.accountRefreshStatus) {
+        dom.accountRefreshStatus.textContent = "Login-Daten erfolgreich aktualisiert.";
+        dom.accountRefreshStatus.classList.add("success");
+      }
+      showToast("Login-Daten aktualisiert.");
+    } catch (error) {
+      console.warn("Bandenkick-Account konnte nicht aktualisiert werden:", error);
+      if (dom.accountRefreshStatus) {
+        dom.accountRefreshStatus.textContent = error?.message || "Login-Daten konnten nicht aktualisiert werden.";
+        dom.accountRefreshStatus.classList.add("error");
+      }
+    } finally {
+      if (dom.refreshAccountButton) {
+        dom.refreshAccountButton.disabled = false;
+        dom.refreshAccountButton.textContent = "Login-Daten aktualisieren";
+      }
+    }
+  }
+
+  async function switchBetaAccount() {
+    const confirmed = confirm("Account auf diesem Gerät wechseln? Der lokale Spielstand auf diesem Gerät bleibt erhalten.");
+    if (!confirmed) return;
+
+    state.user = null;
+    SaveManager.saveUser(null);
+    setActivePlayer(null);
+    updateUserUi();
+    refreshAccountDeviceUi();
+    if (dom.accountRefreshStatus) dom.accountRefreshStatus.textContent = "";
+    await openBetaLogin();
+  }
+
+  dom.refreshAccountButton?.addEventListener("click", refreshBandenkickAccount);
+  dom.switchAccountButton?.addEventListener("click", switchBetaAccount);
 
   function askForNewDeviceApproval(user, device) {
     return new Promise((resolve) => {
