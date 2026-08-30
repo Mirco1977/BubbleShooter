@@ -6621,6 +6621,11 @@ dom.shotsMapButton.onclick = () => {
           level,
           stars,
           score: this.score,
+          // Die aktuelle Gesamtzahl wird aus ALLEN lokal gespeicherten
+          // Levelergebnissen gebildet und zusammen mit jedem Abschluss
+          // an Supabase übertragen. Dadurch enthält das Ranking nicht nur
+          // die Sterne der seit dem Online-Sync gespielten Level.
+          totalStars: getTotalStars(),
           completed: true
         });
         if (onlineResult?.skipped) {
