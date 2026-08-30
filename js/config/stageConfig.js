@@ -28,7 +28,10 @@ export const STAGES = Object.freeze([
   { name: "Moonlight Bay",       logo: "assets/logos/moonlightbay.png",      background: "assets/backgrounds/moonlightbay.png",          accent: "#5967c9" },
   { name: "Mystic Forest",       logo: "assets/logos/mysticforest.png",      background: "assets/backgrounds/mysticforest.png",          accent: "#5a3d8f" },
   { name: "Fire Island",         logo: "assets/logos/fireisland.png",        background: "assets/backgrounds/fireisland.png",            accent: "#d84315" },
-  { name: "Thunder Mountain",    logo: "assets/logos/thundermountain.png",   background: "assets/backgrounds/thundermountain.png",       accent: "#6657a8" }
+  { name: "Thunder Mountain",    logo: "assets/logos/thundermountain.png",   background: "assets/backgrounds/thundermountain.png",       accent: "#6657a8" },
+  { name: "Samurai Kingdom",     logo: "assets/logos/samuraikingdom.png",     background: "assets/backgrounds/samuraikingdom.png",        accent: "#b12a2a" },
+  { name: "Arctic Fortress",     logo: "assets/logos/arcticfortress.png",     background: "assets/backgrounds/arcticfortress.png",        accent: "#79cfe8" },
+  { name: "Wild West Paradise",  logo: "assets/logos/wildwestparadise.png",   background: "assets/backgrounds/wildwestparadise.png",      accent: "#c47b32" }
 ]);
 
 export const TOTAL_STAGES = STAGES.length;

@@ -3591,6 +3591,226 @@ const STAR_CONFIG = {
         oneStar: 8000
     }
 },
+
+191: {
+    // Stage 20 – Samurai Kingdom: kontrollierter Einstieg
+    ballTypes: 5, addRowAfterShot: "n", rows: 6, targetScore: 7200,
+    mode: "shots", maxShots: 24,
+    shots: { threeStars: 15, twoStars: 20, oneStar: 24 }
+},
+192: {
+    // Samurai Kingdom – Nachrücken erhöht den Druck moderat
+    ballTypes: 5, addRowAfterShot: "y", rows: 6, targetScore: 7600,
+    mode: "shots", maxShots: 25,
+    shots: { threeStars: 16, twoStars: 21, oneStar: 25 }
+},
+193: {
+    // Samurai Kingdom – Farbziel
+    ballTypes: 5, addRowAfterShot: "n", rows: 7, targetScore: 5950,
+    mode: "colors", only_color: "cyan", need: 17, maxShots: 25,
+    shots: { threeStars: 16, twoStars: 21, oneStar: 25 }
+},
+194: {
+    // Samurai Kingdom – Kettenformation
+    ballTypes: 5, addRowAfterShot: "y", rows: 7, targetScore: 8100,
+    mode: "shots", maxShots: 27,
+    chainedBalls: [
+      {row:6,col:3},{row:6,col:4},{row:6,col:5},{row:6,col:6},{row:6,col:7},{row:6,col:8},{row:6,col:9},
+      {row:5,col:5},{row:5,col:6},{row:5,col:7},{row:5,col:8},{row:4,col:6},{row:4,col:7}
+    ],
+    shots: { threeStars: 17, twoStars: 22, oneStar: 27 }
+},
+195: {
+    // Samurai Kingdom – Speed
+    ballTypes: 5, addRowAfterShot: "n", rows: 7, targetScore: 8100,
+    mode: "speed", time: 70,
+    points: { threeStars: 9600, twoStars: 8750, oneStar: 8100 }
+},
+196: {
+    // Samurai Kingdom – Farbziel plus Ketten
+    ballTypes: 5, addRowAfterShot: "y", rows: 8, targetScore: 6300,
+    mode: "colors", only_color: "orange", need: 18, maxShots: 28,
+    chainedBalls: [
+      {row:7,col:4},{row:7,col:5},{row:7,col:6},{row:7,col:7},{row:7,col:8},{row:7,col:9},
+      {row:6,col:5},{row:6,col:6},{row:6,col:7},{row:6,col:8},{row:5,col:6},{row:5,col:7}
+    ],
+    shots: { threeStars: 18, twoStars: 23, oneStar: 28 }
+},
+197: {
+    // Samurai Kingdom – Fußball-Speziallevel
+    boardPattern: "football", ballTypes: 4, addRowAfterShot: "n", rows: 9,
+    targetScore: 0, mode: "removeRows", targetRows: 5, maxShots: 29,
+    shots: { threeStars: 19, twoStars: 24, oneStar: 29 }
+},
+198: {
+    // Samurai Kingdom – Speed mit Nachrücken
+    ballTypes: 5, addRowAfterShot: "y", rows: 7, targetScore: 8350,
+    mode: "speed", time: 68,
+    points: { threeStars: 9900, twoStars: 9000, oneStar: 8350 }
+},
+199: {
+    // Samurai Kingdom – dichter Kettenblock
+    ballTypes: 5, addRowAfterShot: "y", rows: 8, targetScore: 8500,
+    mode: "shots", maxShots: 29,
+    chainedBalls: [
+      {row:7,col:3},{row:7,col:4},{row:7,col:5},{row:7,col:6},{row:7,col:7},{row:7,col:8},{row:7,col:9},{row:7,col:10},
+      {row:6,col:4},{row:6,col:5},{row:6,col:6},{row:6,col:7},{row:6,col:8},{row:5,col:6},{row:5,col:7}
+    ],
+    shots: { threeStars: 18, twoStars: 24, oneStar: 29 }
+},
+200: {
+    // Samurai Kingdom – Stage-Finale
+    ballTypes: 5, addRowAfterShot: "y", rows: 8, targetScore: 8600,
+    mode: "shots", maxShots: 29,
+    shots: { threeStars: 18, twoStars: 24, oneStar: 29 }
+},
+
+201: {
+    // Stage 21 – Arctic Fortress: Einstieg mit sechs Reihen
+    ballTypes: 5, addRowAfterShot: "n", rows: 7, targetScore: 7600,
+    mode: "shots", maxShots: 24,
+    shots: { threeStars: 15, twoStars: 20, oneStar: 24 }
+},
+202: {
+    // Arctic Fortress – kontrolliertes Nachrücken
+    ballTypes: 5, addRowAfterShot: "y", rows: 7, targetScore: 8000,
+    mode: "shots", maxShots: 26,
+    shots: { threeStars: 16, twoStars: 21, oneStar: 26 }
+},
+203: {
+    // Arctic Fortress – Farbziel Grün
+    ballTypes: 5, addRowAfterShot: "n", rows: 7, targetScore: 6300,
+    mode: "colors", only_color: "green", need: 18, maxShots: 26,
+    shots: { threeStars: 16, twoStars: 21, oneStar: 26 }
+},
+204: {
+    // Arctic Fortress – Eisketten
+    ballTypes: 5, addRowAfterShot: "y", rows: 8, targetScore: 8500,
+    mode: "shots", maxShots: 28,
+    chainedBalls: [
+      {row:7,col:4},{row:7,col:5},{row:7,col:6},{row:7,col:7},{row:7,col:8},{row:7,col:9},{row:7,col:10},
+      {row:6,col:5},{row:6,col:6},{row:6,col:7},{row:6,col:8},{row:5,col:6},{row:5,col:7},{row:5,col:8}
+    ],
+    shots: { threeStars: 18, twoStars: 23, oneStar: 28 }
+},
+205: {
+    // Arctic Fortress – Speed
+    ballTypes: 5, addRowAfterShot: "n", rows: 8, targetScore: 8500,
+    mode: "speed", time: 68,
+    points: { threeStars: 10100, twoStars: 9200, oneStar: 8500 }
+},
+206: {
+    // Arctic Fortress – Farbziel mit Nachrücken
+    ballTypes: 5, addRowAfterShot: "y", rows: 8, targetScore: 6650,
+    mode: "colors", only_color: "yellow", need: 19, maxShots: 28,
+    shots: { threeStars: 18, twoStars: 23, oneStar: 28 }
+},
+207: {
+    // Arctic Fortress – Fußball-Speziallevel als Speed-Challenge
+    boardPattern: "football", ballTypes: 4, addRowAfterShot: "n", rows: 9,
+    targetScore: 8600, mode: "speed", time: 71,
+    points: { threeStars: 10300, twoStars: 9400, oneStar: 8600 }
+},
+208: {
+    // Arctic Fortress – Speed + Ketten
+    ballTypes: 5, addRowAfterShot: "y", rows: 8, targetScore: 8800,
+    mode: "speed", time: 67,
+    chainedBalls: [
+      {row:7,col:3},{row:7,col:4},{row:7,col:5},{row:7,col:6},{row:7,col:7},{row:7,col:8},{row:7,col:9},
+      {row:6,col:4},{row:6,col:5},{row:6,col:6},{row:6,col:7},{row:5,col:6},{row:5,col:7}
+    ],
+    points: { threeStars: 10400, twoStars: 9500, oneStar: 8800 }
+},
+209: {
+    // Arctic Fortress – schweres Kettenlevel
+    ballTypes: 5, addRowAfterShot: "y", rows: 8, targetScore: 8900,
+    mode: "shots", maxShots: 30,
+    chainedBalls: [
+      {row:7,col:3},{row:7,col:4},{row:7,col:5},{row:7,col:6},{row:7,col:7},{row:7,col:8},{row:7,col:9},{row:7,col:10},{row:7,col:11},
+      {row:6,col:4},{row:6,col:5},{row:6,col:6},{row:6,col:7},{row:6,col:8},{row:5,col:6},{row:5,col:7},{row:5,col:8}
+    ],
+    shots: { threeStars: 19, twoStars: 25, oneStar: 30 }
+},
+210: {
+    // Arctic Fortress – Stage-Finale, viel Feld aber faire Schusszahl
+    ballTypes: 5, addRowAfterShot: "y", rows: 8, targetScore: 9000,
+    mode: "shots", maxShots: 30,
+    shots: { threeStars: 19, twoStars: 25, oneStar: 30 }
+},
+
+211: {
+    // Stage 22 – Wild West Paradise: Einstieg
+    ballTypes: 5, addRowAfterShot: "n", rows: 7, targetScore: 8000,
+    mode: "shots", maxShots: 25,
+    shots: { threeStars: 16, twoStars: 21, oneStar: 25 }
+},
+212: {
+    // Wild West Paradise – Nachrücken
+    ballTypes: 5, addRowAfterShot: "y", rows: 7, targetScore: 8400,
+    mode: "shots", maxShots: 27,
+    shots: { threeStars: 17, twoStars: 22, oneStar: 27 }
+},
+213: {
+    // Wild West Paradise – Farbziel Rot
+    ballTypes: 5, addRowAfterShot: "n", rows: 8, targetScore: 6650,
+    mode: "colors", only_color: "red", need: 19, maxShots: 27,
+    shots: { threeStars: 17, twoStars: 22, oneStar: 27 }
+},
+214: {
+    // Wild West Paradise – Kettenwand
+    ballTypes: 5, addRowAfterShot: "y", rows: 8, targetScore: 9000,
+    mode: "shots", maxShots: 29,
+    chainedBalls: [
+      {row:7,col:3},{row:7,col:4},{row:7,col:5},{row:7,col:6},{row:7,col:7},{row:7,col:8},{row:7,col:9},{row:7,col:10},
+      {row:6,col:4},{row:6,col:5},{row:6,col:6},{row:6,col:7},{row:6,col:8},{row:5,col:6},{row:5,col:7}
+    ],
+    shots: { threeStars: 18, twoStars: 24, oneStar: 29 }
+},
+215: {
+    // Wild West Paradise – Speed
+    ballTypes: 5, addRowAfterShot: "n", rows: 8, targetScore: 9000,
+    mode: "speed", time: 67,
+    points: { threeStars: 10700, twoStars: 9750, oneStar: 9000 }
+},
+216: {
+    // Wild West Paradise – Farbziel Cyan plus Ketten
+    ballTypes: 5, addRowAfterShot: "y", rows: 8, targetScore: 7000,
+    mode: "colors", only_color: "cyan", need: 20, maxShots: 29,
+    chainedBalls: [
+      {row:7,col:4},{row:7,col:5},{row:7,col:6},{row:7,col:7},{row:7,col:8},{row:7,col:9},{row:7,col:10},
+      {row:6,col:5},{row:6,col:6},{row:6,col:7},{row:6,col:8},{row:5,col:6},{row:5,col:7},{row:5,col:8}
+    ],
+    shots: { threeStars: 18, twoStars: 24, oneStar: 29 }
+},
+217: {
+    // Wild West Paradise – Fußball-Speziallevel, klassisches Punkte-Ziel
+    boardPattern: "football", ballTypes: 4, addRowAfterShot: "n", rows: 9,
+    targetScore: 9000, mode: "shots", maxShots: 30,
+    shots: { threeStars: 20, twoStars: 25, oneStar: 30 }
+},
+218: {
+    // Wild West Paradise – Speed mit Nachrücken
+    ballTypes: 5, addRowAfterShot: "y", rows: 8, targetScore: 9300,
+    mode: "speed", time: 66,
+    points: { threeStars: 11000, twoStars: 10000, oneStar: 9300 }
+},
+219: {
+    // Wild West Paradise – dichteste Kettenformation der Serie
+    ballTypes: 5, addRowAfterShot: "y", rows: 8, targetScore: 9400,
+    mode: "shots", maxShots: 31,
+    chainedBalls: [
+      {row:7,col:3},{row:7,col:4},{row:7,col:5},{row:7,col:6},{row:7,col:7},{row:7,col:8},{row:7,col:9},{row:7,col:10},{row:7,col:11},
+      {row:6,col:3},{row:6,col:4},{row:6,col:5},{row:6,col:6},{row:6,col:7},{row:6,col:8},{row:6,col:9},
+      {row:5,col:5},{row:5,col:6},{row:5,col:7},{row:5,col:8}
+    ],
+    shots: { threeStars: 19, twoStars: 25, oneStar: 31 }
+},
+220: {
+    // Wild West Paradise – Abschluss der 30 neuen Level
+    ballTypes: 5, addRowAfterShot: "y", rows: 8, targetScore: 9600,
+    mode: "speed", time: 68,
+    points: { threeStars: 11400, twoStars: 10300, oneStar: 9600 }
+},
 };
 
 export function calculateStars(level, stats){
