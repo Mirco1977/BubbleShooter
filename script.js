@@ -5150,6 +5150,8 @@ createShooter() {
               Number.isFinite(maxShots) &&
               maxShots > 0 &&
               !this.levelFinished &&
+              !this.victoryAnimation &&
+              !this.swordReleaseActive &&
               this.shots >= maxShots
           ) {
               this.finish(false);
@@ -6635,6 +6637,10 @@ dom.shotsMapButton.onclick = () => {
           // an Supabase übertragen. Dadurch enthält das Ranking nicht nur
           // die Sterne der seit dem Online-Sync gespielten Level.
           totalStars: getTotalStars(),
+          // Wie bei den Sternen wird auch die vollständige lokale
+          // Gesamtpunktzahl übertragen. So enthält das Ranking auch Punkte
+          // aus Leveln, die vor Einführung des Online-Sync gespielt wurden.
+          totalScore: getTotalScore(),
           completed: true
         });
         if (onlineResult?.skipped) {
@@ -7010,6 +7016,15 @@ const Shop = {
         .reduce((sum, result) => {
             return sum + Number(result.stars || 0);
         }, 0);
+  }
+
+  function getTotalScore() {
+    const results = state.progress.results || {};
+
+    return Object.values(results)
+      .reduce((sum, result) => {
+        return sum + Math.max(0, Number(result?.score) || 0);
+      }, 0);
   }
 
   function escapeHtml(value) {

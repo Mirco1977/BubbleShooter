@@ -119,7 +119,7 @@ export async function flushPendingLevelResults() {
   writePendingLevels(remaining);
   return { success: remaining.length === 0, saved, remaining: remaining.length };
 }
-export async function saveLevelResult({ level, score, stars, totalStars = null, completed = true }) {
+export async function saveLevelResult({ level, score, stars, totalStars = null, totalScore = null, completed = true }) {
   const bandenkickUserId = await resolveBandenkickUserId();
   if (!bandenkickUserId) return { success: false, skipped: true, reason: "not_logged_in" };
   const payload = {
@@ -128,6 +128,7 @@ export async function saveLevelResult({ level, score, stars, totalStars = null, 
     score: Math.max(0, Math.floor(Number(score) || 0)),
     stars: Math.max(0, Math.min(3, Math.floor(Number(stars) || 0))),
     total_stars: Number.isFinite(Number(totalStars)) ? Math.max(0, Math.floor(Number(totalStars))) : null,
+    total_score: Number.isFinite(Number(totalScore)) ? Math.max(0, Math.floor(Number(totalScore))) : null,
     completed: completed === true
   };
   // Zuerst lokal vormerken. Erst nach bestaetigtem 200/success aus der Queue entfernen.
