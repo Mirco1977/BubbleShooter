@@ -1599,3 +1599,30 @@ body:has(#levelScreen.world2-level-overlay:not(.hidden)) {
   font-weight: 900;
   cursor: pointer;
 }
+
+/* =========================================================
+   DESKTOP-FIX: Spielerwappen auf der Levelkarte
+   Mobile Darstellung bleibt unverändert.
+   Auf groesseren Viewports wird nur der Spieler-Marker
+   vergroessert, damit Wappen/Ball denselben sichtbaren
+   Fuellgrad wie auf dem Smartphone haben.
+   ========================================================= */
+@media (min-width: 769px) {
+  .world2-player-marker {
+    transform: scale(1.62);
+    transform-origin: center center;
+  }
+
+  .world2-player-crest {
+    left: 50%;
+    top: 50%;
+    width: 94%;
+    height: 94%;
+    max-width: 94%;
+    max-height: 94%;
+    opacity: 1;
+    object-fit: contain;
+    object-position: center center;
+    transform: translate(-50%, -50%);
+  }
+}
