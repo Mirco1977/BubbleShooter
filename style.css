@@ -5993,3 +5993,27 @@ body.wheel-win-sequence-active {
     flex-basis: 48px;
   }
 }
+
+/* Ranking mobile: Sterne sauber rechtsbündig direkt unter dem Punktestand */
+@media (max-width: 560px) {
+  .ranking-player-row {
+    grid-template-columns: 40px minmax(0, 1fr) auto;
+    grid-template-areas:
+      "place name score"
+      "place meta stars";
+  }
+
+  .ranking-player-row .ranking-score {
+    grid-area: score;
+    align-self: end;
+    justify-self: end;
+    text-align: right;
+  }
+
+  .ranking-player-row .ranking-stars {
+    grid-area: stars;
+    align-self: start;
+    justify-self: end;
+    text-align: right;
+  }
+}
