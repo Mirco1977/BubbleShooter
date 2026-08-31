@@ -1693,3 +1693,82 @@ body:has(#levelScreen.world2-level-overlay:not(.hidden)) {
     text-indent: 0 !important;
   }
 }
+
+/* =========================================================
+   FINALER DESKTOP-RENDER-FIX FUER ONLINE-SPIELER
+   ---------------------------------------------------------
+   Auf Desktop/Laptop werden die Marker von worldMap2.js direkt
+   in #worldMap2World gelegt. Sie sind damit KEIN Kind des mit
+   scale(.78) transformierten .world2-level mehr.
+
+   Ergebnis:
+   - echte feste CSS-Endgroesse -> scharfes Rendering
+   - volle Deckkraft auch auf gesperrten Levels
+   - Teamwappen geometrisch exakt zentriert
+   - Gastspieler als echtes vorhandenes Ball-PNG statt Emoji
+   - Mobile bleibt von diesen Regeln unberuehrt
+   ========================================================= */
+@media (min-width: 769px) {
+  .world2-player-marker.world2-player-marker-overlay {
+    position: absolute !important;
+    z-index: 19 !important;
+    top: auto !important;
+    width: 44px !important;
+    min-width: 44px !important;
+    height: 44px !important;
+    min-height: 44px !important;
+    margin: 0 !important;
+    padding: 2px !important;
+    box-sizing: border-box !important;
+    border: 3px solid rgba(255,255,255,.98) !important;
+    border-radius: 50% !important;
+    background-color: rgba(12,14,20,.98) !important;
+    box-shadow: 0 3px 9px rgba(0,0,0,.48) !important;
+    opacity: 1 !important;
+    filter: none !important;
+    transform: translateX(44px) !important;
+    transform-origin: 50% 50% !important;
+    overflow: hidden !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    isolation: isolate;
+  }
+
+  .world2-player-marker.world2-player-marker-overlay .world2-player-crest {
+    position: absolute !important;
+    left: 50% !important;
+    top: 50% !important;
+    width: 96% !important;
+    height: 96% !important;
+    max-width: 96% !important;
+    max-height: 96% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    display: block !important;
+    object-fit: contain !important;
+    object-position: 50% 50% !important;
+    opacity: 1 !important;
+    filter: none !important;
+    transform: translate(-50%, -50%) !important;
+    transform-origin: 50% 50% !important;
+    image-rendering: auto !important;
+  }
+
+  /* Desktop-Gastspieler: echtes Spiel-Asset statt Emoji.
+     Das vermeidet Font-/Baseline-Unterschiede zwischen Safari,
+     Chrome, Windows und macOS und bleibt gestochen scharf. */
+  .world2-player-marker.world2-player-marker-overlay.world2-player-ball {
+    color: transparent !important;
+    font-size: 0 !important;
+    line-height: 0 !important;
+    text-shadow: none !important;
+    background-color: rgba(255,255,255,.98) !important;
+    background-image: url("../assets/balls/bk-arena-balls/black.png") !important;
+    background-repeat: no-repeat !important;
+    background-position: 50% 50% !important;
+    background-size: 90% 90% !important;
+    opacity: 1 !important;
+    filter: none !important;
+  }
+}

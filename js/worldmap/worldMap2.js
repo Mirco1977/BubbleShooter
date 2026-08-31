@@ -553,7 +553,24 @@ marker.style.bottom =
       if (event.key === "Enter" || event.key === " ") showPopup(event);
     });
 
-    levelNode.appendChild(marker);
+    // Desktop/Laptop: Marker NICHT in den skalierten Levelbutton legen.
+    // Dadurch werden Wappen und Gastball in ihrer echten CSS-Endgroesse
+    // gerendert und nicht zusammen mit .world2-level (scale .78) weichgerechnet.
+    const desktopOverlay = window.matchMedia?.("(min-width: 769px)")?.matches;
+
+    if (desktopOverlay) {
+      marker.classList.add("world2-player-marker-overlay");
+      marker.dataset.level = String(levelNode.dataset.level || "");
+
+      const levelBottom = Number.parseFloat(levelNode.style.bottom) || 0;
+      marker.style.left = levelNode.style.left || "50%";
+      marker.style.bottom = `${levelBottom + 15}px`;
+
+      this.world.appendChild(marker);
+    } else {
+      // Mobile bleibt exakt beim bisherigen Verhalten.
+      levelNode.appendChild(marker);
+    }
   },
 
   showPlayerPopup(players, level) {
