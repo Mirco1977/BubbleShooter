@@ -1521,12 +1521,18 @@ body:has(#levelScreen.world2-level-overlay:not(.hidden)) {
 }
 
 .world2-player-crest {
+  position: absolute;
+  left: 50%;
+  top: 50%;
   display: block;
-  width: 27px;
-  height: 27px;
-  max-width: 27px;
-  max-height: 27px;
+  width: 74%;
+  height: 74%;
+  max-width: 74%;
+  max-height: 74%;
   object-fit: contain;
+  object-position: center center;
+  transform: translate(-50%, -50%);
+  transform-origin: center center;
 }
 
 .world2-player-marker.world2-player-ball {
