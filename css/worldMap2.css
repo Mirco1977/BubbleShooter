@@ -1626,3 +1626,70 @@ body:has(#levelScreen.world2-level-overlay:not(.hidden)) {
     transform: translate(-50%, -50%);
   }
 }
+
+/* =========================================================
+   DESKTOP-FIX 2: Online-Spieler immer klar und exakt zentriert
+   ---------------------------------------------------------
+   Ein Spieler-Marker liegt innerhalb des Levelbuttons. Bei gesperrten
+   Levels wurde deshalb die opacity:.58 des Eltern-Elements auf Wappen
+   und Fremdspieler-Ball mit angewendet. Das wird hier getrennt:
+   Nur Levelkugel + Sterne bleiben ausgegraut, der Spieler-Marker selbst
+   bleibt immer bei voller Deckkraft.
+   ========================================================= */
+@media (min-width: 769px) {
+  /* Falls auf einem gesperrten Level ein Online-Spieler steht, darf die
+     Deckkraft nicht mehr auf den kompletten Levelbutton wirken. */
+  .world2-level.locked:has(.world2-player-marker) {
+    opacity: 1 !important;
+  }
+
+  /* Gesperrten Level optisch weiterhin wie vorher abdunkeln. */
+  .world2-level.locked:has(.world2-player-marker) > .world2-level-orb,
+  .world2-level.locked:has(.world2-player-marker) > .world2-stars {
+    opacity: .58 !important;
+  }
+
+  .world2-player-marker {
+    opacity: 1 !important;
+    filter: none !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    box-sizing: border-box;
+    padding: 2px !important;
+  }
+
+  /* Teamwappen: volle Deckkraft, exakt geometrisch zentriert und bis
+     dicht an den weissen Ring gefuellt. */
+  .world2-player-marker .world2-player-crest {
+    position: absolute !important;
+    left: 50% !important;
+    top: 50% !important;
+    width: 96% !important;
+    height: 96% !important;
+    max-width: 96% !important;
+    max-height: 96% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    opacity: 1 !important;
+    filter: none !important;
+    object-fit: contain !important;
+    object-position: 50% 50% !important;
+    transform: translate(-50%, -50%) !important;
+    transform-origin: 50% 50% !important;
+  }
+
+  /* Fremdspieler-Ball: kein Baseline-Versatz des Emoji. */
+  .world2-player-marker.world2-player-ball {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    padding: 0 !important;
+    opacity: 1 !important;
+    filter: none !important;
+    text-align: center !important;
+    line-height: 1 !important;
+    font-size: 24px !important;
+    text-indent: 0 !important;
+  }
+}
