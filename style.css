@@ -5942,3 +5942,54 @@ body.wheel-win-sequence-active {
   .beta-login-actions { margin-top: 10px; }
   .beta-login-actions button { min-height: 40px; }
 }
+
+/* =========================================================
+   ACCOUNT – TEAMWAPPEN KOMPAKT
+   ========================================================= */
+.account-team-summary {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 8px 0 12px;
+}
+.account-team-crest-wrap {
+  flex: 0 0 55px;
+  width: 55px;
+  height: 55px;
+  max-width: 55px;
+  max-height: 55px;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+}
+.account-team-crest-wrap.hidden {
+  display: none !important;
+}
+.account-team-crest {
+  display: block;
+  width: 55px !important;
+  height: 55px !important;
+  max-width: 55px !important;
+  max-height: 55px !important;
+  object-fit: contain;
+}
+.account-team-copy {
+  min-width: 0;
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+@media (max-width: 560px) {
+  .account-team-crest-wrap,
+  .account-team-crest {
+    width: 48px !important;
+    height: 48px !important;
+    max-width: 48px !important;
+    max-height: 48px !important;
+  }
+  .account-team-crest-wrap {
+    flex-basis: 48px;
+  }
+}
