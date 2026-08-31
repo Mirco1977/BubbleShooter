@@ -1525,10 +1525,11 @@ body:has(#levelScreen.world2-level-overlay:not(.hidden)) {
   left: 50%;
   top: 50%;
   display: block;
-  width: 74%;
-  height: 74%;
-  max-width: 74%;
-  max-height: 74%;
+  width: 94%;
+  height: 94%;
+  max-width: 94%;
+  max-height: 94%;
+  opacity: 1;
   object-fit: contain;
   object-position: center center;
   transform: translate(-50%, -50%);
