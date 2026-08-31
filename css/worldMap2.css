@@ -1495,3 +1495,100 @@ body:has(#levelScreen.world2-level-overlay:not(.hidden)) {
   -webkit-tap-highlight-color: transparent;
   user-select: none;
 }
+
+/* =========================================================
+   ONLINE-SPIELER AUF DER LEVELKARTE
+   ========================================================= */
+.world2-player-marker {
+  position: absolute;
+  z-index: 18;
+  left: calc(100% + 2px);
+  top: 20px;
+  width: 34px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  padding: 2px;
+  border: 2px solid rgba(255,255,255,.94);
+  border-radius: 50%;
+  background: rgba(12,14,20,.92);
+  box-shadow: 0 4px 10px rgba(0,0,0,.48);
+  transform: scale(1.28); /* gleicht den .78-Scale des Levelbuttons aus */
+  transform-origin: center;
+  cursor: pointer;
+  overflow: hidden;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.world2-player-crest {
+  display: block;
+  width: 27px;
+  height: 27px;
+  max-width: 27px;
+  max-height: 27px;
+  object-fit: contain;
+}
+
+.world2-player-marker.world2-player-ball {
+  font-size: 22px;
+  line-height: 1;
+  background: rgba(255,255,255,.96);
+}
+
+.world2-player-popup-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1000002;
+  display: grid;
+  place-items: center;
+  padding: 22px;
+  background: rgba(0,0,0,.68);
+  backdrop-filter: blur(3px);
+}
+
+.world2-player-popup {
+  width: min(360px, 92vw);
+  max-height: min(520px, 75vh);
+  overflow: auto;
+  padding: 22px;
+  border: 1px solid rgba(255,255,255,.18);
+  border-radius: 24px;
+  background: #151820;
+  color: #fff;
+  box-shadow: 0 20px 55px rgba(0,0,0,.55);
+  text-align: left;
+}
+
+.world2-player-popup > strong {
+  display: block;
+  margin-bottom: 14px;
+  color: #ffd54a;
+  font-size: 20px;
+}
+
+.world2-player-popup ul {
+  margin: 0 0 18px;
+  padding: 0;
+  list-style: none;
+}
+
+.world2-player-popup li {
+  padding: 10px 0;
+  border-bottom: 1px solid rgba(255,255,255,.1);
+  font-size: 17px;
+  font-weight: 800;
+}
+
+.world2-player-popup li:last-child { border-bottom: 0; }
+
+.world2-player-popup button {
+  width: 100%;
+  min-height: 46px;
+  border: 0;
+  border-radius: 14px;
+  background: #860000;
+  color: #fff;
+  font: inherit;
+  font-weight: 900;
+  cursor: pointer;
+}

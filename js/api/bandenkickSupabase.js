@@ -141,6 +141,10 @@ export async function saveLevelResult({ level, score, stars, totalStars = null, 
   writePendingLevels(remaining);
   return result;
 }
+export async function getWorldMapPlayers() {
+  return callEdgeFunction("get-world-map-players", {});
+}
+
 export async function getRanking() {
   // Für die TOP-10 braucht der Ranking-Endpunkt keinen Login.
   // Ist der Benutzer bereits synchronisiert, senden wir seine Bandenkick-ID

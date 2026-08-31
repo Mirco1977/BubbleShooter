@@ -1,4 +1,5 @@
 import { WORLD_MAP_CONFIG_2 as CONFIG } from "../config/worldMapConfig2.js";
+import { getWorldMapPlayers } from "../api/bandenkickSupabase.js?v=20260831-worldmap-players";
 
 
 const $ = (id) => document.getElementById(id);
@@ -144,6 +145,7 @@ getMapScale() {
     this.ensureViewportScrollable();
 
     this.render();
+    this.loadPlayerMarkers();
 
     requestAnimationFrame(() => {
       this.ensureViewportScrollable();
@@ -443,6 +445,149 @@ marker.style.bottom =
 
       this.world.appendChild(marker);
     }
+  },
+
+  async loadPlayerMarkers() {
+    if (!this.world) return;
+
+    this.world.querySelectorAll(".world2-player-marker").forEach(el => el.remove());
+
+    try {
+      const data = await getWorldMapPlayers();
+      const players = Array.isArray(data?.players) ? data.players : [];
+      const byLevel = new Map();
+
+      players.forEach(player => {
+        const level = Number(player?.current_level) || 0;
+        if (level < 1 || level > CONFIG.totalLevels) return;
+        if (!byLevel.has(level)) byLevel.set(level, []);
+        byLevel.get(level).push(player);
+      });
+
+      byLevel.forEach((levelPlayers, level) => {
+        const node = this.world.querySelector(`.world2-level[data-level="${level}"]`);
+        if (!node) return;
+        this.addPlayerMarker(node, levelPlayers);
+      });
+    } catch (error) {
+      console.warn("[WorldMap2] Spielerpositionen konnten nicht geladen werden:", error);
+    }
+  },
+
+  getCrestUrls(crestValue) {
+    const raw = String(crestValue || "").trim();
+    if (!raw) return { primary: "", fallback: "" };
+    if (/^https?:\/\//i.test(raw)) return { primary: raw, fallback: "" };
+
+    const clean = raw.replace(/^\/+/, "");
+    if (clean.startsWith("storage/")) {
+      return {
+        primary: `https://bandenkick.de/${clean}`,
+        fallback: `https://bandenkick.de/${clean.replace(/^storage\//, "")}`
+      };
+    }
+    return {
+      primary: `https://bandenkick.de/storage/${clean}`,
+      fallback: `https://bandenkick.de/${clean}`
+    };
+  },
+
+  addPlayerMarker(levelNode, players) {
+    const cleanPlayers = players
+      .filter(player => String(player?.username || "").trim())
+      .sort((a, b) => String(a.username).localeCompare(String(b.username), "de"));
+    if (!cleanPlayers.length) return;
+
+    const teamKeys = new Set();
+    let allHaveSameTeam = true;
+    cleanPlayers.forEach(player => {
+      const isBandenkick = String(player?.account_type || "").toLowerCase() === "bandenkick";
+      const teamId = Number(player?.team_id) || 0;
+      if (!isBandenkick || !teamId) allHaveSameTeam = false;
+      else teamKeys.add(teamId);
+    });
+    allHaveSameTeam = allHaveSameTeam && teamKeys.size === 1;
+
+    const marker = document.createElement("span");
+    marker.className = "world2-player-marker";
+    marker.tabIndex = 0;
+    marker.setAttribute("role", "button");
+    marker.setAttribute("aria-label", `Spieler auf Level ${levelNode.dataset.level || ""}`);
+
+    if (allHaveSameTeam) {
+      const crest = this.getCrestUrls(cleanPlayers[0]?.crest);
+      if (crest.primary) {
+        const img = document.createElement("img");
+        img.className = "world2-player-crest";
+        img.src = crest.primary;
+        img.alt = "";
+        img.loading = "lazy";
+        img.decoding = "async";
+        img.addEventListener("error", () => {
+          if (crest.fallback && img.dataset.fallbackTried !== "1") {
+            img.dataset.fallbackTried = "1";
+            img.src = crest.fallback;
+            return;
+          }
+          marker.classList.add("world2-player-ball");
+          img.remove();
+          marker.textContent = "⚽";
+        });
+        marker.appendChild(img);
+      } else {
+        marker.classList.add("world2-player-ball");
+        marker.textContent = "⚽";
+      }
+    } else {
+      marker.classList.add("world2-player-ball");
+      marker.textContent = "⚽";
+    }
+
+    const showPopup = (event) => {
+      event?.preventDefault?.();
+      event?.stopPropagation?.();
+      this.showPlayerPopup(cleanPlayers, levelNode.dataset.level);
+    };
+    marker.addEventListener("click", showPopup);
+    marker.addEventListener("keydown", event => {
+      if (event.key === "Enter" || event.key === " ") showPopup(event);
+    });
+
+    levelNode.appendChild(marker);
+  },
+
+  showPlayerPopup(players, level) {
+    document.querySelector(".world2-player-popup-backdrop")?.remove();
+
+    const backdrop = document.createElement("div");
+    backdrop.className = "world2-player-popup-backdrop";
+
+    const popup = document.createElement("div");
+    popup.className = "world2-player-popup";
+
+    const title = document.createElement("strong");
+    title.textContent = `Spieler auf Level ${level}`;
+    popup.appendChild(title);
+
+    const list = document.createElement("ul");
+    players.forEach(player => {
+      const item = document.createElement("li");
+      item.textContent = String(player.username || "Spieler");
+      list.appendChild(item);
+    });
+    popup.appendChild(list);
+
+    const close = document.createElement("button");
+    close.type = "button";
+    close.textContent = "Schließen";
+    close.addEventListener("click", () => backdrop.remove());
+    popup.appendChild(close);
+
+    backdrop.appendChild(popup);
+    backdrop.addEventListener("click", event => {
+      if (event.target === backdrop) backdrop.remove();
+    });
+    document.body.appendChild(backdrop);
   },
 
   renderLevel(level, progress) {
