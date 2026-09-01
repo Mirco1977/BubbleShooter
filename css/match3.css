@@ -133,6 +133,8 @@
   box-shadow: inset 0 0 18px rgba(0,0,0,.46), 0 10px 24px rgba(0,0,0,.25);
   touch-action: none;
   user-select: none;
+  position: relative;
+  overflow: visible;
 }
 
 .match3-tile {
@@ -245,4 +247,70 @@
   font-size: 18px;
   font-weight: 900;
   line-height: 1;
+}
+
+
+/* =========================================================
+   4er-Kombi – horizontaler Streifenball
+   Assets: assets/match3/balls/<farbe>-streif-h.png
+   ========================================================= */
+.match3-tile.is-stripe-h {
+  z-index: 2;
+}
+
+.match3-tile.is-stripe-h img {
+  filter: drop-shadow(0 0 5px rgba(255,255,255,.34)) drop-shadow(0 3px 4px rgba(0,0,0,.34));
+}
+
+/* Falls das Streifen-PNG noch nicht vorhanden ist, bleibt der normale Ball sichtbar
+   und bekommt eine provisorische Streifenmarkierung. */
+.match3-tile.is-stripe-h.uses-special-fallback::after {
+  content: "";
+  position: absolute;
+  left: 12%;
+  right: 12%;
+  top: 50%;
+  height: 9px;
+  transform: translateY(-50%);
+  border-top: 3px solid rgba(255,255,255,.92);
+  border-bottom: 3px solid rgba(255,255,255,.92);
+  border-radius: 50%;
+  pointer-events: none;
+  filter: drop-shadow(0 0 3px rgba(255,255,255,.7));
+}
+
+.match3-tile.is-created-special {
+  animation: match3SpecialCreate .38s cubic-bezier(.16,.8,.22,1) both;
+}
+
+.match3-stripe-shot-ball {
+  position: absolute;
+  z-index: 40;
+  object-fit: contain;
+  pointer-events: none;
+  will-change: transform, opacity;
+  filter: drop-shadow(0 0 8px rgba(255,255,255,.9)) drop-shadow(0 0 16px rgba(255,223,102,.58));
+}
+
+.match3-stripe-beam {
+  position: absolute;
+  left: -6%;
+  width: 112%;
+  height: 5px;
+  z-index: 35;
+  pointer-events: none;
+  border-radius: 999px;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,.95) 18%, #fff 50%, rgba(255,255,255,.95) 82%, transparent);
+  box-shadow: 0 0 7px rgba(255,255,255,.95), 0 0 18px rgba(255,223,102,.72);
+  transform-origin: center;
+}
+
+.match3-tile.is-protected {
+  box-shadow: inset 0 0 0 2px rgba(180,225,255,.7), inset 0 0 14px rgba(130,205,255,.28);
+}
+
+@keyframes match3SpecialCreate {
+  0% { transform: scale(.72) rotate(-7deg); filter: brightness(1.7); }
+  58% { transform: scale(1.16) rotate(3deg); filter: brightness(1.28); }
+  100% { transform: scale(1) rotate(0); filter: brightness(1); }
 }

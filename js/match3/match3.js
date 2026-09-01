@@ -15,6 +15,14 @@ const BALLS = [
   { key: "blue", image: "assets/balls/bk-arena-balls/blue.png" }
 ];
 
+const MATCH3_BALL_ASSET_DIR = "assets/match3/balls";
+const STRIPE_H = "stripe-h";
+const PIECE_SEPARATOR = "|";
+
+// Reserviert für spätere Blocker wie Frost/Ketten. Geschützte Zellen werden
+// von einem Streifenschuss weder entfernt noch beim Nachrücken verschoben.
+const protectedCells = new Set();
+
 const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 const cloneBoard = (board) => board.map((row) => row.slice());
 
@@ -93,8 +101,36 @@ export const Match3Feature = (() => {
     return BALLS[Math.floor(Math.random() * BALLS.length)].key;
   }
 
-  function imageFor(key) {
-    return BALLS.find((ball) => ball.key === key)?.image || BALLS[0].image;
+  function pieceInfo(piece) {
+    if (!piece) return { color: null, special: null };
+    const [color, special = null] = String(piece).split(PIECE_SEPARATOR);
+    return { color, special };
+  }
+
+  function baseColor(piece) {
+    return pieceInfo(piece).color;
+  }
+
+  function isHorizontalStripe(piece) {
+    return pieceInfo(piece).special === STRIPE_H;
+  }
+
+  function makeHorizontalStripe(color) {
+    return `${color}${PIECE_SEPARATOR}${STRIPE_H}`;
+  }
+
+  function normalImageFor(color) {
+    return BALLS.find((ball) => ball.key === color)?.image || BALLS[0].image;
+  }
+
+  function imageFor(piece) {
+    const { color, special } = pieceInfo(piece);
+    if (special === STRIPE_H && color) return `${MATCH3_BALL_ASSET_DIR}/${color}-streif-h.png`;
+    return normalImageFor(color);
+  }
+
+  function isProtectedCell(row, col) {
+    return protectedCells.has(`${row}:${col}`);
   }
 
   function swapIn(boardToChange, a, b) {
@@ -107,17 +143,21 @@ export const Match3Feature = (() => {
     return Math.abs(a.row - b.row) + Math.abs(a.col - b.col) === 1;
   }
 
-  function findMatches(boardToCheck) {
-    const matched = new Set();
+  function findMatchGroups(boardToCheck) {
+    const groups = [];
 
     for (let row = 0; row < ROWS; row++) {
       let start = 0;
       while (start < COLS) {
-        const key = boardToCheck[row][start];
+        const color = baseColor(boardToCheck[row][start]);
         let end = start + 1;
-        while (end < COLS && key && boardToCheck[row][end] === key) end++;
-        if (key && end - start >= 3) {
-          for (let col = start; col < end; col++) matched.add(`${row}:${col}`);
+        while (end < COLS && color && baseColor(boardToCheck[row][end]) === color) end++;
+        if (color && end - start >= 3) {
+          groups.push({
+            direction: "horizontal",
+            color,
+            cells: Array.from({ length: end - start }, (_, i) => ({ row, col: start + i }))
+          });
         }
         start = end;
       }
@@ -126,20 +166,80 @@ export const Match3Feature = (() => {
     for (let col = 0; col < COLS; col++) {
       let start = 0;
       while (start < ROWS) {
-        const key = boardToCheck[start][col];
+        const color = baseColor(boardToCheck[start][col]);
         let end = start + 1;
-        while (end < ROWS && key && boardToCheck[end][col] === key) end++;
-        if (key && end - start >= 3) {
-          for (let row = start; row < end; row++) matched.add(`${row}:${col}`);
+        while (end < ROWS && color && baseColor(boardToCheck[end][col]) === color) end++;
+        if (color && end - start >= 3) {
+          groups.push({
+            direction: "vertical",
+            color,
+            cells: Array.from({ length: end - start }, (_, i) => ({ row: start + i, col }))
+          });
         }
         start = end;
       }
     }
 
-    return [...matched].map((value) => {
-      const [row, col] = value.split(":").map(Number);
-      return { row, col };
-    });
+    return groups;
+  }
+
+  function findMatches(boardToCheck) {
+    const matched = new Map();
+    for (const group of findMatchGroups(boardToCheck)) {
+      for (const cell of group.cells) matched.set(`${cell.row}:${cell.col}`, cell);
+    }
+    return [...matched.values()];
+  }
+
+  function cellInGroup(group, pos) {
+    return Boolean(pos && group.cells.some((cell) => cell.row === pos.row && cell.col === pos.col));
+  }
+
+  function planHorizontalStripeCreations(groups, preferred = []) {
+    const creations = [];
+    const used = new Set();
+
+    for (const group of groups) {
+      // Genau vier horizontal: spätere 5er-/T-/L-Kombis bleiben für eigene Specials frei.
+      if (group.direction !== "horizontal" || group.cells.length !== 4) continue;
+      if (group.cells.some(({ row, col }) => isHorizontalStripe(board[row]?.[col]))) continue;
+
+      let pos = preferred.find((candidate) => cellInGroup(group, candidate));
+      if (!pos) pos = group.cells[Math.floor((group.cells.length - 1) / 2)];
+      const id = `${pos.row}:${pos.col}`;
+      if (used.has(id)) continue;
+      used.add(id);
+      creations.push({ ...pos, color: group.color });
+    }
+    return creations;
+  }
+
+  function expandHorizontalStripeShots(removalMap) {
+    const triggers = [];
+    const queued = new Set();
+
+    for (const cell of [...removalMap.values()]) {
+      if (isHorizontalStripe(board[cell.row]?.[cell.col])) queued.add(`${cell.row}:${cell.col}`);
+    }
+
+    while (queued.size) {
+      const id = queued.values().next().value;
+      queued.delete(id);
+      const [row, col] = id.split(":").map(Number);
+      if (triggers.some((trigger) => trigger.row === row && trigger.col === col)) continue;
+      const piece = board[row]?.[col];
+      if (!isHorizontalStripe(piece)) continue;
+      triggers.push({ row, col, piece });
+
+      for (let c = 0; c < COLS; c++) {
+        if (isProtectedCell(row, c)) continue;
+        const targetId = `${row}:${c}`;
+        removalMap.set(targetId, { row, col: c });
+        if (isHorizontalStripe(board[row]?.[c]) && c !== col) queued.add(targetId);
+      }
+    }
+
+    return triggers;
   }
 
   function hasPossibleMove(boardToCheck) {
@@ -296,10 +396,71 @@ export const Match3Feature = (() => {
     return maxDuration;
   }
 
-  function renderBoard({ matched = [], dropMap = null, invalid = [] } = {}) {
+  async function animateHorizontalStripeShots(triggers) {
+    if (!dom.board || !triggers?.length) return;
+    const animations = [];
+
+    for (const trigger of triggers) {
+      const tile = tileAt(trigger);
+      if (!tile) continue;
+      const sourceImg = tile.querySelector("img");
+      if (!sourceImg) continue;
+
+      const tileBox = tile.getBoundingClientRect();
+      const boardBox = dom.board.getBoundingClientRect();
+      const centerX = tileBox.left - boardBox.left + tileBox.width / 2;
+      const centerY = tileBox.top - boardBox.top + tileBox.height / 2;
+      const size = Math.max(28, tileBox.width - 5);
+      const leftDistance = -(centerX + size);
+      const rightDistance = dom.board.clientWidth - centerX + size;
+
+      const beam = document.createElement("span");
+      beam.className = "match3-stripe-beam";
+      beam.style.top = `${centerY}px`;
+      dom.board.appendChild(beam);
+      animations.push(animationFinished(beam.animate(
+        [
+          { opacity: 0, transform: "translateY(-50%) scaleX(.05)" },
+          { opacity: .95, transform: "translateY(-50%) scaleX(1)", offset: .24 },
+          { opacity: 0, transform: "translateY(-50%) scaleX(1)" }
+        ],
+        { duration: 310, easing: "cubic-bezier(.15,.75,.2,1)", fill: "forwards" }
+      )).finally(() => beam.remove()));
+
+      for (const direction of ["left", "right"]) {
+        const clone = document.createElement("img");
+        clone.className = `match3-stripe-shot-ball is-${direction}`;
+        clone.src = imageFor(trigger.piece);
+        clone.alt = "";
+        clone.draggable = false;
+        clone.style.width = `${size}px`;
+        clone.style.height = `${size}px`;
+        clone.style.left = `${centerX - size / 2}px`;
+        clone.style.top = `${centerY - size / 2}px`;
+        clone.addEventListener("error", () => {
+          clone.src = normalImageFor(baseColor(trigger.piece));
+        }, { once: true });
+        dom.board.appendChild(clone);
+        const distance = direction === "left" ? leftDistance : rightDistance;
+        const flight = clone.animate(
+          [
+            { transform: "translate3d(0,0,0) scale(1.08)", opacity: 1 },
+            { transform: `translate3d(${distance}px,0,0) scale(.92)`, opacity: .92 }
+          ],
+          { duration: 285, easing: "cubic-bezier(.12,.7,.16,1)", fill: "forwards" }
+        );
+        animations.push(animationFinished(flight).finally(() => clone.remove()));
+      }
+    }
+
+    await Promise.all(animations);
+  }
+
+  function renderBoard({ matched = [], dropMap = null, invalid = [], createdSpecial = [] } = {}) {
     if (!dom.board) return 0;
     const matchedSet = new Set(matched.map((p) => `${p.row}:${p.col}`));
     const invalidSet = new Set(invalid.map((p) => `${p.row}:${p.col}`));
+    const createdSet = new Set(createdSpecial.map((p) => `${p.row}:${p.col}`));
 
     dom.board.classList.toggle("is-busy", busy);
     dom.board.style.setProperty("--match3-cols", String(COLS));
@@ -315,18 +476,29 @@ export const Match3Feature = (() => {
         tile.dataset.row = String(row);
         tile.dataset.col = String(col);
         tile.setAttribute("role", "gridcell");
-        tile.setAttribute("aria-label", key ? `${key} Ball, Reihe ${row + 1}, Spalte ${col + 1}` : "Leeres Feld");
+        const info = pieceInfo(key);
+        const specialLabel = info.special === STRIPE_H ? " horizontaler Streifenball" : " Ball";
+        tile.setAttribute("aria-label", key ? `${info.color}${specialLabel}, Reihe ${row + 1}, Spalte ${col + 1}` : "Leeres Feld");
         tile.disabled = busy || finished || !key;
 
         if (selected?.row === row && selected?.col === col) tile.classList.add("is-selected");
         if (matchedSet.has(`${row}:${col}`)) tile.classList.add("is-matched");
         if (invalidSet.has(`${row}:${col}`)) tile.classList.add("is-invalid");
+        if (createdSet.has(`${row}:${col}`)) tile.classList.add("is-created-special");
+        if (info.special === STRIPE_H) tile.classList.add("is-stripe-h");
+        if (isProtectedCell(row, col)) tile.classList.add("is-protected");
 
         if (key) {
           const img = document.createElement("img");
           img.src = imageFor(key);
           img.alt = "";
           img.draggable = false;
+          if (info.special === STRIPE_H) {
+            img.addEventListener("error", () => {
+              tile.classList.add("uses-special-fallback");
+              img.src = normalImageFor(info.color);
+            }, { once: true });
+          }
           tile.appendChild(img);
         }
 
@@ -415,52 +587,95 @@ export const Match3Feature = (() => {
   function collapseAndRefill() {
     const dropMap = new Map();
 
-    for (let col = 0; col < COLS; col++) {
+    function collapseSegment(col, startRow, endRow) {
+      if (startRow > endRow) return;
       const remaining = [];
-      for (let row = ROWS - 1; row >= 0; row--) {
+      for (let row = endRow; row >= startRow; row--) {
         if (board[row][col]) remaining.push({ key: board[row][col], fromRow: row });
       }
 
       let spawnIndex = 0;
-      for (let row = ROWS - 1, index = 0; row >= 0; row--, index++) {
+      for (let row = endRow, index = 0; row >= startRow; row--, index++) {
         if (index < remaining.length) {
           const item = remaining[index];
           board[row][col] = item.key;
           dropMap.set(`${row}:${col}`, { fromRow: item.fromRow, spawned: false });
         } else {
           board[row][col] = randomBall();
-          dropMap.set(`${row}:${col}`, { fromRow: -1 - spawnIndex, spawned: true });
+          dropMap.set(`${row}:${col}`, { fromRow: startRow - 1 - spawnIndex, spawned: true });
           spawnIndex++;
         }
+      }
+    }
+
+    for (let col = 0; col < COLS; col++) {
+      let segmentStart = 0;
+      for (let row = 0; row <= ROWS; row++) {
+        const boundary = row === ROWS || isProtectedCell(row, col);
+        if (!boundary) continue;
+        collapseSegment(col, segmentStart, row - 1);
+        // Geschützte Zelle bleibt exakt an ihrer Position stehen.
+        segmentStart = row + 1;
       }
     }
 
     return dropMap;
   }
 
-  async function resolveBoard(initialMatches) {
+  async function resolveBoard(initialMatches, swapContext = null) {
     let matches = initialMatches;
     let cascade = 1;
+    let firstCycle = true;
 
     while (matches.length) {
+      const groups = findMatchGroups(board);
+      const preferred = firstCycle && swapContext ? [swapContext.to, swapContext.from] : [];
+      const creations = planHorizontalStripeCreations(groups, preferred);
+      const creationSet = new Set(creations.map((p) => `${p.row}:${p.col}`));
+
+      // Der neue Spezialball bleibt auf dem Feld; alle anderen Match-Zellen werden entfernt.
+      for (const creation of creations) {
+        board[creation.row][creation.col] = makeHorizontalStripe(creation.color);
+      }
+
+      const removalMap = new Map();
+      for (const cell of matches) {
+        const id = `${cell.row}:${cell.col}`;
+        if (!creationSet.has(id) && !isProtectedCell(cell.row, cell.col)) removalMap.set(id, cell);
+      }
+
+      // Ein bereits vorhandener Streifenball, der Teil einer gleichfarbigen Kombi wird,
+      // aktiviert sofort den kompletten horizontalen Reihenschuss.
+      const stripeTriggers = expandHorizontalStripeShots(removalMap);
+      const removal = [...removalMap.values()];
+
       updateHud(cascade);
-      setStatus(cascade > 1 ? `Kaskade ×${cascade}!` : `${matches.length} Bälle getroffen.`);
-      renderBoard({ matched: matches });
-      await wait(330);
+      if (stripeTriggers.length) setStatus("Streifenschuss!");
+      else if (creations.length) setStatus("4er-Kombi – Streifenball erstellt!");
+      else setStatus(cascade > 1 ? `Kaskade ×${cascade}!` : `${removal.length} Bälle getroffen.`);
+
+      renderBoard({ createdSpecial: creations });
+      if (creations.length) await wait(145);
+      if (stripeTriggers.length) await animateHorizontalStripeShots(stripeTriggers);
+
+      renderBoard({ matched: removal, createdSpecial: creations });
+      await wait(stripeTriggers.length ? 220 : 330);
 
       const multiplier = Math.min(cascade, 4);
-      score += matches.length * POINTS_PER_BALL * multiplier;
+      score += removal.length * POINTS_PER_BALL * multiplier;
 
       if (currentLevel.type === "collect") {
-        for (const { row, col } of matches) {
-          if (board[row]?.[col] === currentLevel.collectKey) collectedBlue++;
+        for (const { row, col } of removal) {
+          if (baseColor(board[row]?.[col]) === currentLevel.collectKey) collectedBlue++;
         }
       }
       updateHud(cascade);
 
-      for (const { row, col } of matches) board[row][col] = null;
-      renderBoard({ matched: matches });
-      await wait(130);
+      for (const { row, col } of removal) {
+        if (!isProtectedCell(row, col)) board[row][col] = null;
+      }
+      renderBoard({ matched: removal });
+      await wait(120);
 
       const dropMap = collapseAndRefill();
       const dropDuration = renderBoard({ dropMap });
@@ -468,6 +683,7 @@ export const Match3Feature = (() => {
 
       matches = findMatches(board);
       cascade++;
+      firstCycle = false;
     }
 
     await shuffleIfNeeded();
@@ -525,7 +741,7 @@ export const Match3Feature = (() => {
       return;
     }
 
-    await resolveBoard(matches);
+    await resolveBoard(matches, { from, to });
     busy = false;
     renderBoard();
   }
