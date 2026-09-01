@@ -35,9 +35,10 @@
 
   <link rel="stylesheet" href="style.css?v=20260827-1">
 
-  <link rel="stylesheet" href="style.css?v=20260830-login-hero-belinfo">
+  <link rel="stylesheet" href="style.css?v=20260830-beta-login">
   <link rel="stylesheet" href="css/worldMap2.css?v=20260827-1">
   <link rel="stylesheet" href="css/loader.css?v=20260827-1">
+  <link rel="stylesheet" href="css/match3.css?v=20260901-1">
 </head>
 
 <body>
@@ -174,6 +175,19 @@
             draggable="false">
         </button>
 
+        <!-- MATCH-3 SONDERBEREICH: erst ab freigeschaltetem Hauptlevel 195 sichtbar -->
+        <button id="openMatch3Button" class="menu-card has-image match3-menu-card hidden" type="button" hidden>
+          <div class="menu-card-text">
+            <strong>Match Arena</strong>
+            <span>Neue Ball-Mechanik entdecken</span>
+          </div>
+          <div class="match3-menu-balls" aria-hidden="true">
+            <img src="assets/balls/bk-arena-balls/red.png" alt="" draggable="false">
+            <img src="assets/balls/bk-arena-balls/yellow.png" alt="" draggable="false">
+            <img src="assets/balls/bk-arena-balls/green.png" alt="" draggable="false">
+          </div>
+        </button>
+
         <!-- 8. Einstellungen -->
         <button id="openSettingsButton" class="menu-card has-image">
           <div class="menu-card-text">
@@ -187,6 +201,62 @@
             draggable="false">
         </button>
       </div>
+    </section>
+
+    <section id="match3MapScreen" class="screen hidden" aria-labelledby="match3MapTitle">
+      <div class="screen-toolbar">
+        <button id="match3MapBackButton" class="back-button" type="button">← Start</button>
+        <div>
+          <span class="eyebrow">SONDERBEREICH</span>
+          <h2 id="match3MapTitle">Match Arena</h2>
+        </div>
+        <span>Level 195+</span>
+      </div>
+
+      <section class="match3-map-card">
+        <div class="match3-map-intro">
+          <span class="eyebrow">TESTSTRECKE</span>
+          <h3>Neue Match-Mechanik</h3>
+          <p>Tausche benachbarte Bälle und bilde Reihen aus mindestens drei gleichen Bällen.</p>
+        </div>
+        <button id="match3Level1Button" class="match3-level-node" type="button">
+          <span class="match3-level-number">1</span>
+          <span class="match3-level-copy">
+            <strong>Nachrück-Test</strong>
+            <small>4 × 4 Feld · Ziel 1.500 Punkte</small>
+          </span>
+          <span class="match3-level-arrow" aria-hidden="true">›</span>
+        </button>
+      </section>
+    </section>
+
+    <section id="match3PlayScreen" class="screen hidden" aria-labelledby="match3PlayTitle">
+      <div class="screen-toolbar match3-play-toolbar">
+        <button id="match3PlayBackButton" class="back-button" type="button">← Karte</button>
+        <div>
+          <span class="eyebrow">MATCH ARENA</span>
+          <h2 id="match3PlayTitle">Level 1</h2>
+        </div>
+        <span id="match3GoalHud">Ziel 1.500</span>
+      </div>
+
+      <section class="match3-game-card">
+        <div class="match3-hud">
+          <div><span>PUNKTE</span><strong id="match3Score">0</strong></div>
+          <div><span>ZIEL</span><strong>1.500</strong></div>
+          <div><span>KASKADE</span><strong id="match3Combo">×1</strong></div>
+        </div>
+
+        <div id="match3Status" class="match3-status" aria-live="polite">Tausche zwei benachbarte Bälle.</div>
+        <div id="match3Board" class="match3-board" role="grid" aria-label="Match Arena Spielfeld 4 mal 4"></div>
+
+        <div id="match3Victory" class="match3-victory hidden" aria-live="polite">
+          <span class="eyebrow">LEVEL GESCHAFFT</span>
+          <h3>1.500 Punkte erreicht!</h3>
+          <p>Die Nachrück- und Kaskadenmechanik wurde erfolgreich durchgespielt.</p>
+          <button id="match3VictoryMapButton" class="primary-button" type="button">Zur Levelkarte</button>
+        </div>
+      </section>
     </section>
 
     <section id="mapScreen" class="screen hidden">
@@ -1009,47 +1079,35 @@
               <div class="speed-option" data-speed="fast">Schnell</div>
         </div>
 
-        <section class="account-device-card account-profile-card" aria-labelledby="accountDeviceTitle">
+        <section class="account-device-card" aria-labelledby="accountDeviceTitle">
           <div class="account-device-head">
             <div>
               <span class="eyebrow">ACCOUNT</span>
-              <h3 id="accountDeviceTitle">Spielerkonto</h3>
+              <h3 id="accountDeviceTitle">Verknüpftes Gerät</h3>
             </div>
             <span id="accountDeviceStatus" class="account-device-status">aktiv</span>
           </div>
 
-          <div class="account-team-summary">
-            <div id="accountTeamCrestWrap" class="account-team-crest-wrap hidden" aria-hidden="true">
-              <img id="accountTeamCrest" class="account-team-crest" alt="Teamwappen">
-            </div>
-            <div class="account-team-copy">
-              <strong id="accountTeamName">Kein Team</strong>
-              <span id="accountTeamShort">–</span>
-            </div>
-          </div>
-
           <label class="readonly-setting">
-            <span>Username</span>
+            <span>Bandenkick User</span>
             <input id="accountUsername" type="text" readonly value="–">
           </label>
           <label class="readonly-setting">
-            <span>Account</span>
-            <input id="accountType" type="text" readonly value="–">
+            <span>E-Mail</span>
+            <input id="accountEmail" type="text" readonly value="–">
           </label>
           <label class="readonly-setting">
-            <span>User-ID</span>
-            <input id="accountUserId" type="text" readonly value="–">
+            <span>Gerät</span>
+            <input id="accountDeviceName" type="text" readonly value="–">
           </label>
-
-          <div class="account-actions">
-            <button id="refreshAccountButton" class="primary-button account-action-button" type="button">
-              Login-Daten aktualisieren
-            </button>
-            <button id="switchAccountButton" class="secondary-button account-action-button" type="button">
-              Account wechseln
-            </button>
-          </div>
-          <p id="accountRefreshStatus" class="account-refresh-status" aria-live="polite"></p>
+          <label class="readonly-setting">
+            <span>System</span>
+            <input id="accountDeviceSystem" type="text" readonly value="–">
+          </label>
+          <label class="readonly-setting">
+            <span>Anzeige</span>
+            <input id="accountDeviceScreen" type="text" readonly value="–">
+          </label>
         </section>
 
         <button id="resetProgressButton" class="danger-button">
@@ -1083,9 +1141,6 @@
       <h2 id="betaLoginTitle">Willkommen beim Bubble Shooter</h2>
 
       <div id="betaLoginQuestion" class="beta-login-step">
-        <div class="beta-login-hero-frame">
-          <img class="beta-login-hero" src="assets/ui/beta-login-hero.png" alt="Bandenkick BubbleShooter">
-        </div>
         <p>Hast du einen Account bei Bandenkick?</p>
         <div class="beta-login-actions">
           <button id="betaHasBkYes" class="primary-button" type="button">Ja</button>
@@ -1097,19 +1152,11 @@
         <p>Gib deinen Bandenkick-Username und deine User-ID ein.</p>
         <label>
           <span>Bandenkick Username</span>
-          <input id="betaBkUsername" type="text" maxlength="40" autocomplete="username" placeholder="z. B. xxSunny200">
+          <input id="betaBkUsername" type="text" maxlength="40" autocomplete="username" placeholder="z. B. Mirco Djerdak">
         </label>
-        <label class="beta-userid-label">
-          <span class="beta-label-row">
-            <span>Bandenkick User-ID</span>
-            <button id="betaBelInfoButton" class="beta-bel-info-button" type="button" aria-label="Wo finde ich meine BEL-ID?" aria-expanded="false">i</button>
-          </span>
-          <input id="betaBkUserId" type="number" min="1" inputmode="numeric" placeholder="z. B. 481">
-          <div id="betaBelInfoPopup" class="beta-bel-info-popup hidden" role="dialog" aria-label="BEL-ID Hilfe">
-            <strong>Wo finde ich meine BEL-ID ?</strong>
-            <a href="https://bandenkick.de/esport/auth/login" target="_blank" rel="noopener noreferrer">Webseite</a>
-            <span>Login -&gt; Profile -&gt; Ganz unten BEL-ID</span>
-          </div>
+        <label>
+          <span>Bandenkick User-ID</span>
+          <input id="betaBkUserId" type="number" min="1" inputmode="numeric" placeholder="z. B. 101">
         </label>
         <p id="betaBkError" class="beta-login-error hidden"></p>
         <div class="beta-login-actions">
@@ -1127,28 +1174,14 @@
       </div>
 
       <div id="betaGuestStep" class="beta-login-step hidden">
-        <p id="betaGuestIntro">Gib deinen Gast-Username ein.</p>
+        <p>Wie soll dein Username beim Bubble Shooter heißen?</p>
         <label>
           <span>Username</span>
           <input id="betaGuestUsername" type="text" maxlength="30" autocomplete="nickname" placeholder="Dein Username">
         </label>
-        <div id="betaGuestPinWrap" class="hidden">
-          <label>
-            <span>6-stelliger Zahlencode</span>
-            <input id="betaGuestPin" type="password" inputmode="numeric" pattern="[0-9]*" maxlength="6" autocomplete="off" placeholder="000000">
-          </label>
-        </div>
-        <div id="betaGuestPinConfirmWrap" class="hidden">
-          <label>
-            <span>Zahlencode wiederholen</span>
-            <input id="betaGuestPinConfirm" type="password" inputmode="numeric" pattern="[0-9]*" maxlength="6" autocomplete="off" placeholder="000000">
-          </label>
-        </div>
-        <p id="betaGuestPinWarning" class="hidden"><strong>Wichtig:</strong> Code gut aufbewahren. Er kann nicht wiederhergestellt werden.</p>
         <p id="betaGuestError" class="beta-login-error hidden"></p>
-        <div class="beta-login-actions">
-          <button id="betaGuestSubmit" class="primary-button" type="button">Weiter</button>
-          <button id="betaGuestReset" class="secondary-button hidden" type="button">Anderen Username</button>
+        <div class="beta-login-actions one">
+          <button id="betaGuestSubmit" class="primary-button" type="button">Speichern</button>
         </div>
       </div>
 
@@ -1207,7 +1240,7 @@
 </div>
 
 <script src="js/loader.js?v=20260827-1" defer></script>
-<script type="module" src="./script.js?v=20260830-login-hero-belinfo"></script>
+<script type="module" src="./script.js?v=20260901-match3-1"></script>
 <script type="module" src="./js/main.js?v=20260827-1"></script>
 <script type="module" src="./js/worldmap/worldMap2.js?v=20260827-1"></script>
 
