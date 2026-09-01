@@ -156,8 +156,91 @@ export const Match3Feature = (() => {
     if (dom.combo) dom.combo.textContent = `×${combo}`;
   }
 
-  function renderBoard({ matched = [], falling = false, invalid = [] } = {}) {
-    if (!dom.board) return;
+  function tileAt(pos) {
+    return dom.board?.querySelector(`.match3-tile[data-row="${pos.row}"][data-col="${pos.col}"]`) || null;
+  }
+
+  function animationFinished(animation) {
+    return animation?.finished?.catch(() => {}) || Promise.resolve();
+  }
+
+  async function animateSwapVisual(from, to, duration = 190) {
+    const fromTile = tileAt(from);
+    const toTile = tileAt(to);
+    const fromImg = fromTile?.querySelector("img");
+    const toImg = toTile?.querySelector("img");
+    if (!fromTile || !toTile || !fromImg || !toImg) {
+      await wait(duration);
+      return;
+    }
+
+    const a = fromTile.getBoundingClientRect();
+    const b = toTile.getBoundingClientRect();
+    const dx = b.left - a.left;
+    const dy = b.top - a.top;
+    const easing = "cubic-bezier(.22,.72,.24,1)";
+
+    fromTile.classList.add("is-swapping");
+    toTile.classList.add("is-swapping");
+    fromImg.style.zIndex = "3";
+    toImg.style.zIndex = "2";
+
+    const first = fromImg.animate(
+      [
+        { transform: "translate3d(0,0,0) scale(1)" },
+        { transform: `translate3d(${dx}px, ${dy}px, 0) scale(1.035)` }
+      ],
+      { duration, easing, fill: "forwards" }
+    );
+    const second = toImg.animate(
+      [
+        { transform: "translate3d(0,0,0) scale(1)" },
+        { transform: `translate3d(${-dx}px, ${-dy}px, 0) scale(.985)` }
+      ],
+      { duration, easing, fill: "forwards" }
+    );
+
+    await Promise.all([animationFinished(first), animationFinished(second)]);
+  }
+
+  function startDropAnimations(dropMap) {
+    if (!dom.board || !dropMap?.size) return 0;
+    const firstTile = tileAt({ row: 0, col: 0 });
+    const secondRowTile = tileAt({ row: 1, col: 0 });
+    const pitch = firstTile && secondRowTile
+      ? secondRowTile.getBoundingClientRect().top - firstTile.getBoundingClientRect().top
+      : (firstTile?.getBoundingClientRect().height || 70) + 7;
+
+    let maxDuration = 0;
+    dropMap.forEach((movement, id) => {
+      const [row, col] = id.split(":").map(Number);
+      const tile = tileAt({ row, col });
+      const img = tile?.querySelector("img");
+      if (!img) return;
+
+      const distanceRows = Math.max(0, row - movement.fromRow);
+      if (!distanceRows) return;
+      const startY = -distanceRows * pitch;
+      const duration = Math.min(520, 235 + distanceRows * 55);
+      maxDuration = Math.max(maxDuration, duration);
+      tile.classList.add("is-dropping");
+      if (movement.spawned) tile.classList.add("is-spawned");
+
+      img.animate(
+        [
+          { transform: `translate3d(0, ${startY}px, 0) scale(${movement.spawned ? .96 : 1})`, opacity: movement.spawned ? .88 : 1, offset: 0 },
+          { transform: "translate3d(0, 5px, 0) scale(1.015)", opacity: 1, offset: .86 },
+          { transform: "translate3d(0, -2px, 0) scale(.998)", opacity: 1, offset: .95 },
+          { transform: "translate3d(0, 0, 0) scale(1)", opacity: 1, offset: 1 }
+        ],
+        { duration, easing: "cubic-bezier(.18,.7,.2,1)", fill: "both" }
+      );
+    });
+    return maxDuration;
+  }
+
+  function renderBoard({ matched = [], dropMap = null, invalid = [] } = {}) {
+    if (!dom.board) return 0;
     const matchedSet = new Set(matched.map((p) => `${p.row}:${p.col}`));
     const invalidSet = new Set(invalid.map((p) => `${p.row}:${p.col}`));
 
@@ -179,7 +262,6 @@ export const Match3Feature = (() => {
         if (selected?.row === row && selected?.col === col) tile.classList.add("is-selected");
         if (matchedSet.has(`${row}:${col}`)) tile.classList.add("is-matched");
         if (invalidSet.has(`${row}:${col}`)) tile.classList.add("is-invalid");
-        if (falling && key) tile.classList.add("is-falling");
 
         if (key) {
           const img = document.createElement("img");
@@ -238,6 +320,8 @@ export const Match3Feature = (() => {
         dom.board.appendChild(tile);
       }
     }
+
+    return startDropAnimations(dropMap);
   }
 
   async function shuffleIfNeeded() {
@@ -257,28 +341,42 @@ export const Match3Feature = (() => {
       );
       if (!findMatches(candidate).length && hasPossibleMove(candidate)) {
         board = candidate;
-        renderBoard({ falling: true });
-        await wait(300);
+        renderBoard();
+        await wait(220);
         renderBoard();
         return;
       }
     }
     board = createPlayableBoard();
-    renderBoard({ falling: true });
-    await wait(300);
+    renderBoard();
+    await wait(220);
     renderBoard();
   }
 
   function collapseAndRefill() {
+    const dropMap = new Map();
+
     for (let col = 0; col < COLS; col++) {
       const remaining = [];
       for (let row = ROWS - 1; row >= 0; row--) {
-        if (board[row][col]) remaining.push(board[row][col]);
+        if (board[row][col]) remaining.push({ key: board[row][col], fromRow: row });
       }
+
+      let spawnIndex = 0;
       for (let row = ROWS - 1, index = 0; row >= 0; row--, index++) {
-        board[row][col] = index < remaining.length ? remaining[index] : randomBall();
+        if (index < remaining.length) {
+          const item = remaining[index];
+          board[row][col] = item.key;
+          dropMap.set(`${row}:${col}`, { fromRow: item.fromRow, spawned: false });
+        } else {
+          board[row][col] = randomBall();
+          dropMap.set(`${row}:${col}`, { fromRow: -1 - spawnIndex, spawned: true });
+          spawnIndex++;
+        }
       }
     }
+
+    return dropMap;
   }
 
   async function resolveBoard(initialMatches) {
@@ -299,9 +397,9 @@ export const Match3Feature = (() => {
       renderBoard({ matched: matches });
       await wait(130);
 
-      collapseAndRefill();
-      renderBoard({ falling: true });
-      await wait(360);
+      const dropMap = collapseAndRefill();
+      const dropDuration = renderBoard({ dropMap });
+      await wait(Math.max(300, dropDuration + 25));
 
       matches = findMatches(board);
       cascade++;
@@ -331,20 +429,23 @@ export const Match3Feature = (() => {
     if (busy || finished || !adjacent(from, to)) return;
     busy = true;
     selected = null;
+    renderBoard();
     setStatus("Zug wird geprüft …");
 
+    // Erst die beiden sichtbaren Bälle wirklich in das Nachbarfeld gleiten lassen.
+    await animateSwapVisual(from, to, 190);
     swapIn(board, from, to);
-    renderBoard({ falling: true });
-    await wait(220);
+    renderBoard();
 
     const matches = findMatches(board);
     if (!matches.length) {
-      renderBoard({ invalid: [from, to] });
       setStatus("Kein Match – Zug zurückgesetzt.");
-      await wait(280);
+      // Ungültiger Zug: die vertauschten Bälle gleiten direkt wieder zurück.
+      await wait(45);
+      await animateSwapVisual(from, to, 155);
       swapIn(board, from, to);
-      renderBoard({ falling: true });
-      await wait(220);
+      renderBoard({ invalid: [from, to] });
+      await wait(120);
       busy = false;
       renderBoard();
       setStatus("Tausche zwei benachbarte Bälle.");

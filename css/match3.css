@@ -136,7 +136,8 @@
   background: rgba(255,255,255,.035);
   opacity: 1 !important;
   touch-action: none;
-  transition: transform .16s ease, box-shadow .16s ease, background .16s ease;
+  transition: transform .15s ease, box-shadow .15s ease, background .15s ease;
+  overflow: visible;
 }
 
 .match3-tile img {
@@ -144,6 +145,10 @@
   height: 92%;
   object-fit: contain;
   pointer-events: none;
+  position: relative;
+  will-change: transform, opacity;
+  transform: translateZ(0);
+  backface-visibility: hidden;
   filter: drop-shadow(0 5px 5px rgba(0,0,0,.34));
 }
 
@@ -153,9 +158,10 @@
   box-shadow: 0 0 0 2px #ffdf66 inset, 0 0 14px rgba(255,223,102,.5);
 }
 
-.match3-tile.is-matched img { animation: match3Pop .32s ease both; }
-.match3-tile.is-falling img { animation: match3Fall .34s cubic-bezier(.2,.75,.25,1) both; }
-.match3-tile.is-invalid { animation: match3Invalid .28s ease; }
+.match3-tile.is-matched img { animation: match3Pop .28s cubic-bezier(.2,.7,.2,1) both; }
+.match3-tile.is-swapping { z-index: 5; }
+.match3-tile.is-dropping { z-index: 3; }
+.match3-tile.is-invalid { animation: match3Invalid .16s ease; }
 .match3-board.is-busy { cursor: wait; }
 
 .match3-victory {
@@ -177,15 +183,14 @@
   100% { transform: scale(.1); opacity: 0; }
 }
 
-@keyframes match3Fall {
-  from { transform: translateY(-28px) scale(.9); opacity: .2; }
-  to { transform: translateY(0) scale(1); opacity: 1; }
+@keyframes match3Invalid {
+  0%,100% { transform: scale(1); }
+  50% { transform: scale(.975); }
 }
 
-@keyframes match3Invalid {
-  0%,100% { transform: translateX(0); }
-  25% { transform: translateX(-5px); }
-  75% { transform: translateX(5px); }
+@media (prefers-reduced-motion: reduce) {
+  .match3-tile,
+  .match3-tile img { animation-duration: .01ms !important; transition-duration: .01ms !important; }
 }
 
 @media (max-width: 430px) {
