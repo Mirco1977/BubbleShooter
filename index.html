@@ -219,14 +219,25 @@
           <h3>Neue Match-Mechanik</h3>
           <p>Tausche benachbarte Bälle und bilde Reihen aus mindestens drei gleichen Bällen.</p>
         </div>
-        <button id="match3Level1Button" class="match3-level-node" type="button">
-          <span class="match3-level-number">1</span>
-          <span class="match3-level-copy">
-            <strong>Nachrück-Test</strong>
-            <small>4 × 4 Feld · Ziel 1.500 Punkte</small>
-          </span>
-          <span class="match3-level-arrow" aria-hidden="true">›</span>
-        </button>
+        <div class="match3-level-list">
+          <button id="match3Level1Button" class="match3-level-node" type="button">
+            <span class="match3-level-number">1</span>
+            <span class="match3-level-copy">
+              <strong>Nachrück-Test</strong>
+              <small>4 × 4 Feld · Ziel 1.500 Punkte</small>
+            </span>
+            <span class="match3-level-arrow" aria-hidden="true">›</span>
+          </button>
+
+          <button id="match3Level2Button" class="match3-level-node" type="button">
+            <span class="match3-level-number">2</span>
+            <span class="match3-level-copy">
+              <strong>Blaue Bälle sammeln</strong>
+              <small>6 × 6 Feld · Sammle 20 blaue Bälle</small>
+            </span>
+            <span class="match3-level-arrow" aria-hidden="true">›</span>
+          </button>
+        </div>
       </section>
     </section>
 
@@ -243,7 +254,7 @@
       <section class="match3-game-card">
         <div class="match3-hud">
           <div><span>PUNKTE</span><strong id="match3Score">0</strong></div>
-          <div><span>ZIEL</span><strong>1.500</strong></div>
+          <div><span>ZIEL</span><strong id="match3TargetDisplay">1.500</strong></div>
           <div><span>KASKADE</span><strong id="match3Combo">×1</strong></div>
         </div>
 
@@ -252,9 +263,9 @@
 
         <div id="match3Victory" class="match3-victory hidden" aria-live="polite">
           <span class="eyebrow">LEVEL GESCHAFFT</span>
-          <h3>1.500 Punkte erreicht!</h3>
-          <p>Die Nachrück- und Kaskadenmechanik wurde erfolgreich durchgespielt.</p>
-          <button id="match3VictoryMapButton" class="primary-button" type="button">Zur Levelkarte</button>
+          <h3 id="match3VictoryTitle">Ziel erreicht!</h3>
+          <p id="match3VictoryText">Das Level wurde erfolgreich abgeschlossen.</p>
+          <button id="match3VictoryHomeButton" class="primary-button" type="button">Zurück zur Hauptseite</button>
         </div>
       </section>
     </section>

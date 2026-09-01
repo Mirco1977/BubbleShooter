@@ -1,5 +1,7 @@
 const MAX_COLS = 9;
-const LEVEL_1 = Object.freeze({ rows: 4, cols: 4, targetScore: 1500 });
+const LEVEL_1 = Object.freeze({ id: 1, rows: 4, cols: 4, type: "score", targetScore: 1500 });
+const LEVEL_2 = Object.freeze({ id: 2, rows: 6, cols: 6, type: "collect", collectKey: "blue", collectTarget: 20 });
+let currentLevel = LEVEL_1;
 let ROWS = LEVEL_1.rows;
 let COLS = LEVEL_1.cols;
 let TARGET_SCORE = LEVEL_1.targetScore;
@@ -24,6 +26,7 @@ export const Match3Feature = (() => {
 
   let board = [];
   let score = 0;
+  let collectedBlue = 0;
   let busy = false;
   let finished = false;
   let selected = null;
@@ -36,13 +39,19 @@ export const Match3Feature = (() => {
     dom.homeButton = document.getElementById("openMatch3Button");
     dom.mapBack = document.getElementById("match3MapBackButton");
     dom.level1 = document.getElementById("match3Level1Button");
+    dom.level2 = document.getElementById("match3Level2Button");
     dom.playBack = document.getElementById("match3PlayBackButton");
     dom.board = document.getElementById("match3Board");
     dom.score = document.getElementById("match3Score");
+    dom.target = document.getElementById("match3TargetDisplay");
+    dom.goalHud = document.getElementById("match3GoalHud");
+    dom.playTitle = document.getElementById("match3PlayTitle");
     dom.combo = document.getElementById("match3Combo");
     dom.status = document.getElementById("match3Status");
     dom.victory = document.getElementById("match3Victory");
-    dom.victoryMap = document.getElementById("match3VictoryMapButton");
+    dom.victoryTitle = document.getElementById("match3VictoryTitle");
+    dom.victoryText = document.getElementById("match3VictoryText");
+    dom.victoryHome = document.getElementById("match3VictoryHomeButton");
   }
 
   function hasAccess() {
@@ -64,9 +73,12 @@ export const Match3Feature = (() => {
     const rows = Math.max(1, Math.floor(Number(config?.rows) || 1));
     const cols = Math.max(1, Math.min(MAX_COLS, Math.floor(Number(config?.cols) || 1)));
 
+    currentLevel = config || LEVEL_1;
     ROWS = rows;
     COLS = cols;
-    TARGET_SCORE = Math.max(1, Math.floor(Number(config?.targetScore) || TARGET_SCORE || 1));
+    if (currentLevel.type === "score") {
+      TARGET_SCORE = Math.max(1, Math.floor(Number(config?.targetScore) || 1));
+    }
 
     if (dom.board) {
       dom.board.style.setProperty("--match3-cols", String(COLS));
@@ -185,6 +197,21 @@ export const Match3Feature = (() => {
   function updateHud(combo = 1) {
     if (dom.score) dom.score.textContent = score.toLocaleString("de-DE");
     if (dom.combo) dom.combo.textContent = `×${combo}`;
+
+    if (currentLevel.type === "collect") {
+      const remaining = Math.max(0, Number(currentLevel.collectTarget || 0) - collectedBlue);
+      if (dom.target) {
+        dom.target.className = "match3-collect-target";
+        dom.target.innerHTML = `<img src="${imageFor(currentLevel.collectKey)}" alt="Blauer Ball"><span>${remaining}</span>`;
+      }
+      if (dom.goalHud) dom.goalHud.textContent = `${remaining} blaue Bälle`;
+    } else {
+      if (dom.target) {
+        dom.target.className = "";
+        dom.target.textContent = TARGET_SCORE.toLocaleString("de-DE");
+      }
+      if (dom.goalHud) dom.goalHud.textContent = `Ziel ${TARGET_SCORE.toLocaleString("de-DE")}`;
+    }
   }
 
   function tileAt(pos) {
@@ -424,6 +451,12 @@ export const Match3Feature = (() => {
 
       const multiplier = Math.min(cascade, 4);
       score += matches.length * POINTS_PER_BALL * multiplier;
+
+      if (currentLevel.type === "collect") {
+        for (const { row, col } of matches) {
+          if (board[row]?.[col] === currentLevel.collectKey) collectedBlue++;
+        }
+      }
       updateHud(cascade);
 
       for (const { row, col } of matches) board[row][col] = null;
@@ -441,18 +474,26 @@ export const Match3Feature = (() => {
     await shuffleIfNeeded();
     updateHud(1);
 
-    if (score >= TARGET_SCORE) {
+    const levelCompleted = currentLevel.type === "collect"
+      ? collectedBlue >= Number(currentLevel.collectTarget || 0)
+      : score >= TARGET_SCORE;
+
+    if (levelCompleted) {
       finished = true;
       setStatus("Ziel erreicht!");
+      if (dom.victoryTitle) {
+        dom.victoryTitle.textContent = currentLevel.type === "collect"
+          ? "20 blaue Bälle gesammelt!"
+          : `${TARGET_SCORE.toLocaleString("de-DE")} Punkte erreicht!`;
+      }
+      if (dom.victoryText) {
+        dom.victoryText.textContent = currentLevel.type === "collect"
+          ? `Level 2 geschafft. Deine Punkte: ${score.toLocaleString("de-DE")}.`
+          : "Die Nachrück- und Kaskadenmechanik wurde erfolgreich durchgespielt.";
+      }
       dom.victory?.classList.remove("hidden");
       renderBoard();
-      const progress = getProgress();
-      if (progress && typeof progress === "object") {
-        progress.match3 = progress.match3 || {};
-        progress.match3.level1Best = Math.max(Number(progress.match3.level1Best) || 0, score);
-        progress.match3.level1Completed = true;
-        saveProgress(progress);
-      }
+      // Match Arena ist weiterhin reiner Testbetrieb: bewusst KEIN Speichern.
     } else {
       setStatus("Tausche zwei benachbarte Bälle.");
     }
@@ -490,23 +531,29 @@ export const Match3Feature = (() => {
     renderBoard();
   }
 
-  function startLevel1() {
+  function startLevel(config) {
     if (!hasAccess()) {
       showScreen("home");
       return;
     }
-    applyLevelLayout(LEVEL_1);
+    applyLevelLayout(config);
     board = createPlayableBoard();
     score = 0;
+    collectedBlue = 0;
     busy = false;
     finished = false;
     selected = null;
     dom.victory?.classList.add("hidden");
+    if (dom.playTitle) dom.playTitle.textContent = `Level ${currentLevel.id}`;
+    if (dom.board) dom.board.setAttribute("aria-label", `Match Arena Spielfeld ${ROWS} mal ${COLS}`);
     updateHud(1);
     setStatus("Tausche zwei benachbarte Bälle.");
     renderBoard();
     showScreen("match3Play");
   }
+
+  function startLevel1() { startLevel(LEVEL_1); }
+  function startLevel2() { startLevel(LEVEL_2); }
 
   function bindEvents() {
     dom.homeButton?.addEventListener("click", () => {
@@ -515,8 +562,9 @@ export const Match3Feature = (() => {
     });
     dom.mapBack?.addEventListener("click", () => showScreen("home"));
     dom.level1?.addEventListener("click", startLevel1);
+    dom.level2?.addEventListener("click", startLevel2);
     dom.playBack?.addEventListener("click", () => showScreen("match3Map"));
-    dom.victoryMap?.addEventListener("click", () => showScreen("match3Map"));
+    dom.victoryHome?.addEventListener("click", () => showScreen("home"));
   }
 
   function init(options = {}) {
@@ -530,5 +578,5 @@ export const Match3Feature = (() => {
     initialized = true;
   }
 
-  return { init, refreshAccess, startLevel1 };
+  return { init, refreshAccess, startLevel1, startLevel2 };
 })();

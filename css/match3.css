@@ -217,3 +217,32 @@
   .match3-map-card { padding: 15px; }
   .match3-play-toolbar > span:last-child { font-size: 11px; }
 }
+
+/* Levelauswahl mit mehreren Testleveln */
+.match3-level-list {
+  display: grid;
+  gap: 12px;
+}
+
+/* Sammelziel: Ball-PNG + rückwärts laufende Restmenge */
+.match3-collect-target {
+  min-height: 28px;
+  display: inline-flex !important;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+.match3-collect-target img {
+  width: 25px;
+  height: 25px;
+  object-fit: contain;
+  filter: drop-shadow(0 2px 3px rgba(0,0,0,.35));
+}
+
+.match3-collect-target span {
+  display: inline-block;
+  font-size: 18px;
+  font-weight: 900;
+  line-height: 1;
+}
