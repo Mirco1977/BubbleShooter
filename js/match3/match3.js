@@ -51,7 +51,6 @@ export const Match3Feature = (() => {
     dom.victory = document.getElementById("match3Victory");
     dom.victoryTitle = document.getElementById("match3VictoryTitle");
     dom.victoryText = document.getElementById("match3VictoryText");
-    dom.victoryHome = document.getElementById("match3VictoryHomeButton");
   }
 
   function hasAccess() {
@@ -564,7 +563,6 @@ export const Match3Feature = (() => {
     dom.level1?.addEventListener("click", startLevel1);
     dom.level2?.addEventListener("click", startLevel2);
     dom.playBack?.addEventListener("click", () => showScreen("match3Map"));
-    dom.victoryHome?.addEventListener("click", () => showScreen("home"));
   }
 
   function init(options = {}) {
