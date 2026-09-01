@@ -35,10 +35,10 @@
 
   <link rel="stylesheet" href="style.css?v=20260827-1">
 
-  <link rel="stylesheet" href="style.css?v=20260830-beta-login">
+  <link rel="stylesheet" href="style.css?v=20260830-login-hero-belinfo">
   <link rel="stylesheet" href="css/worldMap2.css?v=20260827-1">
   <link rel="stylesheet" href="css/loader.css?v=20260827-1">
-  <link rel="stylesheet" href="css/match3.css?v=20260901-1">
+  <link rel="stylesheet" href="css/match3.css?v=20260901-anim2">
 </head>
 
 <body>
@@ -1079,35 +1079,47 @@
               <div class="speed-option" data-speed="fast">Schnell</div>
         </div>
 
-        <section class="account-device-card" aria-labelledby="accountDeviceTitle">
+        <section class="account-device-card account-profile-card" aria-labelledby="accountDeviceTitle">
           <div class="account-device-head">
             <div>
               <span class="eyebrow">ACCOUNT</span>
-              <h3 id="accountDeviceTitle">Verknüpftes Gerät</h3>
+              <h3 id="accountDeviceTitle">Spielerkonto</h3>
             </div>
             <span id="accountDeviceStatus" class="account-device-status">aktiv</span>
           </div>
 
+          <div class="account-team-summary">
+            <div id="accountTeamCrestWrap" class="account-team-crest-wrap hidden" aria-hidden="true">
+              <img id="accountTeamCrest" class="account-team-crest" alt="Teamwappen">
+            </div>
+            <div class="account-team-copy">
+              <strong id="accountTeamName">Kein Team</strong>
+              <span id="accountTeamShort">–</span>
+            </div>
+          </div>
+
           <label class="readonly-setting">
-            <span>Bandenkick User</span>
+            <span>Username</span>
             <input id="accountUsername" type="text" readonly value="–">
           </label>
           <label class="readonly-setting">
-            <span>E-Mail</span>
-            <input id="accountEmail" type="text" readonly value="–">
+            <span>Account</span>
+            <input id="accountType" type="text" readonly value="–">
           </label>
           <label class="readonly-setting">
-            <span>Gerät</span>
-            <input id="accountDeviceName" type="text" readonly value="–">
+            <span>User-ID</span>
+            <input id="accountUserId" type="text" readonly value="–">
           </label>
-          <label class="readonly-setting">
-            <span>System</span>
-            <input id="accountDeviceSystem" type="text" readonly value="–">
-          </label>
-          <label class="readonly-setting">
-            <span>Anzeige</span>
-            <input id="accountDeviceScreen" type="text" readonly value="–">
-          </label>
+
+          <div class="account-actions">
+            <button id="refreshAccountButton" class="primary-button account-action-button" type="button">
+              Login-Daten aktualisieren
+            </button>
+            <button id="switchAccountButton" class="secondary-button account-action-button" type="button">
+              Account wechseln
+            </button>
+          </div>
+          <p id="accountRefreshStatus" class="account-refresh-status" aria-live="polite"></p>
         </section>
 
         <button id="resetProgressButton" class="danger-button">
@@ -1141,6 +1153,9 @@
       <h2 id="betaLoginTitle">Willkommen beim Bubble Shooter</h2>
 
       <div id="betaLoginQuestion" class="beta-login-step">
+        <div class="beta-login-hero-frame">
+          <img class="beta-login-hero" src="assets/ui/beta-login-hero.png" alt="Bandenkick BubbleShooter">
+        </div>
         <p>Hast du einen Account bei Bandenkick?</p>
         <div class="beta-login-actions">
           <button id="betaHasBkYes" class="primary-button" type="button">Ja</button>
@@ -1154,9 +1169,17 @@
           <span>Bandenkick Username</span>
           <input id="betaBkUsername" type="text" maxlength="40" autocomplete="username" placeholder="z. B. Mirco Djerdak">
         </label>
-        <label>
-          <span>Bandenkick User-ID</span>
+        <label class="beta-userid-label">
+          <span class="beta-label-row">
+            <span>Bandenkick User-ID</span>
+            <button id="betaBelInfoButton" class="beta-bel-info-button" type="button" aria-label="Wo finde ich meine BEL-ID?" aria-expanded="false">i</button>
+          </span>
           <input id="betaBkUserId" type="number" min="1" inputmode="numeric" placeholder="z. B. 101">
+          <div id="betaBelInfoPopup" class="beta-bel-info-popup hidden" role="dialog" aria-label="BEL-ID Hilfe">
+            <strong>Wo finde ich meine BEL-ID ?</strong>
+            <a href="https://bandenkick.de/esport/auth/login" target="_blank" rel="noopener noreferrer">Webseite</a>
+            <span>Login -&gt; Profile -&gt; Ganz unten BEL-ID</span>
+          </div>
         </label>
         <p id="betaBkError" class="beta-login-error hidden"></p>
         <div class="beta-login-actions">
@@ -1174,14 +1197,28 @@
       </div>
 
       <div id="betaGuestStep" class="beta-login-step hidden">
-        <p>Wie soll dein Username beim Bubble Shooter heißen?</p>
+        <p id="betaGuestIntro">Gib deinen Gast-Username ein.</p>
         <label>
           <span>Username</span>
           <input id="betaGuestUsername" type="text" maxlength="30" autocomplete="nickname" placeholder="Dein Username">
         </label>
+        <div id="betaGuestPinWrap" class="hidden">
+          <label>
+            <span>6-stelliger Zahlencode</span>
+            <input id="betaGuestPin" type="password" inputmode="numeric" pattern="[0-9]*" maxlength="6" autocomplete="off" placeholder="000000">
+          </label>
+        </div>
+        <div id="betaGuestPinConfirmWrap" class="hidden">
+          <label>
+            <span>Zahlencode wiederholen</span>
+            <input id="betaGuestPinConfirm" type="password" inputmode="numeric" pattern="[0-9]*" maxlength="6" autocomplete="off" placeholder="000000">
+          </label>
+        </div>
+        <p id="betaGuestPinWarning" class="hidden"><strong>Wichtig:</strong> Code gut aufbewahren. Er kann nicht wiederhergestellt werden.</p>
         <p id="betaGuestError" class="beta-login-error hidden"></p>
-        <div class="beta-login-actions one">
-          <button id="betaGuestSubmit" class="primary-button" type="button">Speichern</button>
+        <div class="beta-login-actions">
+          <button id="betaGuestSubmit" class="primary-button" type="button">Weiter</button>
+          <button id="betaGuestReset" class="secondary-button hidden" type="button">Anderen Username</button>
         </div>
       </div>
 
@@ -1240,7 +1277,7 @@
 </div>
 
 <script src="js/loader.js?v=20260827-1" defer></script>
-<script type="module" src="./script.js?v=20260901-match3-1"></script>
+<script type="module" src="./script.js?v=20260901-match3-rankingfix-1"></script>
 <script type="module" src="./js/main.js?v=20260827-1"></script>
 <script type="module" src="./js/worldmap/worldMap2.js?v=20260827-1"></script>
 

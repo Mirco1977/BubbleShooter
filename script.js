@@ -10,8 +10,8 @@
   import { applyAlbumLevelConfig } from "./js/config/albumLevel.js";
   import { Level1Tutorial } from "./js/tutorial/level1Tutorial.js";
   import { Level6LoadoutGuide } from "./js/tutorial/level6LoadoutGuide.js";
-  import { Match3Feature } from "./js/match3/match3.js?v=20260901-1";
-  import { saveLevelResult, flushPendingLevelResults, getRanking as getSupabaseRanking, setActivePlayer, betaRegisterBandenkickUser, betaRegisterGuest } from "./js/api/bandenkickSupabase.js?v=20260830-beta-login";
+  import { Match3Feature } from "./js/match3/match3.js?v=20260901-anim2";
+  import { saveLevelResult, flushPendingLevelResults, getRanking as getSupabaseRanking, setActivePlayer, betaRegisterBandenkickUser, betaGetGuestStatus, betaRegisterGuest, betaLoginGuest, betaSetLegacyGuestPin, betaRefreshBandenkickUser, betaResetPlayerProgress } from "./js/api/bandenkickSupabase.js?v=20260830-reset-progress-fix";
   import { evaluateLogin, approveCurrentDevice, getPrimaryDevice, readAccountSecurity, maskEmail, createTestEmailCode } from "./js/api/accountSecurity.js?v=20260829-1";
 
   (() => {
@@ -393,11 +393,16 @@ const THEME_PATH = [
     speedOptions: document.querySelectorAll(".speed-option"),
     resetProgressButton: $("resetProgressButton"),
     accountUsername: $("accountUsername"),
-    accountEmail: $("accountEmail"),
-    accountDeviceName: $("accountDeviceName"),
-    accountDeviceSystem: $("accountDeviceSystem"),
-    accountDeviceScreen: $("accountDeviceScreen"),
+    accountType: $("accountType"),
+    accountUserId: $("accountUserId"),
     accountDeviceStatus: $("accountDeviceStatus"),
+    accountTeamCrestWrap: $("accountTeamCrestWrap"),
+    accountTeamCrest: $("accountTeamCrest"),
+    accountTeamName: $("accountTeamName"),
+    accountTeamShort: $("accountTeamShort"),
+    refreshAccountButton: $("refreshAccountButton"),
+    switchAccountButton: $("switchAccountButton"),
+    accountRefreshStatus: $("accountRefreshStatus"),
     deviceLoginOverlay: $("deviceLoginOverlay"),
     deviceLoginText: $("deviceLoginText"),
     deviceLoginDetails: $("deviceLoginDetails"),
@@ -418,6 +423,8 @@ const THEME_PATH = [
     betaBkStep: $("betaBkStep"),
     betaBkUsername: $("betaBkUsername"),
     betaBkUserId: $("betaBkUserId"),
+    betaBelInfoButton: $("betaBelInfoButton"),
+    betaBelInfoPopup: $("betaBelInfoPopup"),
     betaBkError: $("betaBkError"),
     betaBkSubmit: $("betaBkSubmit"),
     betaBkBack: $("betaBkBack"),
@@ -425,9 +432,16 @@ const THEME_PATH = [
     betaRetryBk: $("betaRetryBk"),
     betaContinueGuest: $("betaContinueGuest"),
     betaGuestStep: $("betaGuestStep"),
+    betaGuestIntro: $("betaGuestIntro"),
     betaGuestUsername: $("betaGuestUsername"),
+    betaGuestPinWrap: $("betaGuestPinWrap"),
+    betaGuestPin: $("betaGuestPin"),
+    betaGuestPinConfirmWrap: $("betaGuestPinConfirmWrap"),
+    betaGuestPinConfirm: $("betaGuestPinConfirm"),
+    betaGuestPinWarning: $("betaGuestPinWarning"),
     betaGuestError: $("betaGuestError"),
     betaGuestSubmit: $("betaGuestSubmit"),
+    betaGuestReset: $("betaGuestReset"),
     betaLoginBusy: $("betaLoginBusy"),
 
     toast: $("toast")
@@ -5147,6 +5161,8 @@ createShooter() {
               Number.isFinite(maxShots) &&
               maxShots > 0 &&
               !this.levelFinished &&
+              !this.victoryAnimation &&
+              !this.swordReleaseActive &&
               this.shots >= maxShots
           ) {
               this.finish(false);
@@ -6571,6 +6587,14 @@ dom.shotsMapButton.onclick = () => {
       /* =====================================================
          STANDARDLEVEL – bisheriges Verhalten
          ===================================================== */
+      // Direkt nach einem erfolgreichen Standardlevel sichtbar machen,
+      // dass der Spielstand im Hintergrund gesichert wird. Erst wenn dieser
+      // Schritt abgeschlossen ist, erscheint die normale Ergebnis-Karte.
+      const levelSaveLoaderToken = window.BKLoader?.show?.(
+        "Spielstand wird gespeichert …",
+        "Level wird gesichert"
+      );
+
       const oldResult = (state.progress.results || {})[level];
       const newAlbumCard = CollectorAlbum.collectLevel(level, !oldResult);
       CollectorAlbum.showVictoryReward(newAlbumCard);
@@ -6584,7 +6608,7 @@ dom.shotsMapButton.onclick = () => {
         dom.winResultText.textContent =
           `${this.score.toLocaleString("de-DE")} Punkte mit ${this.shots} Schüssen.`;
       }
-      startVictoryImpact(stars);
+      // Die Victory-Karte wird bewusst erst NACH der Speicherung eingeblendet.
 
       // Das LETZTE abgeschlossene Ergebnis ist verbindlich.
       // Beispiel: vorher 3 Sterne / 4.550 Punkte, danach 2 Sterne / 3.800 Punkte
@@ -6619,6 +6643,15 @@ dom.shotsMapButton.onclick = () => {
           level,
           stars,
           score: this.score,
+          // Die aktuelle Gesamtzahl wird aus ALLEN lokal gespeicherten
+          // Levelergebnissen gebildet und zusammen mit jedem Abschluss
+          // an Supabase übertragen. Dadurch enthält das Ranking nicht nur
+          // die Sterne der seit dem Online-Sync gespielten Level.
+          totalStars: getTotalStars(),
+          // Wie bei den Sternen wird auch die vollständige lokale
+          // Gesamtpunktzahl übertragen. So enthält das Ranking auch Punkte
+          // aus Leveln, die vor Einführung des Online-Sync gespielt wurden.
+          totalScore: getTotalScore(),
           completed: true
         });
         if (onlineResult?.skipped) {
@@ -6647,6 +6680,13 @@ dom.shotsMapButton.onclick = () => {
       } catch (error) {
         console.warn("API-Speicherung fehlgeschlagen:", error);
       }
+
+      // Speicher-Loader ausblenden und danach erst die bekannte
+      // "Level geschafft!"-Karte mit Zur Karte / Nächstes Level zeigen.
+      if (levelSaveLoaderToken !== undefined && levelSaveLoaderToken !== null) {
+        window.BKLoader?.hide?.(levelSaveLoaderToken, 0);
+      }
+      startVictoryImpact(stars);
 
       dom.winResultTitle.textContent = "Level geschafft!";
       dom.nextLevelButton.classList.remove("hidden");
@@ -6810,18 +6850,66 @@ dom.shotsMapButton.onclick = () => {
       `;
     },
 
+    getTeamCrestUrls(crestValue) {
+      const crestRaw = String(crestValue || "").trim();
+      if (!crestRaw) return { primary: "", fallback: "" };
+
+      // Vollständige URLs aus der API unverändert übernehmen.
+      if (/^https?:\/\//i.test(crestRaw)) {
+        return { primary: crestRaw, fallback: "" };
+      }
+
+      // Bandenkick liefert aktuell teilweise nur den Storage-Pfad, z. B.
+      // "team/crest/1740231710.png". Dieser liegt im öffentlichen
+      // Laravel-Storage unter /storage/. Als Rückfallebene probieren wir
+      // zusätzlich den bisherigen direkten Root-Pfad.
+      const cleanPath = crestRaw.replace(/^\/+/, "");
+      if (cleanPath.startsWith("storage/")) {
+        return {
+          primary: `https://bandenkick.de/${cleanPath}`,
+          fallback: `https://bandenkick.de/${cleanPath.replace(/^storage\//, "")}`
+        };
+      }
+
+      return {
+        primary: `https://bandenkick.de/storage/${cleanPath}`,
+        fallback: `https://bandenkick.de/${cleanPath}`
+      };
+    },
+
+    bindTeamCrestFallbacks() {
+      if (!dom.teamRankingList) return;
+
+      dom.teamRankingList.querySelectorAll("img.ranking-team-crest").forEach((img) => {
+        img.addEventListener("error", () => {
+          const fallback = String(img.dataset.fallbackSrc || "").trim();
+          const fallbackTried = img.dataset.fallbackTried === "1";
+
+          if (fallback && !fallbackTried) {
+            img.dataset.fallbackTried = "1";
+            img.src = fallback;
+            return;
+          }
+
+          const wrap = img.closest(".ranking-team-crest-wrap");
+          img.remove();
+          if (wrap && !wrap.querySelector(".ranking-team-crest-fallback")) {
+            const fallbackIcon = document.createElement("span");
+            fallbackIcon.className = "ranking-team-crest-fallback";
+            fallbackIcon.textContent = "⚽";
+            wrap.appendChild(fallbackIcon);
+          }
+        });
+      });
+    },
+
     teamRow(entry) {
-      const crestRaw = String(entry?.crest || "").trim();
-      const crest = crestRaw
-        ? (crestRaw.startsWith("http://") || crestRaw.startsWith("https://")
-          ? crestRaw
-          : `https://bandenkick.de/${crestRaw.replace(/^\/+/, "")}`)
-        : "";
+      const crestUrls = this.getTeamCrestUrls(entry?.crest);
       const stars = Math.max(0, Number(entry?.stars) || 0);
       return `
         <div class="ranking-row ranking-team-row">
           <strong class="ranking-place">#${Number(entry?.rank) || "–"}</strong>
-          <span class="ranking-team-crest-wrap">${crest ? `<img class="ranking-team-crest" src="${escapeHtml(crest)}" alt="" loading="lazy">` : `<span class="ranking-team-crest-fallback">⚽</span>`}</span>
+          <span class="ranking-team-crest-wrap">${crestUrls.primary ? `<img class="ranking-team-crest" src="${escapeHtml(crestUrls.primary)}" data-fallback-src="${escapeHtml(crestUrls.fallback)}" alt="" loading="lazy" decoding="async">` : `<span class="ranking-team-crest-fallback">⚽</span>`}</span>
           <span class="ranking-team-name">${escapeHtml(entry?.teamname || "Bandenkick-Team")}</span>
           <span class="ranking-stars">★ ${stars.toLocaleString("de-DE")}</span>
           <b class="ranking-score">${Number(entry?.score || 0).toLocaleString("de-DE")}</b>
@@ -6865,6 +6953,7 @@ dom.shotsMapButton.onclick = () => {
           dom.teamRankingList.innerHTML = teamTop10.length
             ? teamTop10.map((entry) => this.teamRow(entry)).join("")
             : "<p class='ranking-message'>Noch ist kein Team im Ranking vertreten.</p>";
+          this.bindTeamCrestFallbacks();
         }
 
         if (dom.rankingPlayerCount) {
@@ -6938,6 +7027,15 @@ const Shop = {
         .reduce((sum, result) => {
             return sum + Number(result.stars || 0);
         }, 0);
+  }
+
+  function getTotalScore() {
+    const results = state.progress.results || {};
+
+    return Object.values(results)
+      .reduce((sum, result) => {
+        return sum + Math.max(0, Number(result?.score) || 0);
+      }, 0);
   }
 
   function escapeHtml(value) {
@@ -7396,12 +7494,29 @@ const Shop = {
     });
   });
 
-  dom.resetProgressButton.addEventListener("click", () => {
+  dom.resetProgressButton.addEventListener("click", async () => {
     const confirmed = confirm(
         "Alle Level, Sterne und Freischaltungen löschen?"
     );
 
     if (!confirmed) return;
+
+    const activeUser = state.user ? { ...state.user } : null;
+
+    // Zuerst auch den Online-Spielstand des aktuell angemeldeten Accounts löschen.
+    // Dadurch bleibt z. B. ein Gast nicht mit seinem alten current_level im Ranking stehen.
+    if (activeUser?.id) {
+      try {
+        const result = await betaResetPlayerProgress(activeUser.id);
+        if (!result?.success) {
+          throw new Error(result?.error || "Online-Spielstand konnte nicht zurückgesetzt werden.");
+        }
+      } catch (error) {
+        console.error("Online-Spielstand zurücksetzen fehlgeschlagen:", error);
+        showToast(error?.message || "Online-Spielstand konnte nicht zurückgesetzt werden.");
+        return;
+      }
+    }
 
     const episodeProgressBackup = localStorage.getItem(EpisodeRace.storageKey);
     // Account- und Geräteverknüpfung gehört nicht zum Spielstand und bleibt erhalten.
@@ -7417,20 +7532,110 @@ const Shop = {
     if (deviceIdBackup !== null) {
       localStorage.setItem("bk_device_id_v1", deviceIdBackup);
     }
+    // Den Account selbst beibehalten; nur sein Spielstand wird gelöscht.
+    if (activeUser) {
+      SaveManager.saveUser(activeUser);
+    }
 
     location.reload();
 });
 
   function refreshAccountDeviceUi() {
-    const account = readAccountSecurity();
-    const device = getPrimaryDevice();
-    if (dom.accountUsername) dom.accountUsername.value = account?.username || state.user?.username || "–";
-    if (dom.accountEmail) dom.accountEmail.value = account?.email ? maskEmail(account.email) : "–";
-    if (dom.accountDeviceName) dom.accountDeviceName.value = device?.device_name || "–";
-    if (dom.accountDeviceSystem) dom.accountDeviceSystem.value = device ? `${device.os || "–"} · ${device.browser || "–"}` : "–";
-    if (dom.accountDeviceScreen) dom.accountDeviceScreen.value = device ? `${device.screen || "–"} · ${device.language || "–"}` : "–";
-    if (dom.accountDeviceStatus) dom.accountDeviceStatus.textContent = account?.bandenkick_user_id ? "aktiv" : "nicht verknüpft";
+    const user = state.user || null;
+    const isBandenkick = Boolean(user?.id && Number(user.id) > 0 && user?.account_type !== "guest");
+    const team = user?.teams?.clubs || user?.teams?.oneone || null;
+
+    if (dom.accountUsername) dom.accountUsername.value = user?.username || "–";
+    if (dom.accountType) dom.accountType.value = isBandenkick ? "Bandenkick Account" : "Gast Account";
+    if (dom.accountUserId) dom.accountUserId.value = user?.id ? String(user.id) : "–";
+    if (dom.accountDeviceStatus) {
+      dom.accountDeviceStatus.textContent = isBandenkick ? "Bandenkick" : "Gast";
+      dom.accountDeviceStatus.classList.toggle("guest", !isBandenkick);
+    }
+
+    if (dom.accountTeamName) dom.accountTeamName.textContent = team?.name || (isBandenkick ? "Kein Team verknüpft" : "Gastkonto");
+    if (dom.accountTeamShort) dom.accountTeamShort.textContent = team?.short || "–";
+
+    if (dom.accountTeamCrestWrap && dom.accountTeamCrest) {
+      const urls = Ranking.getTeamCrestUrls(team?.crest || "");
+      if (urls.primary) {
+        dom.accountTeamCrestWrap.classList.remove("hidden");
+        dom.accountTeamCrest.src = urls.primary;
+        dom.accountTeamCrest.onerror = () => {
+          if (urls.fallback && dom.accountTeamCrest.src !== urls.fallback) {
+            dom.accountTeamCrest.src = urls.fallback;
+            return;
+          }
+          dom.accountTeamCrestWrap.classList.add("hidden");
+        };
+      } else {
+        dom.accountTeamCrest.removeAttribute("src");
+        dom.accountTeamCrestWrap.classList.add("hidden");
+      }
+    }
+
+    if (dom.refreshAccountButton) {
+      dom.refreshAccountButton.classList.toggle("hidden", !isBandenkick);
+      dom.refreshAccountButton.disabled = false;
+      dom.refreshAccountButton.textContent = "Login-Daten aktualisieren";
+    }
   }
+
+  async function refreshBandenkickAccount() {
+    const userId = Number(state.user?.id || 0);
+    if (userId <= 0 || state.user?.account_type === "guest") return;
+
+    if (dom.refreshAccountButton) {
+      dom.refreshAccountButton.disabled = true;
+      dom.refreshAccountButton.textContent = "Daten werden aktualisiert …";
+    }
+    if (dom.accountRefreshStatus) {
+      dom.accountRefreshStatus.textContent = "Bandenkick-Daten werden abgeglichen …";
+      dom.accountRefreshStatus.classList.remove("error", "success");
+    }
+
+    try {
+      const result = await betaRefreshBandenkickUser(userId);
+      if (!result?.success || !result?.user) throw new Error(result?.error || "Aktualisierung fehlgeschlagen.");
+      state.user = normalizeBetaUser(result.user);
+      SaveManager.saveUser(state.user);
+      setActivePlayer(state.user);
+      updateUserUi();
+      refreshAccountDeviceUi();
+      if (dom.accountRefreshStatus) {
+        dom.accountRefreshStatus.textContent = "Login-Daten erfolgreich aktualisiert.";
+        dom.accountRefreshStatus.classList.add("success");
+      }
+      showToast("Login-Daten aktualisiert.");
+    } catch (error) {
+      console.warn("Bandenkick-Account konnte nicht aktualisiert werden:", error);
+      if (dom.accountRefreshStatus) {
+        dom.accountRefreshStatus.textContent = error?.message || "Login-Daten konnten nicht aktualisiert werden.";
+        dom.accountRefreshStatus.classList.add("error");
+      }
+    } finally {
+      if (dom.refreshAccountButton) {
+        dom.refreshAccountButton.disabled = false;
+        dom.refreshAccountButton.textContent = "Login-Daten aktualisieren";
+      }
+    }
+  }
+
+  async function switchBetaAccount() {
+    const confirmed = confirm("Account auf diesem Gerät wechseln? Der lokale Spielstand auf diesem Gerät bleibt erhalten.");
+    if (!confirmed) return;
+
+    state.user = null;
+    SaveManager.saveUser(null);
+    setActivePlayer(null);
+    updateUserUi();
+    refreshAccountDeviceUi();
+    if (dom.accountRefreshStatus) dom.accountRefreshStatus.textContent = "";
+    await openBetaLogin();
+  }
+
+  dom.refreshAccountButton?.addEventListener("click", refreshBandenkickAccount);
+  dom.switchAccountButton?.addEventListener("click", switchBetaAccount);
 
   function askForNewDeviceApproval(user, device) {
     return new Promise((resolve) => {
@@ -7490,7 +7695,7 @@ const Shop = {
 
   function setBetaBusy(busy) {
     dom.betaLoginBusy?.classList.toggle("hidden", !busy);
-    [dom.betaHasBkYes, dom.betaHasBkNo, dom.betaBkSubmit, dom.betaBkBack, dom.betaRetryBk, dom.betaContinueGuest, dom.betaGuestSubmit]
+    [dom.betaHasBkYes, dom.betaHasBkNo, dom.betaBkSubmit, dom.betaBkBack, dom.betaRetryBk, dom.betaContinueGuest, dom.betaGuestSubmit, dom.betaGuestReset]
       .forEach((btn) => { if (btn) btn.disabled = busy; });
   }
 
@@ -7533,13 +7738,52 @@ const Shop = {
         dom.betaContinueGuest?.removeEventListener("click", onGuest);
         dom.betaBkSubmit?.removeEventListener("click", onBkSubmit);
         dom.betaGuestSubmit?.removeEventListener("click", onGuestSubmit);
+        dom.betaGuestReset?.removeEventListener("click", onGuestReset);
+        dom.betaBelInfoButton?.removeEventListener("click", onBelInfoToggle);
       };
       const done = (user) => { cleanup(); finishBetaLogin(user); resolve(user); };
-      const onBkYes = () => { showBetaLoginStep(dom.betaBkStep); setTimeout(() => dom.betaBkUsername?.focus(), 40); };
+      const onBelInfoToggle = () => {
+        const isHidden = dom.betaBelInfoPopup?.classList.contains("hidden");
+        dom.betaBelInfoPopup?.classList.toggle("hidden", !isHidden);
+        dom.betaBelInfoButton?.setAttribute("aria-expanded", String(Boolean(isHidden)));
+      };
+      const onBkYes = () => {
+        dom.betaBelInfoPopup?.classList.add("hidden");
+        dom.betaBelInfoButton?.setAttribute("aria-expanded", "false");
+        showBetaLoginStep(dom.betaBkStep);
+        setTimeout(() => dom.betaBkUsername?.focus(), 40);
+      };
       const onBkNo = () => onGuest();
       const onBack = () => showBetaLoginStep(dom.betaLoginQuestion);
       const onRetry = () => showBetaLoginStep(dom.betaBkStep);
-      const onGuest = () => { showBetaLoginStep(dom.betaGuestStep); setTimeout(() => dom.betaGuestUsername?.focus(), 40); };
+      let guestMode = "username";
+      let guestUsername = "";
+
+      const resetGuestForm = () => {
+        guestMode = "username";
+        guestUsername = "";
+        if (dom.betaGuestIntro) dom.betaGuestIntro.textContent = "Gib deinen Gast-Username ein.";
+        if (dom.betaGuestUsername) { dom.betaGuestUsername.disabled = false; dom.betaGuestUsername.value = ""; }
+        if (dom.betaGuestPin) dom.betaGuestPin.value = "";
+        if (dom.betaGuestPinConfirm) dom.betaGuestPinConfirm.value = "";
+        dom.betaGuestPinWrap?.classList.add("hidden");
+        dom.betaGuestPinConfirmWrap?.classList.add("hidden");
+        dom.betaGuestPinWarning?.classList.add("hidden");
+        dom.betaGuestReset?.classList.add("hidden");
+        dom.betaGuestError?.classList.add("hidden");
+        if (dom.betaGuestSubmit) dom.betaGuestSubmit.textContent = "Weiter";
+      };
+
+      const onGuest = () => {
+        showBetaLoginStep(dom.betaGuestStep);
+        resetGuestForm();
+        setTimeout(() => dom.betaGuestUsername?.focus(), 40);
+      };
+
+      const onGuestReset = () => {
+        resetGuestForm();
+        setTimeout(() => dom.betaGuestUsername?.focus(), 40);
+      };
 
       const onBkSubmit = async () => {
         const username = String(dom.betaBkUsername?.value || "").trim();
@@ -7559,14 +7803,71 @@ const Shop = {
       };
 
       const onGuestSubmit = async () => {
-        const username = String(dom.betaGuestUsername?.value || "").trim();
-        if (username.length < 2) { betaError(dom.betaGuestError, "Bitte mindestens 2 Zeichen eingeben."); return; }
+        dom.betaGuestError?.classList.add("hidden");
+
+        if (guestMode === "username") {
+          const username = String(dom.betaGuestUsername?.value || "").trim();
+          if (username.length < 2) { betaError(dom.betaGuestError, "Bitte mindestens 2 Zeichen eingeben."); return; }
+          setBetaBusy(true);
+          try {
+            const status = await betaGetGuestStatus(username);
+            if (!status?.success) {
+              if (status?.code === "username_taken_bandenkick") betaError(dom.betaGuestError, "Dieser Username gehört zu einem Bandenkick-Account.");
+              else betaError(dom.betaGuestError, status?.error || "Gast-Account konnte nicht geprüft werden.");
+              return;
+            }
+
+            guestUsername = username;
+            if (dom.betaGuestUsername) dom.betaGuestUsername.disabled = true;
+            dom.betaGuestPinWrap?.classList.remove("hidden");
+            dom.betaGuestReset?.classList.remove("hidden");
+
+            if (status.status === "existing") {
+              guestMode = "login";
+              if (dom.betaGuestIntro) dom.betaGuestIntro.textContent = `Willkommen zurück ${username}. Gib deinen 6-stelligen Zahlencode ein.`;
+              dom.betaGuestPinConfirmWrap?.classList.add("hidden");
+              dom.betaGuestPinWarning?.classList.add("hidden");
+              if (dom.betaGuestSubmit) dom.betaGuestSubmit.textContent = "Anmelden";
+            } else if (status.status === "legacy") {
+              guestMode = "legacy_setup";
+              if (dom.betaGuestIntro) dom.betaGuestIntro.textContent = `Für ${username} wurde bisher noch kein Zahlencode hinterlegt. Lege ihn jetzt einmalig fest.`;
+              dom.betaGuestPinConfirmWrap?.classList.remove("hidden");
+              dom.betaGuestPinWarning?.classList.remove("hidden");
+              if (dom.betaGuestSubmit) dom.betaGuestSubmit.textContent = "Code festlegen";
+            } else {
+              guestMode = "register";
+              if (dom.betaGuestIntro) dom.betaGuestIntro.textContent = `Gast-Account ${username} neu erstellen. Lege einen 6-stelligen Zahlencode fest.`;
+              dom.betaGuestPinConfirmWrap?.classList.remove("hidden");
+              dom.betaGuestPinWarning?.classList.remove("hidden");
+              if (dom.betaGuestSubmit) dom.betaGuestSubmit.textContent = "Gast erstellen";
+            }
+            setTimeout(() => dom.betaGuestPin?.focus(), 40);
+          } catch (error) {
+            betaError(dom.betaGuestError, error?.message || "Verbindung zu Supabase fehlgeschlagen.");
+          } finally { setBetaBusy(false); }
+          return;
+        }
+
+        const pin = String(dom.betaGuestPin?.value || "").trim();
+        const pinConfirm = String(dom.betaGuestPinConfirm?.value || "").trim();
+        if (!/^\d{6}$/.test(pin)) { betaError(dom.betaGuestError, "Bitte einen 6-stelligen Zahlencode eingeben."); return; }
+        if ((guestMode === "register" || guestMode === "legacy_setup") && pin !== pinConfirm) {
+          betaError(dom.betaGuestError, "Die beiden Zahlencodes stimmen nicht überein."); return;
+        }
+
         setBetaBusy(true);
         try {
-          const result = await betaRegisterGuest(username);
+          let result;
+          if (guestMode === "login") result = await betaLoginGuest(guestUsername, pin);
+          else if (guestMode === "legacy_setup") result = await betaSetLegacyGuestPin(guestUsername, pin);
+          else result = await betaRegisterGuest(guestUsername, pin);
+
           if (result?.success && result?.user) { done(result.user); return; }
-          if (result?.code === "username_taken") betaError(dom.betaGuestError, "Dieser Username ist bereits vergeben.");
-          else betaError(dom.betaGuestError, result?.error || "Username konnte nicht gespeichert werden.");
+          if (result?.code === "invalid_pin") betaError(dom.betaGuestError, "Der Zahlencode ist nicht korrekt.");
+          else if (result?.code === "guest_locked") betaError(dom.betaGuestError, result?.error || "Zu viele Fehlversuche. Bitte später erneut versuchen.");
+          else if (result?.code === "username_taken_bandenkick") betaError(dom.betaGuestError, "Dieser Username gehört zu einem Bandenkick-Account.");
+          else if (result?.code === "guest_pin_already_set") { betaError(dom.betaGuestError, "Für diesen Gast wurde inzwischen bereits ein Code festgelegt. Bitte neu anmelden."); onGuestReset(); }
+          else betaError(dom.betaGuestError, result?.error || "Gast-Account konnte nicht geladen werden.");
         } catch (error) { betaError(dom.betaGuestError, error?.message || "Verbindung zu Supabase fehlgeschlagen."); }
         finally { setBetaBusy(false); }
       };
@@ -7578,6 +7879,8 @@ const Shop = {
       dom.betaContinueGuest?.addEventListener("click", onGuest);
       dom.betaBkSubmit?.addEventListener("click", onBkSubmit);
       dom.betaGuestSubmit?.addEventListener("click", onGuestSubmit);
+      dom.betaGuestReset?.addEventListener("click", onGuestReset);
+      dom.betaBelInfoButton?.addEventListener("click", onBelInfoToggle);
     });
   }
 
