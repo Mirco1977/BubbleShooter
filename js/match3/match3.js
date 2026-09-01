@@ -1,6 +1,8 @@
-const ROWS = 4;
-const COLS = 4;
-const TARGET_SCORE = 1500;
+const MAX_COLS = 9;
+const LEVEL_1 = Object.freeze({ rows: 4, cols: 4, targetScore: 1500 });
+let ROWS = LEVEL_1.rows;
+let COLS = LEVEL_1.cols;
+let TARGET_SCORE = LEVEL_1.targetScore;
 const POINTS_PER_BALL = 100;
 const ACCESS_LEVEL = 195;
 
@@ -56,6 +58,24 @@ export const Match3Feature = (() => {
     dom.homeButton.setAttribute("aria-hidden", unlocked ? "false" : "true");
     dom.homeButton.tabIndex = unlocked ? 0 : -1;
     return unlocked;
+  }
+
+  function applyLevelLayout(config) {
+    const rows = Math.max(1, Math.floor(Number(config?.rows) || 1));
+    const cols = Math.max(1, Math.min(MAX_COLS, Math.floor(Number(config?.cols) || 1)));
+
+    ROWS = rows;
+    COLS = cols;
+    TARGET_SCORE = Math.max(1, Math.floor(Number(config?.targetScore) || TARGET_SCORE || 1));
+
+    if (dom.board) {
+      dom.board.style.setProperty("--match3-cols", String(COLS));
+      dom.board.style.setProperty("--match3-rows", String(ROWS));
+      dom.board.dataset.cols = String(COLS);
+      dom.board.dataset.rows = String(ROWS);
+      dom.board.setAttribute("aria-rowcount", String(ROWS));
+      dom.board.setAttribute("aria-colcount", String(COLS));
+    }
   }
 
   function randomBall() {
@@ -138,13 +158,24 @@ export const Match3Feature = (() => {
       if (!findMatches(candidate).length && hasPossibleMove(candidate)) return candidate;
     }
 
-    // Deterministischer Fallback: match-frei und mit mindestens einem gültigen Zug.
-    return [
-      ["red", "yellow", "green", "blue"],
-      ["yellow", "red", "blue", "green"],
-      ["green", "green", "yellow", "red"],
-      ["blue", "red", "green", "yellow"]
-    ];
+    // Fallback für das aktuelle 4×4-Testlevel. Für spätere Layouts wird
+    // nochmals solange erzeugt, bis ein gültiges Brett vorhanden ist.
+    if (ROWS === 4 && COLS === 4) {
+      return [
+        ["red", "yellow", "green", "blue"],
+        ["yellow", "red", "blue", "green"],
+        ["green", "green", "yellow", "red"],
+        ["blue", "red", "green", "yellow"]
+      ];
+    }
+
+    let candidate;
+    do {
+      candidate = Array.from({ length: ROWS }, () =>
+        Array.from({ length: COLS }, () => randomBall())
+      );
+    } while (findMatches(candidate).length || !hasPossibleMove(candidate));
+    return candidate;
   }
 
   function setStatus(text) {
@@ -245,6 +276,8 @@ export const Match3Feature = (() => {
     const invalidSet = new Set(invalid.map((p) => `${p.row}:${p.col}`));
 
     dom.board.classList.toggle("is-busy", busy);
+    dom.board.style.setProperty("--match3-cols", String(COLS));
+    dom.board.style.setProperty("--match3-rows", String(ROWS));
     dom.board.innerHTML = "";
 
     for (let row = 0; row < ROWS; row++) {
@@ -462,6 +495,7 @@ export const Match3Feature = (() => {
       showScreen("home");
       return;
     }
+    applyLevelLayout(LEVEL_1);
     board = createPlayableBoard();
     score = 0;
     busy = false;
