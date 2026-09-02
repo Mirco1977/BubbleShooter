@@ -417,74 +417,145 @@ export const Match3Feature = (() => {
     return maxDuration;
   }
 
-  function spawnMatchPopParticles(tile, piece, count = 10) {
-    if (!dom.board || !tile) return [];
+  function matchPopColor(piece) {
+    const color = baseColor(piece);
+    return {
+      red: "#ff4a3d",
+      yellow: "#ffd84a",
+      green: "#59d85a",
+      blue: "#4aa8ff",
+      purple: "#b96cff",
+      pink: "#ff75b9",
+      black: "#707782"
+    }[color] || "#ffffff";
+  }
+
+  function spawnMatchPopBurst(tile, piece, count = 16) {
+    if (!dom.board || !tile) return { particles: [], ring: null, flash: null };
+
     const tileBox = tile.getBoundingClientRect();
     const boardBox = dom.board.getBoundingClientRect();
     const centerX = tileBox.left - boardBox.left + tileBox.width / 2;
     const centerY = tileBox.top - boardBox.top + tileBox.height / 2;
+    const burstColor = matchPopColor(piece);
     const particles = [];
 
+    // Gröbere farbige Splitter + kleine helle Glitzerpunkte.
+    // Das wirkt klarer und "knackiger" als eine gleichmäßige Staubwolke.
     for (let i = 0; i < count; i++) {
       const particle = document.createElement("span");
-      particle.className = "match3-pop-particle";
+      const isSpark = i % 4 === 0;
+      particle.className = `match3-pop-particle ${isSpark ? "is-spark" : "is-shard"}`;
       particle.style.left = `${centerX}px`;
       particle.style.top = `${centerY}px`;
-      particle.style.setProperty("--pop-angle", `${(360 / count) * i + (i % 2 ? 11 : -7)}deg`);
-      particle.style.setProperty("--pop-distance", `${16 + (i % 4) * 4}px`);
-      particle.style.setProperty("--pop-size", `${3 + (i % 3)}px`);
+
+      const angle = (360 / count) * i + ((i * 17) % 23) - 11;
+      const distance = isSpark ? 24 + (i % 3) * 5 : 18 + (i % 5) * 4;
+      const size = isSpark ? 2.5 + (i % 2) : 4 + (i % 3);
+
+      particle.style.setProperty("--pop-color", burstColor);
+      particle.style.setProperty("--pop-size", `${size}px`);
+      particle.dataset.angle = String(angle);
+      particle.dataset.distance = String(distance);
       dom.board.appendChild(particle);
       particles.push(particle);
     }
 
-    return particles;
+    const ring = document.createElement("span");
+    ring.className = "match3-pop-ring";
+    ring.style.left = `${centerX}px`;
+    ring.style.top = `${centerY}px`;
+    ring.style.setProperty("--pop-color", burstColor);
+    dom.board.appendChild(ring);
+
+    const flash = document.createElement("span");
+    flash.className = "match3-pop-flash";
+    flash.style.left = `${centerX}px`;
+    flash.style.top = `${centerY}px`;
+    flash.style.setProperty("--pop-color", burstColor);
+    dom.board.appendChild(flash);
+
+    return { particles, ring, flash };
   }
 
   async function animateNormalMatchPops(removal = []) {
     if (!dom.board || !removal?.length) return;
 
-    // Kurzer, versetzter Ablauf: leicht aufblasen -> kleiner Pop -> Partikel.
-    // Der Stagger bleibt bewusst knapp, damit Gravity direkt danach einsetzen kann.
+    // Referenzähnlicher Ablauf:
+    // 1. sehr kurzes "Laden"/Aufblähen
+    // 2. knackiger heller Pop
+    // 3. farbige Splitter + einzelne Glitzerpunkte nach außen
+    // 4. sofortige Freigabe für Gravity
     const ordered = [...removal].sort((a, b) => a.row - b.row || a.col - b.col);
-    const stagger = 52;
-    const popDuration = 128;
+    const stagger = 46;
+    const popDuration = 154;
 
     const animations = ordered.map((cell, index) => (async () => {
       await wait(index * stagger);
+
       const tile = tileAt(cell);
       const img = tile?.querySelector("img");
       if (!tile || !img || tile.classList.contains("is-protected")) return;
 
       tile.classList.add("is-match-popping");
-      const particles = spawnMatchPopParticles(tile, board[cell.row]?.[cell.col], 10);
+      const piece = board[cell.row]?.[cell.col];
+      const { particles, ring, flash } = spawnMatchPopBurst(tile, piece, 16);
+
       const particleAnimations = particles.map((particle, particleIndex) => {
-        const angle = (360 / particles.length) * particleIndex + (particleIndex % 2 ? 11 : -7);
-        const distance = 16 + (particleIndex % 4) * 4;
+        const angle = Number(particle.dataset.angle || 0);
+        const distance = Number(particle.dataset.distance || 20);
         const radians = angle * Math.PI / 180;
         const dx = Math.cos(radians) * distance;
         const dy = Math.sin(radians) * distance;
+        const rotate = 70 + (particleIndex % 5) * 31;
+
         return animationFinished(particle.animate(
           [
-            { transform: "translate(-50%,-50%) scale(.5)", opacity: 0 },
-            { transform: "translate(-50%,-50%) scale(1.2)", opacity: 1, offset: .18 },
-            { transform: `translate(calc(-50% + ${dx}px), calc(-50% + ${dy}px)) scale(.18)`, opacity: 0 }
+            { transform: "translate(-50%,-50%) scale(.15) rotate(0deg)", opacity: 0, offset: 0 },
+            { transform: "translate(-50%,-50%) scale(.15) rotate(0deg)", opacity: 0, offset: .30 },
+            { transform: "translate(-50%,-50%) scale(1.25) rotate(12deg)", opacity: 1, offset: .42 },
+            { transform: `translate(calc(-50% + ${dx}px), calc(-50% + ${dy}px)) scale(.72) rotate(${rotate}deg)`, opacity: .95, offset: .72 },
+            { transform: `translate(calc(-50% + ${dx * 1.18}px), calc(-50% + ${dy * 1.18}px)) scale(.12) rotate(${rotate + 45}deg)`, opacity: 0, offset: 1 }
           ],
-          { duration: 168, easing: "cubic-bezier(.15,.75,.25,1)", fill: "forwards" }
+          { duration: 190, easing: "cubic-bezier(.16,.78,.22,1)", fill: "forwards" }
         )).finally(() => particle.remove());
       });
 
+      const ringAnimation = ring ? animationFinished(ring.animate(
+        [
+          { transform: "translate(-50%,-50%) scale(.28)", opacity: 0, offset: 0 },
+          { transform: "translate(-50%,-50%) scale(.28)", opacity: 0, offset: .30 },
+          { transform: "translate(-50%,-50%) scale(.55)", opacity: .95, offset: .42 },
+          { transform: "translate(-50%,-50%) scale(1.42)", opacity: 0, offset: 1 }
+        ],
+        { duration: 176, easing: "cubic-bezier(.16,.72,.25,1)", fill: "forwards" }
+      )).finally(() => ring.remove()) : Promise.resolve();
+
+      const flashAnimation = flash ? animationFinished(flash.animate(
+        [
+          { transform: "translate(-50%,-50%) scale(.25)", opacity: 0, offset: 0 },
+          { transform: "translate(-50%,-50%) scale(.25)", opacity: 0, offset: .30 },
+          { transform: "translate(-50%,-50%) scale(1.0)", opacity: .95, offset: .40 },
+          { transform: "translate(-50%,-50%) scale(1.38)", opacity: 0, offset: .70 },
+          { transform: "translate(-50%,-50%) scale(1.45)", opacity: 0, offset: 1 }
+        ],
+        { duration: 150, easing: "ease-out", fill: "forwards" }
+      )).finally(() => flash.remove()) : Promise.resolve();
+
       const pop = animationFinished(img.animate(
         [
-          { transform: "scale(1)", opacity: 1, filter: "brightness(1)" },
-          { transform: "scale(1.18)", opacity: 1, filter: "brightness(1.18)", offset: .28 },
-          { transform: "scale(1.34)", opacity: 1, filter: "brightness(1.42)", offset: .48 },
-          { transform: "scale(1.42)", opacity: .98, filter: "brightness(1.78)", offset: .62 },
-          { transform: "scale(.42)", opacity: 0, filter: "brightness(2.05)" }
+          { transform: "scale(1)", opacity: 1, filter: "brightness(1) saturate(1)", offset: 0 },
+          { transform: "scale(1.10)", opacity: 1, filter: "brightness(1.08) saturate(1.06)", offset: .18 },
+          { transform: "scale(1.27)", opacity: 1, filter: "brightness(1.22) saturate(1.12)", offset: .34 },
+          { transform: "scale(1.43)", opacity: 1, filter: "brightness(1.72) saturate(1.2)", offset: .43 },
+          { transform: "scale(.88)", opacity: .62, filter: "brightness(2.15) saturate(.8)", offset: .56 },
+          { transform: "scale(.28)", opacity: 0, filter: "brightness(2.35) saturate(.5)", offset: .76 },
+          { transform: "scale(.12)", opacity: 0, filter: "brightness(2.35) saturate(.5)", offset: 1 }
         ],
-        { duration: popDuration, easing: "cubic-bezier(.18,.72,.22,1)", fill: "forwards" }
+        { duration: popDuration, easing: "cubic-bezier(.16,.74,.2,1)", fill: "forwards" }
       ));
 
-      await Promise.all([pop, ...particleAnimations]);
+      await Promise.all([pop, ringAnimation, flashAnimation, ...particleAnimations]);
     })());
 
     await Promise.all(animations);
