@@ -417,9 +417,8 @@ export const Match3Feature = (() => {
     return maxDuration;
   }
 
-  async function animateHorizontalStripeShots(triggers) {
+  async function animateHorizontalStripeShots(triggers, removal = []) {
     if (!dom.board || !triggers?.length) return;
-    const animations = [];
 
     for (const trigger of triggers) {
       const tile = tileAt(trigger);
@@ -435,19 +434,61 @@ export const Match3Feature = (() => {
       const leftDistance = -(centerX + size);
       const rightDistance = dom.board.clientWidth - centerX + size;
 
+      // 1) Der Streifenball lädt sich kurz auf und bläht sich sichtbar auf.
+      tile.classList.add("is-stripe-charging");
+      await animationFinished(sourceImg.animate(
+        [
+          { transform: "scale(1)", filter: "brightness(1)" },
+          { transform: "scale(1.17)", filter: "brightness(1.18)", offset: .55 },
+          { transform: "scale(1.29)", filter: "brightness(1.55)" }
+        ],
+        { duration: 185, easing: "cubic-bezier(.18,.75,.22,1)", fill: "forwards" }
+      ));
+
+      // 2) Kurzer Explosionsimpuls exakt am Ball – daraus entsteht der Blitz.
+      const burst = document.createElement("span");
+      burst.className = "match3-stripe-burst";
+      burst.style.left = `${centerX}px`;
+      burst.style.top = `${centerY}px`;
+      dom.board.appendChild(burst);
+
+      const burstAnim = animationFinished(burst.animate(
+        [
+          { opacity: 0, transform: "translate(-50%,-50%) scale(.25)" },
+          { opacity: 1, transform: "translate(-50%,-50%) scale(1.05)", offset: .32 },
+          { opacity: 0, transform: "translate(-50%,-50%) scale(1.75)" }
+        ],
+        { duration: 190, easing: "cubic-bezier(.12,.72,.2,1)", fill: "forwards" }
+      )).finally(() => burst.remove());
+
+      // Der Originalball verschwindet explosionsartig, die zwei Schuss-Klone übernehmen.
+      const sourcePop = animationFinished(sourceImg.animate(
+        [
+          { transform: "scale(1.29)", opacity: 1, filter: "brightness(1.55)" },
+          { transform: "scale(1.48)", opacity: .92, filter: "brightness(2.25)", offset: .28 },
+          { transform: "scale(.55)", opacity: 0, filter: "brightness(2.8)" }
+        ],
+        { duration: 135, easing: "cubic-bezier(.2,.8,.25,1)", fill: "forwards" }
+      ));
+
+      await wait(42);
+
       const beam = document.createElement("span");
-      beam.className = "match3-stripe-beam";
+      beam.className = "match3-stripe-beam is-impact";
       beam.style.top = `${centerY}px`;
       dom.board.appendChild(beam);
-      animations.push(animationFinished(beam.animate(
+      const beamAnim = animationFinished(beam.animate(
         [
-          { opacity: 0, transform: "translateY(-50%) scaleX(.05)" },
-          { opacity: .95, transform: "translateY(-50%) scaleX(1)", offset: .24 },
+          { opacity: 0, transform: "translateY(-50%) scaleX(.02)" },
+          { opacity: 1, transform: "translateY(-50%) scaleX(.34)", offset: .16 },
+          { opacity: .95, transform: "translateY(-50%) scaleX(1)", offset: .58 },
           { opacity: 0, transform: "translateY(-50%) scaleX(1)" }
         ],
-        { duration: 310, easing: "cubic-bezier(.15,.75,.2,1)", fill: "forwards" }
-      )).finally(() => beam.remove()));
+        { duration: 360, easing: "cubic-bezier(.08,.76,.16,1)", fill: "forwards" }
+      )).finally(() => beam.remove());
 
+      const flights = [];
+      const flightDuration = 315;
       for (const direction of ["left", "right"]) {
         const clone = document.createElement("img");
         clone.className = `match3-stripe-shot-ball is-${direction}`;
@@ -462,19 +503,51 @@ export const Match3Feature = (() => {
           clone.src = normalImageFor(baseColor(trigger.piece));
         }, { once: true });
         dom.board.appendChild(clone);
+
         const distance = direction === "left" ? leftDistance : rightDistance;
         const flight = clone.animate(
           [
-            { transform: "translate3d(0,0,0) scale(1.08)", opacity: 1 },
-            { transform: `translate3d(${distance}px,0,0) scale(.92)`, opacity: .92 }
+            { transform: "translate3d(0,0,0) scale(1.12)", opacity: 1, filter: "brightness(1.7)" },
+            { transform: `translate3d(${distance}px,0,0) scale(.88)`, opacity: .94, filter: "brightness(1.18)" }
           ],
-          { duration: 285, easing: "cubic-bezier(.12,.7,.16,1)", fill: "forwards" }
+          { duration: flightDuration, easing: "cubic-bezier(.08,.72,.12,1)", fill: "forwards" }
         );
-        animations.push(animationFinished(flight).finally(() => clone.remove()));
+        flights.push(animationFinished(flight).finally(() => clone.remove()));
       }
-    }
 
-    await Promise.all(animations);
+      // 3) Die Bälle platzen nicht gleichzeitig, sondern exakt ungefähr dann,
+      // wenn der nach links/rechts fliegende Streifenball ihre Position erreicht.
+      const rowCells = removal
+        .filter((cell) => cell.row === trigger.row && !(cell.row === trigger.row && cell.col === trigger.col))
+        .map((cell) => ({ cell, tile: tileAt(cell) }))
+        .filter(({ tile: hitTile }) => hitTile && !hitTile.classList.contains("is-protected"));
+
+      const impactAnimations = rowCells.map(({ cell, tile: hitTile }) => {
+        const hitBox = hitTile.getBoundingClientRect();
+        const hitCenterX = hitBox.left - boardBox.left + hitBox.width / 2;
+        const totalDistance = hitCenterX < centerX ? Math.abs(leftDistance) : Math.abs(rightDistance);
+        const travelled = Math.abs(hitCenterX - centerX);
+        const delay = Math.max(20, Math.min(flightDuration - 55, (travelled / Math.max(1, totalDistance)) * flightDuration));
+
+        return (async () => {
+          await wait(delay);
+          hitTile.classList.add("is-stripe-impact");
+          const hitImg = hitTile.querySelector("img");
+          if (!hitImg) return;
+          await animationFinished(hitImg.animate(
+            [
+              { transform: "scale(1)", opacity: 1, filter: "brightness(1)" },
+              { transform: "scale(1.22)", opacity: 1, filter: "brightness(1.85)", offset: .30 },
+              { transform: "scale(.35)", opacity: 0, filter: "brightness(2.4)" }
+            ],
+            { duration: 145, easing: "cubic-bezier(.2,.75,.2,1)", fill: "forwards" }
+          ));
+        })();
+      });
+
+      await Promise.all([burstAnim, sourcePop, beamAnim, ...flights, ...impactAnimations]);
+      tile.classList.remove("is-stripe-charging");
+    }
   }
 
   function renderBoard({ matched = [], dropMap = null, invalid = [], createdSpecial = [] } = {}) {
@@ -682,7 +755,7 @@ export const Match3Feature = (() => {
 
       renderBoard({ createdSpecial: creations });
       if (creations.length) await wait(145);
-      if (stripeTriggers.length) await animateHorizontalStripeShots(stripeTriggers);
+      if (stripeTriggers.length) await animateHorizontalStripeShots(stripeTriggers, removal);
 
       renderBoard({ matched: removal, createdSpecial: creations });
       await wait(stripeTriggers.length ? 220 : 330);

@@ -314,3 +314,48 @@
   58% { transform: scale(1.16) rotate(3deg); filter: brightness(1.28); }
   100% { transform: scale(1) rotate(0); filter: brightness(1); }
 }
+
+
+/* =========================================================
+   Streifenball-Schuss v3: Aufladen -> Explosion -> Kontakt-Pop
+   ========================================================= */
+.match3-tile.is-stripe-charging {
+  z-index: 45;
+}
+
+.match3-stripe-burst {
+  position: absolute;
+  z-index: 44;
+  width: calc(var(--match3-cell) * 1.55);
+  height: calc(var(--match3-cell) * 1.55);
+  pointer-events: none;
+  border-radius: 50%;
+  background:
+    radial-gradient(circle, rgba(255,255,255,1) 0 15%, rgba(255,245,180,.95) 16% 28%, rgba(255,255,255,.42) 29% 43%, rgba(255,255,255,0) 66%),
+    conic-gradient(from 0deg, transparent 0 7%, rgba(255,255,255,.95) 8% 10%, transparent 11% 22%, rgba(255,240,145,.9) 23% 26%, transparent 27% 42%, rgba(255,255,255,.95) 43% 46%, transparent 47% 100%);
+  filter: drop-shadow(0 0 8px rgba(255,255,255,.95)) drop-shadow(0 0 15px rgba(255,221,105,.8));
+}
+
+.match3-stripe-beam.is-impact {
+  height: 7px;
+  background: linear-gradient(90deg, transparent, rgba(255,245,185,.92) 12%, #fff 32%, #fff 68%, rgba(255,245,185,.92) 88%, transparent);
+  box-shadow: 0 0 7px rgba(255,255,255,1), 0 0 17px rgba(255,230,120,.92), 0 0 28px rgba(255,255,255,.48);
+}
+
+.match3-tile.is-stripe-impact::before {
+  content: "";
+  position: absolute;
+  inset: 8%;
+  z-index: 8;
+  pointer-events: none;
+  border-radius: 50%;
+  border: 2px solid rgba(255,255,255,.92);
+  box-shadow: 0 0 8px rgba(255,255,255,.95), 0 0 14px rgba(255,228,128,.76);
+  animation: match3StripeImpact .16s ease-out both;
+}
+
+@keyframes match3StripeImpact {
+  0% { transform: scale(.4); opacity: 0; }
+  35% { transform: scale(.92); opacity: 1; }
+  100% { transform: scale(1.45); opacity: 0; }
+}
