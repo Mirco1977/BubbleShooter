@@ -235,6 +235,51 @@ export const Match3Feature = (() => {
     return creations;
   }
 
+  function planCascadeVerticalStripeCreations(groups, dropMap = null) {
+    // STEP 2:
+    // Nach Gravity darf eine zufällig entstandene EXAKTE vertikale Viererreihe
+    // einen Streifenball erzeugen. Als Ursprungszelle nehmen wir den Ball,
+    // der sich beim letzten Fall tatsächlich bewegt hat und die Viererreihe
+    // am plausibelsten vervollständigt hat.
+    if (!dropMap) return [];
+
+    const creations = [];
+    const used = new Set();
+
+    for (const group of groups) {
+      if (group.direction !== "vertical" || group.cells.length !== 4) continue;
+      if (group.cells.some(({ row, col }) => isHorizontalStripe(board[row]?.[col]))) continue;
+
+      const movedCandidates = group.cells
+        .map((cell) => {
+          const drop = dropMap.get(`${cell.row}:${cell.col}`);
+          if (!drop) return null;
+          const moved = Boolean(drop.spawned || drop.fromRow !== cell.row);
+          if (!moved) return null;
+          const distance = Math.max(0, cell.row - Number(drop.fromRow));
+          return { ...cell, distance, spawned: Boolean(drop.spawned) };
+        })
+        .filter(Boolean)
+        .sort((a, b) => {
+          // Neu gespawnte / am weitesten gefallene Bälle zuerst,
+          // bei Gleichstand die weiter unten liegende Zelle.
+          if (a.spawned !== b.spawned) return Number(b.spawned) - Number(a.spawned);
+          if (a.distance !== b.distance) return b.distance - a.distance;
+          return b.row - a.row;
+        });
+
+      const pos = movedCandidates[0];
+      if (!pos) continue;
+
+      const id = `${pos.row}:${pos.col}`;
+      if (used.has(id)) continue;
+      used.add(id);
+      creations.push({ row: pos.row, col: pos.col, color: group.color, cascadeCreated: true });
+    }
+
+    return creations;
+  }
+
   function expandHorizontalStripeShots(removalMap) {
     const triggers = [];
     const queued = new Set();
@@ -478,20 +523,19 @@ export const Match3Feature = (() => {
     return { particles, ring, flash };
   }
 
-  async function animateNormalMatchPops(removal = []) {
+  async function animateNormalMatchPops(removal = [], options = {}) {
     if (!dom.board || !removal?.length) return;
 
-    // Referenzähnlicher Ablauf:
-    // 1. sehr kurzes "Laden"/Aufblähen
-    // 2. knackiger heller Pop
-    // 3. farbige Splitter + einzelne Glitzerpunkte nach außen
-    // 4. sofortige Freigabe für Gravity
+    // Dieselbe Pop-Explosion wird für ALLE zerstörten Bälle verwendet:
+    // normale Matches, Streifenball selbst und vom Streifenschuss getroffene Bälle.
     const ordered = [...removal].sort((a, b) => a.row - b.row || a.col - b.col);
-    const stagger = 46;
+    const stagger = Number.isFinite(options.stagger) ? options.stagger : 46;
+    const delayForCell = typeof options.delayForCell === "function" ? options.delayForCell : null;
     const popDuration = 154;
 
     const animations = ordered.map((cell, index) => (async () => {
-      await wait(index * stagger);
+      const customDelay = delayForCell ? Number(delayForCell(cell, index) || 0) : 0;
+      await wait(Math.max(0, customDelay + index * stagger));
 
       const tile = tileAt(cell);
       const img = tile?.querySelector("img");
@@ -589,31 +633,10 @@ export const Match3Feature = (() => {
         { duration: 185, easing: "cubic-bezier(.18,.75,.22,1)", fill: "forwards" }
       ));
 
-      // 2) Kurzer Explosionsimpuls exakt am Ball – daraus entsteht der Blitz.
-      const burst = document.createElement("span");
-      burst.className = "match3-stripe-burst";
-      burst.style.left = `${centerX}px`;
-      burst.style.top = `${centerY}px`;
-      dom.board.appendChild(burst);
-
-      const burstAnim = animationFinished(burst.animate(
-        [
-          { opacity: 0, transform: "translate(-50%,-50%) scale(.25)" },
-          { opacity: 1, transform: "translate(-50%,-50%) scale(1.05)", offset: .32 },
-          { opacity: 0, transform: "translate(-50%,-50%) scale(1.75)" }
-        ],
-        { duration: 190, easing: "cubic-bezier(.12,.72,.2,1)", fill: "forwards" }
-      )).finally(() => burst.remove());
-
-      // Der Originalball verschwindet explosionsartig, die zwei Schuss-Klone übernehmen.
-      const sourcePop = animationFinished(sourceImg.animate(
-        [
-          { transform: "scale(1.29)", opacity: 1, filter: "brightness(1.55)" },
-          { transform: "scale(1.48)", opacity: .92, filter: "brightness(2.25)", offset: .28 },
-          { transform: "scale(.55)", opacity: 0, filter: "brightness(2.8)" }
-        ],
-        { duration: 135, easing: "cubic-bezier(.2,.8,.25,1)", fill: "forwards" }
-      ));
+      // 2) Auch der Streifenball selbst zerplatzt mit exakt derselben
+      // Pop-Explosion wie jeder andere zerstörte Match-3-Ball.
+      // Die eigentliche Streifen-/Blitzanimation bleibt davon unabhängig.
+      const sourcePop = animateNormalMatchPops([trigger], { stagger: 0 });
 
       await wait(42);
 
@@ -673,23 +696,15 @@ export const Match3Feature = (() => {
         const travelled = Math.abs(hitCenterX - centerX);
         const delay = Math.max(20, Math.min(flightDuration - 55, (travelled / Math.max(1, totalDistance)) * flightDuration));
 
-        return (async () => {
-          await wait(delay);
-          hitTile.classList.add("is-stripe-impact");
-          const hitImg = hitTile.querySelector("img");
-          if (!hitImg) return;
-          await animationFinished(hitImg.animate(
-            [
-              { transform: "scale(1)", opacity: 1, filter: "brightness(1)" },
-              { transform: "scale(1.22)", opacity: 1, filter: "brightness(1.85)", offset: .30 },
-              { transform: "scale(.35)", opacity: 0, filter: "brightness(2.4)" }
-            ],
-            { duration: 145, easing: "cubic-bezier(.2,.75,.2,1)", fill: "forwards" }
-          ));
-        })();
+        // Der Kontaktzeitpunkt kommt weiterhin vom fliegenden Streifenball,
+        // aber das eigentliche Zerplatzen ist jetzt 1:1 die globale Pop-Animation.
+        return animateNormalMatchPops([cell], {
+          stagger: 0,
+          delayForCell: () => delay
+        });
       });
 
-      await Promise.all([burstAnim, sourcePop, beamAnim, ...flights, ...impactAnimations]);
+      await Promise.all([sourcePop, beamAnim, ...flights, ...impactAnimations]);
       tile.classList.remove("is-stripe-charging");
     }
   }
@@ -864,16 +879,17 @@ export const Match3Feature = (() => {
     let matches = initialMatches;
     let cascade = 1;
     let firstCycle = true;
+    let lastDropMap = null;
 
     while (matches.length) {
       const groups = findMatchGroups(board);
 
-      // Nur der erste Auflösungszyklus gehört zum aktiven Spielerzug.
-      // Ab der ersten Gravity/Kaskade entstehen in STEP 1 ausdrücklich
-      // keine neuen Streifenbälle.
+      // Spielerzug: bestehende Regel bleibt unverändert.
+      // Kaskade: neu ist ausschließlich eine zufällig entstandene EXAKTE
+      // vertikale Viererreihe nach einem Fallvorgang.
       const creations = firstCycle && swapContext
         ? planHorizontalStripeCreations(groups, swapContext)
-        : [];
+        : planCascadeVerticalStripeCreations(groups, lastDropMap);
       const creationSet = new Set(creations.map((p) => `${p.row}:${p.col}`));
 
       // Der neue Spezialball bleibt auf dem Feld; alle anderen Match-Zellen werden entfernt.
@@ -894,7 +910,10 @@ export const Match3Feature = (() => {
 
       updateHud(cascade);
       if (stripeTriggers.length) setStatus("Streifenschuss!");
-      else if (creations.length) setStatus("4er-Kombi – Streifenball erstellt!");
+      else if (creations.length) {
+        const byCascade = creations.some((creation) => creation.cascadeCreated);
+        setStatus(byCascade ? "Kaskaden-4er – Streifenball entstanden!" : "4er-Kombi – Streifenball erstellt!");
+      }
       else setStatus(cascade > 1 ? `Kaskade ×${cascade}!` : `${removal.length} Bälle getroffen.`);
 
       renderBoard({ createdSpecial: creations });
@@ -926,6 +945,7 @@ export const Match3Feature = (() => {
       await wait(120);
 
       const dropMap = collapseAndRefill();
+      lastDropMap = dropMap;
       const dropDuration = renderBoard({ dropMap });
       await wait(Math.max(300, dropDuration + 25));
 
