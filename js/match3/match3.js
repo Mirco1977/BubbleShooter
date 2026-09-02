@@ -417,7 +417,7 @@ export const Match3Feature = (() => {
     return maxDuration;
   }
 
-  function spawnMatchPopParticles(tile, piece, count = 5) {
+  function spawnMatchPopParticles(tile, piece, count = 10) {
     if (!dom.board || !tile) return [];
     const tileBox = tile.getBoundingClientRect();
     const boardBox = dom.board.getBoundingClientRect();
@@ -431,7 +431,8 @@ export const Match3Feature = (() => {
       particle.style.left = `${centerX}px`;
       particle.style.top = `${centerY}px`;
       particle.style.setProperty("--pop-angle", `${(360 / count) * i + (i % 2 ? 11 : -7)}deg`);
-      particle.style.setProperty("--pop-distance", `${12 + (i % 3) * 4}px`);
+      particle.style.setProperty("--pop-distance", `${16 + (i % 4) * 4}px`);
+      particle.style.setProperty("--pop-size", `${3 + (i % 3)}px`);
       dom.board.appendChild(particle);
       particles.push(particle);
     }
@@ -455,29 +456,30 @@ export const Match3Feature = (() => {
       if (!tile || !img || tile.classList.contains("is-protected")) return;
 
       tile.classList.add("is-match-popping");
-      const particles = spawnMatchPopParticles(tile, board[cell.row]?.[cell.col], 5);
+      const particles = spawnMatchPopParticles(tile, board[cell.row]?.[cell.col], 10);
       const particleAnimations = particles.map((particle, particleIndex) => {
         const angle = (360 / particles.length) * particleIndex + (particleIndex % 2 ? 11 : -7);
-        const distance = 12 + (particleIndex % 3) * 4;
+        const distance = 16 + (particleIndex % 4) * 4;
         const radians = angle * Math.PI / 180;
         const dx = Math.cos(radians) * distance;
         const dy = Math.sin(radians) * distance;
         return animationFinished(particle.animate(
           [
-            { transform: "translate(-50%,-50%) scale(.65)", opacity: 0 },
-            { transform: "translate(-50%,-50%) scale(1)", opacity: .95, offset: .24 },
-            { transform: `translate(calc(-50% + ${dx}px), calc(-50% + ${dy}px)) scale(.25)`, opacity: 0 }
+            { transform: "translate(-50%,-50%) scale(.5)", opacity: 0 },
+            { transform: "translate(-50%,-50%) scale(1.2)", opacity: 1, offset: .18 },
+            { transform: `translate(calc(-50% + ${dx}px), calc(-50% + ${dy}px)) scale(.18)`, opacity: 0 }
           ],
-          { duration: 150, easing: "cubic-bezier(.15,.75,.25,1)", fill: "forwards" }
+          { duration: 168, easing: "cubic-bezier(.15,.75,.25,1)", fill: "forwards" }
         )).finally(() => particle.remove());
       });
 
       const pop = animationFinished(img.animate(
         [
           { transform: "scale(1)", opacity: 1, filter: "brightness(1)" },
-          { transform: "scale(1.095)", opacity: 1, filter: "brightness(1.14)", offset: .34 },
-          { transform: "scale(1.15)", opacity: .96, filter: "brightness(1.48)", offset: .52 },
-          { transform: "scale(.48)", opacity: 0, filter: "brightness(1.85)" }
+          { transform: "scale(1.18)", opacity: 1, filter: "brightness(1.18)", offset: .28 },
+          { transform: "scale(1.34)", opacity: 1, filter: "brightness(1.42)", offset: .48 },
+          { transform: "scale(1.42)", opacity: .98, filter: "brightness(1.78)", offset: .62 },
+          { transform: "scale(.42)", opacity: 0, filter: "brightness(2.05)" }
         ],
         { duration: popDuration, easing: "cubic-bezier(.18,.72,.22,1)", fill: "forwards" }
       ));

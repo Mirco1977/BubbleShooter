@@ -371,11 +371,11 @@
 .match3-pop-particle {
   position: absolute;
   z-index: 18;
-  width: 5px;
-  height: 5px;
+  width: var(--pop-size, 5px);
+  height: var(--pop-size, 5px);
   pointer-events: none;
   border-radius: 50%;
   background: rgba(255,255,255,.96);
-  box-shadow: 0 0 4px rgba(255,255,255,.82), 0 0 7px rgba(255,228,150,.42);
+  box-shadow: 0 0 5px rgba(255,255,255,.92), 0 0 9px rgba(255,228,150,.58);
   will-change: transform, opacity;
 }
