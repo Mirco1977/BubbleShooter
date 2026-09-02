@@ -417,6 +417,77 @@ export const Match3Feature = (() => {
     return maxDuration;
   }
 
+  function spawnMatchPopParticles(tile, piece, count = 5) {
+    if (!dom.board || !tile) return [];
+    const tileBox = tile.getBoundingClientRect();
+    const boardBox = dom.board.getBoundingClientRect();
+    const centerX = tileBox.left - boardBox.left + tileBox.width / 2;
+    const centerY = tileBox.top - boardBox.top + tileBox.height / 2;
+    const particles = [];
+
+    for (let i = 0; i < count; i++) {
+      const particle = document.createElement("span");
+      particle.className = "match3-pop-particle";
+      particle.style.left = `${centerX}px`;
+      particle.style.top = `${centerY}px`;
+      particle.style.setProperty("--pop-angle", `${(360 / count) * i + (i % 2 ? 11 : -7)}deg`);
+      particle.style.setProperty("--pop-distance", `${12 + (i % 3) * 4}px`);
+      dom.board.appendChild(particle);
+      particles.push(particle);
+    }
+
+    return particles;
+  }
+
+  async function animateNormalMatchPops(removal = []) {
+    if (!dom.board || !removal?.length) return;
+
+    // Kurzer, versetzter Ablauf: leicht aufblasen -> kleiner Pop -> Partikel.
+    // Der Stagger bleibt bewusst knapp, damit Gravity direkt danach einsetzen kann.
+    const ordered = [...removal].sort((a, b) => a.row - b.row || a.col - b.col);
+    const stagger = 52;
+    const popDuration = 128;
+
+    const animations = ordered.map((cell, index) => (async () => {
+      await wait(index * stagger);
+      const tile = tileAt(cell);
+      const img = tile?.querySelector("img");
+      if (!tile || !img || tile.classList.contains("is-protected")) return;
+
+      tile.classList.add("is-match-popping");
+      const particles = spawnMatchPopParticles(tile, board[cell.row]?.[cell.col], 5);
+      const particleAnimations = particles.map((particle, particleIndex) => {
+        const angle = (360 / particles.length) * particleIndex + (particleIndex % 2 ? 11 : -7);
+        const distance = 12 + (particleIndex % 3) * 4;
+        const radians = angle * Math.PI / 180;
+        const dx = Math.cos(radians) * distance;
+        const dy = Math.sin(radians) * distance;
+        return animationFinished(particle.animate(
+          [
+            { transform: "translate(-50%,-50%) scale(.65)", opacity: 0 },
+            { transform: "translate(-50%,-50%) scale(1)", opacity: .95, offset: .24 },
+            { transform: `translate(calc(-50% + ${dx}px), calc(-50% + ${dy}px)) scale(.25)`, opacity: 0 }
+          ],
+          { duration: 150, easing: "cubic-bezier(.15,.75,.25,1)", fill: "forwards" }
+        )).finally(() => particle.remove());
+      });
+
+      const pop = animationFinished(img.animate(
+        [
+          { transform: "scale(1)", opacity: 1, filter: "brightness(1)" },
+          { transform: "scale(1.095)", opacity: 1, filter: "brightness(1.14)", offset: .34 },
+          { transform: "scale(1.15)", opacity: .96, filter: "brightness(1.48)", offset: .52 },
+          { transform: "scale(.48)", opacity: 0, filter: "brightness(1.85)" }
+        ],
+        { duration: popDuration, easing: "cubic-bezier(.18,.72,.22,1)", fill: "forwards" }
+      ));
+
+      await Promise.all([pop, ...particleAnimations]);
+    })());
+
+    await Promise.all(animations);
+  }
+
   async function animateHorizontalStripeShots(triggers, removal = []) {
     if (!dom.board || !triggers?.length) return;
 
@@ -757,8 +828,13 @@ export const Match3Feature = (() => {
       if (creations.length) await wait(145);
       if (stripeTriggers.length) await animateHorizontalStripeShots(stripeTriggers, removal);
 
-      renderBoard({ matched: removal, createdSpecial: creations });
-      await wait(stripeTriggers.length ? 220 : 330);
+      if (stripeTriggers.length) {
+        renderBoard({ matched: removal, createdSpecial: creations });
+        await wait(220);
+      } else {
+        renderBoard({ createdSpecial: creations });
+        await animateNormalMatchPops(removal);
+      }
 
       const multiplier = Math.min(cascade, 4);
       score += removal.length * POINTS_PER_BALL * multiplier;

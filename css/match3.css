@@ -359,3 +359,23 @@
   35% { transform: scale(.92); opacity: 1; }
   100% { transform: scale(1.45); opacity: 0; }
 }
+
+
+/* =========================================================
+   Normale Match-Reihen v4: schneller sequenzieller Pop
+   ========================================================= */
+.match3-tile.is-match-popping {
+  z-index: 12;
+}
+
+.match3-pop-particle {
+  position: absolute;
+  z-index: 18;
+  width: 5px;
+  height: 5px;
+  pointer-events: none;
+  border-radius: 50%;
+  background: rgba(255,255,255,.96);
+  box-shadow: 0 0 4px rgba(255,255,255,.82), 0 0 7px rgba(255,228,150,.42);
+  will-change: transform, opacity;
+}
