@@ -195,22 +195,43 @@ export const Match3Feature = (() => {
     return Boolean(pos && group.cells.some((cell) => cell.row === pos.row && cell.col === pos.col));
   }
 
-  function planHorizontalStripeCreations(groups, preferred = []) {
+  function planHorizontalStripeCreations(groups, swapContext = null) {
+    // STEP 1:
+    // Ein horizontaler Streifenball darf aktuell ausschließlich durch den
+    // aktiven Spielerzug entstehen. Kaskaden/Fallkombinationen erzeugen
+    // bewusst noch keinen neuen Spezialball.
+    if (!swapContext?.from || !swapContext?.to) return [];
+
+    // Die Streifenrichtung richtet sich nach dem Zug:
+    // horizontal eingeschoben => horizontaler Streifenball.
+    const isHorizontalMove =
+      swapContext.from.row === swapContext.to.row &&
+      swapContext.from.col !== swapContext.to.col;
+    if (!isHorizontalMove) return [];
+
     const creations = [];
     const used = new Set();
 
     for (const group of groups) {
-      // Genau vier horizontal: spätere 5er-/T-/L-Kombis bleiben für eigene Specials frei.
-      if (group.direction !== "horizontal" || group.cells.length !== 4) continue;
+      // Wirklich nur eine exakte Viererkombination.
+      if (group.cells.length !== 4) continue;
+
+      // Entscheidend ist der tatsächlich verschobene Ball an seiner Zielzelle.
+      // Eine andere Viererkombi auf dem Brett darf durch diesen Zug keinen
+      // Streifenball erzeugen.
+      if (!cellInGroup(group, swapContext.to)) continue;
+
+      // Wird ein vorhandener Streifenball in eine neue gleichfarbige Kombi
+      // eingebunden, soll er schießen und nicht durch einen neuen ersetzt werden.
       if (group.cells.some(({ row, col }) => isHorizontalStripe(board[row]?.[col]))) continue;
 
-      let pos = preferred.find((candidate) => cellInGroup(group, candidate));
-      if (!pos) pos = group.cells[Math.floor((group.cells.length - 1) / 2)];
+      const pos = swapContext.to;
       const id = `${pos.row}:${pos.col}`;
       if (used.has(id)) continue;
       used.add(id);
       creations.push({ ...pos, color: group.color });
     }
+
     return creations;
   }
 
@@ -629,8 +650,13 @@ export const Match3Feature = (() => {
 
     while (matches.length) {
       const groups = findMatchGroups(board);
-      const preferred = firstCycle && swapContext ? [swapContext.to, swapContext.from] : [];
-      const creations = planHorizontalStripeCreations(groups, preferred);
+
+      // Nur der erste Auflösungszyklus gehört zum aktiven Spielerzug.
+      // Ab der ersten Gravity/Kaskade entstehen in STEP 1 ausdrücklich
+      // keine neuen Streifenbälle.
+      const creations = firstCycle && swapContext
+        ? planHorizontalStripeCreations(groups, swapContext)
+        : [];
       const creationSet = new Set(creations.map((p) => `${p.row}:${p.col}`));
 
       // Der neue Spezialball bleibt auf dem Feld; alle anderen Match-Zellen werden entfernt.
