@@ -264,9 +264,9 @@ export const Match3Feature = (() => {
     const used = new Set();
 
     for (const group of groups) {
-      // Für den vertikalen Spezialball zählt ausschließlich eine exakte
-      // vertikale Viererkombination.
-      if (group.direction !== "vertical" || group.cells.length !== 4) continue;
+      // Vertikale Bewegung + daraus entstehende horizontale Viererreihe:
+      // Genau dieser Abschlussball wird zum vertikalen Streifenball.
+      if (group.direction !== "horizontal" || group.cells.length !== 4) continue;
 
       // Der tatsächlich verschobene Ball muss die Reihe an seiner Zielposition
       // vervollständigt haben.
@@ -287,17 +287,17 @@ export const Match3Feature = (() => {
 
   function planCascadeVerticalStripeCreations(groups, dropMap = null) {
     // STEP 2:
-    // Nach Gravity darf eine zufällig entstandene EXAKTE vertikale Viererreihe
-    // einen Streifenball erzeugen. Als Ursprungszelle nehmen wir den Ball,
-    // der sich beim letzten Fall tatsächlich bewegt hat und die Viererreihe
-    // am plausibelsten vervollständigt hat.
+    // Nach Gravity darf eine durch vertikales Fallen neu entstandene EXAKTE
+    // horizontale Viererreihe einen vertikalen Streifenball erzeugen.
+    // Als Ursprungszelle nehmen wir den tatsächlich gefallenen Ball,
+    // der diese horizontale Viererreihe vervollständigt hat.
     if (!dropMap) return [];
 
     const creations = [];
     const used = new Set();
 
     for (const group of groups) {
-      if (group.direction !== "vertical" || group.cells.length !== 4) continue;
+      if (group.direction !== "horizontal" || group.cells.length !== 4) continue;
       if (group.cells.some(({ row, col }) => isStripe(board[row]?.[col]))) continue;
 
       const movedCandidates = group.cells
