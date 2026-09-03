@@ -17,6 +17,7 @@ const BALLS = [
 
 const MATCH3_BALL_ASSET_DIR = "assets/match3/balls";
 const STRIPE_H = "stripe-h";
+const STRIPE_V = "stripe-v";
 const PIECE_SEPARATOR = "|";
 
 // Reserviert für spätere Blocker wie Frost/Ketten. Geschützte Zellen werden
@@ -115,8 +116,21 @@ export const Match3Feature = (() => {
     return pieceInfo(piece).special === STRIPE_H;
   }
 
+  function isVerticalStripe(piece) {
+    return pieceInfo(piece).special === STRIPE_V;
+  }
+
+  function isStripe(piece) {
+    const special = pieceInfo(piece).special;
+    return special === STRIPE_H || special === STRIPE_V;
+  }
+
   function makeHorizontalStripe(color) {
     return `${color}${PIECE_SEPARATOR}${STRIPE_H}`;
+  }
+
+  function makeVerticalStripe(color) {
+    return `${color}${PIECE_SEPARATOR}${STRIPE_V}`;
   }
 
   function normalImageFor(color) {
@@ -126,6 +140,7 @@ export const Match3Feature = (() => {
   function imageFor(piece) {
     const { color, special } = pieceInfo(piece);
     if (special === STRIPE_H && color) return `${MATCH3_BALL_ASSET_DIR}/${color}-streif-h.png`;
+    if (special === STRIPE_V && color) return `${MATCH3_BALL_ASSET_DIR}/${color}-streif-v.png`;
     return normalImageFor(color);
   }
 
@@ -223,7 +238,7 @@ export const Match3Feature = (() => {
 
       // Wird ein vorhandener Streifenball in eine neue gleichfarbige Kombi
       // eingebunden, soll er schießen und nicht durch einen neuen ersetzt werden.
-      if (group.cells.some(({ row, col }) => isHorizontalStripe(board[row]?.[col]))) continue;
+      if (group.cells.some(({ row, col }) => isStripe(board[row]?.[col]))) continue;
 
       const pos = swapContext.to;
       const id = `${pos.row}:${pos.col}`;
@@ -248,7 +263,7 @@ export const Match3Feature = (() => {
 
     for (const group of groups) {
       if (group.direction !== "vertical" || group.cells.length !== 4) continue;
-      if (group.cells.some(({ row, col }) => isHorizontalStripe(board[row]?.[col]))) continue;
+      if (group.cells.some(({ row, col }) => isStripe(board[row]?.[col]))) continue;
 
       const movedCandidates = group.cells
         .map((cell) => {
@@ -280,12 +295,14 @@ export const Match3Feature = (() => {
     return creations;
   }
 
-  function expandHorizontalStripeShots(removalMap) {
+  function expandStripeShots(removalMap) {
     const triggers = [];
     const queued = new Set();
 
+    // Jeder Streifenball, der durch ein normales Match oder durch einen anderen
+    // Streifenschuss getroffen wird, wird Teil derselben Kettenreaktion.
     for (const cell of [...removalMap.values()]) {
-      if (isHorizontalStripe(board[cell.row]?.[cell.col])) queued.add(`${cell.row}:${cell.col}`);
+      if (isStripe(board[cell.row]?.[cell.col])) queued.add(`${cell.row}:${cell.col}`);
     }
 
     while (queued.size) {
@@ -293,15 +310,27 @@ export const Match3Feature = (() => {
       queued.delete(id);
       const [row, col] = id.split(":").map(Number);
       if (triggers.some((trigger) => trigger.row === row && trigger.col === col)) continue;
-      const piece = board[row]?.[col];
-      if (!isHorizontalStripe(piece)) continue;
-      triggers.push({ row, col, piece });
 
-      for (let c = 0; c < COLS; c++) {
-        if (isProtectedCell(row, c)) continue;
-        const targetId = `${row}:${c}`;
-        removalMap.set(targetId, { row, col: c });
-        if (isHorizontalStripe(board[row]?.[c]) && c !== col) queued.add(targetId);
+      const piece = board[row]?.[col];
+      if (!isStripe(piece)) continue;
+
+      const orientation = isVerticalStripe(piece) ? "vertical" : "horizontal";
+      triggers.push({ row, col, piece, orientation });
+
+      if (orientation === "horizontal") {
+        for (let c = 0; c < COLS; c++) {
+          if (isProtectedCell(row, c)) continue;
+          const targetId = `${row}:${c}`;
+          removalMap.set(targetId, { row, col: c });
+          if (isStripe(board[row]?.[c]) && c !== col) queued.add(targetId);
+        }
+      } else {
+        for (let r = 0; r < ROWS; r++) {
+          if (isProtectedCell(r, col)) continue;
+          const targetId = `${r}:${col}`;
+          removalMap.set(targetId, { row: r, col });
+          if (isStripe(board[r]?.[col]) && r !== row) queued.add(targetId);
+        }
       }
     }
 
@@ -605,7 +634,7 @@ export const Match3Feature = (() => {
     await Promise.all(animations);
   }
 
-  async function animateHorizontalStripeShots(triggers, removal = []) {
+  async function animateStripeShots(triggers, removal = []) {
     if (!dom.board || !triggers?.length) return;
 
     for (const trigger of triggers) {
@@ -614,15 +643,19 @@ export const Match3Feature = (() => {
       const sourceImg = tile.querySelector("img");
       if (!sourceImg) continue;
 
+      const isVertical = trigger.orientation === "vertical" || isVerticalStripe(trigger.piece);
       const tileBox = tile.getBoundingClientRect();
       const boardBox = dom.board.getBoundingClientRect();
       const centerX = tileBox.left - boardBox.left + tileBox.width / 2;
       const centerY = tileBox.top - boardBox.top + tileBox.height / 2;
       const size = Math.max(28, tileBox.width - 5);
-      const leftDistance = -(centerX + size);
-      const rightDistance = dom.board.clientWidth - centerX + size;
 
-      // 1) Der Streifenball lädt sich kurz auf und bläht sich sichtbar auf.
+      const negativeDistance = isVertical ? -(centerY + size) : -(centerX + size);
+      const positiveDistance = isVertical
+        ? dom.board.clientHeight - centerY + size
+        : dom.board.clientWidth - centerX + size;
+
+      // 1) Horizontal und vertikal laden sich identisch auf.
       tile.classList.add("is-stripe-charging");
       await animationFinished(sourceImg.animate(
         [
@@ -633,30 +666,39 @@ export const Match3Feature = (() => {
         { duration: 185, easing: "cubic-bezier(.18,.75,.22,1)", fill: "forwards" }
       ));
 
-      // 2) Auch der Streifenball selbst zerplatzt mit exakt derselben
-      // Pop-Explosion wie jeder andere zerstörte Match-3-Ball.
-      // Die eigentliche Streifen-/Blitzanimation bleibt davon unabhängig.
+      // 2) Der auslösende Streifenball nutzt exakt dieselbe Pop-Explosion
+      // wie jeder andere zerstörte Match-3-Ball.
       const sourcePop = animateNormalMatchPops([trigger], { stagger: 0 });
-
       await wait(42);
 
       const beam = document.createElement("span");
-      beam.className = "match3-stripe-beam is-impact";
-      beam.style.top = `${centerY}px`;
+      beam.className = `match3-stripe-beam is-impact ${isVertical ? "is-vertical" : "is-horizontal"}`;
+      if (isVertical) beam.style.left = `${centerX}px`;
+      else beam.style.top = `${centerY}px`;
       dom.board.appendChild(beam);
+
       const beamAnim = animationFinished(beam.animate(
-        [
-          { opacity: 0, transform: "translateY(-50%) scaleX(.02)" },
-          { opacity: 1, transform: "translateY(-50%) scaleX(.34)", offset: .16 },
-          { opacity: .95, transform: "translateY(-50%) scaleX(1)", offset: .58 },
-          { opacity: 0, transform: "translateY(-50%) scaleX(1)" }
-        ],
+        isVertical
+          ? [
+              { opacity: 0, transform: "translateX(-50%) scaleY(.02)" },
+              { opacity: 1, transform: "translateX(-50%) scaleY(.34)", offset: .16 },
+              { opacity: .95, transform: "translateX(-50%) scaleY(1)", offset: .58 },
+              { opacity: 0, transform: "translateX(-50%) scaleY(1)" }
+            ]
+          : [
+              { opacity: 0, transform: "translateY(-50%) scaleX(.02)" },
+              { opacity: 1, transform: "translateY(-50%) scaleX(.34)", offset: .16 },
+              { opacity: .95, transform: "translateY(-50%) scaleX(1)", offset: .58 },
+              { opacity: 0, transform: "translateY(-50%) scaleX(1)" }
+            ],
         { duration: 360, easing: "cubic-bezier(.08,.76,.16,1)", fill: "forwards" }
       )).finally(() => beam.remove());
 
       const flights = [];
       const flightDuration = 315;
-      for (const direction of ["left", "right"]) {
+      const directions = isVertical ? ["up", "down"] : ["left", "right"];
+
+      for (const direction of directions) {
         const clone = document.createElement("img");
         clone.className = `match3-stripe-shot-ball is-${direction}`;
         clone.src = imageFor(trigger.piece);
@@ -671,33 +713,38 @@ export const Match3Feature = (() => {
         }, { once: true });
         dom.board.appendChild(clone);
 
-        const distance = direction === "left" ? leftDistance : rightDistance;
+        const negative = direction === "left" || direction === "up";
+        const distance = negative ? negativeDistance : positiveDistance;
+        const tx = isVertical ? 0 : distance;
+        const ty = isVertical ? distance : 0;
+
         const flight = clone.animate(
           [
             { transform: "translate3d(0,0,0) scale(1.12)", opacity: 1, filter: "brightness(1.7)" },
-            { transform: `translate3d(${distance}px,0,0) scale(.88)`, opacity: .94, filter: "brightness(1.18)" }
+            { transform: `translate3d(${tx}px,${ty}px,0) scale(.88)`, opacity: .94, filter: "brightness(1.18)" }
           ],
           { duration: flightDuration, easing: "cubic-bezier(.08,.72,.12,1)", fill: "forwards" }
         );
         flights.push(animationFinished(flight).finally(() => clone.remove()));
       }
 
-      // 3) Die Bälle platzen nicht gleichzeitig, sondern exakt ungefähr dann,
-      // wenn der nach links/rechts fliegende Streifenball ihre Position erreicht.
-      const rowCells = removal
-        .filter((cell) => cell.row === trigger.row && !(cell.row === trigger.row && cell.col === trigger.col))
+      // 3) Getroffene Bälle platzen entlang der Flugrichtung beim Kontakt.
+      const lineCells = removal
+        .filter((cell) => isVertical ? cell.col === trigger.col : cell.row === trigger.row)
+        .filter((cell) => !(cell.row === trigger.row && cell.col === trigger.col))
         .map((cell) => ({ cell, tile: tileAt(cell) }))
         .filter(({ tile: hitTile }) => hitTile && !hitTile.classList.contains("is-protected"));
 
-      const impactAnimations = rowCells.map(({ cell, tile: hitTile }) => {
+      const impactAnimations = lineCells.map(({ cell, tile: hitTile }) => {
         const hitBox = hitTile.getBoundingClientRect();
-        const hitCenterX = hitBox.left - boardBox.left + hitBox.width / 2;
-        const totalDistance = hitCenterX < centerX ? Math.abs(leftDistance) : Math.abs(rightDistance);
-        const travelled = Math.abs(hitCenterX - centerX);
+        const hitCenter = isVertical
+          ? hitBox.top - boardBox.top + hitBox.height / 2
+          : hitBox.left - boardBox.left + hitBox.width / 2;
+        const sourceCenter = isVertical ? centerY : centerX;
+        const totalDistance = hitCenter < sourceCenter ? Math.abs(negativeDistance) : Math.abs(positiveDistance);
+        const travelled = Math.abs(hitCenter - sourceCenter);
         const delay = Math.max(20, Math.min(flightDuration - 55, (travelled / Math.max(1, totalDistance)) * flightDuration));
 
-        // Der Kontaktzeitpunkt kommt weiterhin vom fliegenden Streifenball,
-        // aber das eigentliche Zerplatzen ist jetzt 1:1 die globale Pop-Animation.
         return animateNormalMatchPops([cell], {
           stagger: 0,
           delayForCell: () => delay
@@ -730,7 +777,11 @@ export const Match3Feature = (() => {
         tile.dataset.col = String(col);
         tile.setAttribute("role", "gridcell");
         const info = pieceInfo(key);
-        const specialLabel = info.special === STRIPE_H ? " horizontaler Streifenball" : " Ball";
+        const specialLabel = info.special === STRIPE_H
+          ? " horizontaler Streifenball"
+          : info.special === STRIPE_V
+            ? " vertikaler Streifenball"
+            : " Ball";
         tile.setAttribute("aria-label", key ? `${info.color}${specialLabel}, Reihe ${row + 1}, Spalte ${col + 1}` : "Leeres Feld");
         tile.disabled = busy || finished || !key;
 
@@ -739,6 +790,7 @@ export const Match3Feature = (() => {
         if (invalidSet.has(`${row}:${col}`)) tile.classList.add("is-invalid");
         if (createdSet.has(`${row}:${col}`)) tile.classList.add("is-created-special");
         if (info.special === STRIPE_H) tile.classList.add("is-stripe-h");
+        if (info.special === STRIPE_V) tile.classList.add("is-stripe-v");
         if (isProtectedCell(row, col)) tile.classList.add("is-protected");
 
         if (key) {
@@ -746,7 +798,7 @@ export const Match3Feature = (() => {
           img.src = imageFor(key);
           img.alt = "";
           img.draggable = false;
-          if (info.special === STRIPE_H) {
+          if (info.special === STRIPE_H || info.special === STRIPE_V) {
             img.addEventListener("error", () => {
               tile.classList.add("uses-special-fallback");
               img.src = normalImageFor(info.color);
@@ -894,7 +946,9 @@ export const Match3Feature = (() => {
 
       // Der neue Spezialball bleibt auf dem Feld; alle anderen Match-Zellen werden entfernt.
       for (const creation of creations) {
-        board[creation.row][creation.col] = makeHorizontalStripe(creation.color);
+        board[creation.row][creation.col] = creation.cascadeCreated
+          ? makeVerticalStripe(creation.color)
+          : makeHorizontalStripe(creation.color);
       }
 
       const removalMap = new Map();
@@ -905,7 +959,7 @@ export const Match3Feature = (() => {
 
       // Ein bereits vorhandener Streifenball, der Teil einer gleichfarbigen Kombi wird,
       // aktiviert sofort den kompletten horizontalen Reihenschuss.
-      const stripeTriggers = expandHorizontalStripeShots(removalMap);
+      const stripeTriggers = expandStripeShots(removalMap);
       const removal = [...removalMap.values()];
 
       updateHud(cascade);
@@ -918,7 +972,7 @@ export const Match3Feature = (() => {
 
       renderBoard({ createdSpecial: creations });
       if (creations.length) await wait(145);
-      if (stripeTriggers.length) await animateHorizontalStripeShots(stripeTriggers, removal);
+      if (stripeTriggers.length) await animateStripeShots(stripeTriggers, removal);
 
       if (stripeTriggers.length) {
         renderBoard({ matched: removal, createdSpecial: creations });

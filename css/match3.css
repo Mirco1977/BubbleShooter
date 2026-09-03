@@ -251,18 +251,20 @@
 
 
 /* =========================================================
-   4er-Kombi – horizontaler Streifenball
-   Assets: assets/match3/balls/<farbe>-streif-h.png
+   4er-Kombi – horizontale + vertikale Streifenbälle
+   Assets: assets/match3/balls/<farbe>-streif-h.png / -streif-v.png
    ========================================================= */
-.match3-tile.is-stripe-h {
+.match3-tile.is-stripe-h,
+.match3-tile.is-stripe-v {
   z-index: 2;
 }
 
-.match3-tile.is-stripe-h img {
+.match3-tile.is-stripe-h img,
+.match3-tile.is-stripe-v img {
   filter: drop-shadow(0 0 5px rgba(255,255,255,.34)) drop-shadow(0 3px 4px rgba(0,0,0,.34));
 }
 
-/* Falls das Streifen-PNG noch nicht vorhanden ist, bleibt der normale Ball sichtbar
+/* Falls ein Streifen-PNG fehlt, bleibt der normale Ball sichtbar
    und bekommt eine provisorische Streifenmarkierung. */
 .match3-tile.is-stripe-h.uses-special-fallback::after {
   content: "";
@@ -274,6 +276,21 @@
   transform: translateY(-50%);
   border-top: 3px solid rgba(255,255,255,.92);
   border-bottom: 3px solid rgba(255,255,255,.92);
+  border-radius: 50%;
+  pointer-events: none;
+  filter: drop-shadow(0 0 3px rgba(255,255,255,.7));
+}
+
+.match3-tile.is-stripe-v.uses-special-fallback::after {
+  content: "";
+  position: absolute;
+  top: 12%;
+  bottom: 12%;
+  left: 50%;
+  width: 9px;
+  transform: translateX(-50%);
+  border-left: 3px solid rgba(255,255,255,.92);
+  border-right: 3px solid rgba(255,255,255,.92);
   border-radius: 50%;
   pointer-events: none;
   filter: drop-shadow(0 0 3px rgba(255,255,255,.7));
@@ -303,6 +320,19 @@
   background: linear-gradient(90deg, transparent, rgba(255,255,255,.95) 18%, #fff 50%, rgba(255,255,255,.95) 82%, transparent);
   box-shadow: 0 0 7px rgba(255,255,255,.95), 0 0 18px rgba(255,223,102,.72);
   transform-origin: center;
+}
+
+.match3-stripe-beam.is-horizontal {
+  top: 50%;
+}
+
+.match3-stripe-beam.is-vertical {
+  top: -6%;
+  left: 50%;
+  width: 7px;
+  height: 112%;
+  transform-origin: center;
+  background: linear-gradient(180deg, transparent, rgba(255,245,185,.92) 12%, #fff 32%, #fff 68%, rgba(255,245,185,.92) 88%, transparent);
 }
 
 .match3-tile.is-protected {
@@ -340,6 +370,12 @@
   height: 7px;
   background: linear-gradient(90deg, transparent, rgba(255,245,185,.92) 12%, #fff 32%, #fff 68%, rgba(255,245,185,.92) 88%, transparent);
   box-shadow: 0 0 7px rgba(255,255,255,1), 0 0 17px rgba(255,230,120,.92), 0 0 28px rgba(255,255,255,.48);
+}
+
+.match3-stripe-beam.is-impact.is-vertical {
+  width: 7px;
+  height: 112%;
+  background: linear-gradient(180deg, transparent, rgba(255,245,185,.92) 12%, #fff 32%, #fff 68%, rgba(255,245,185,.92) 88%, transparent);
 }
 
 .match3-tile.is-stripe-impact::before {
