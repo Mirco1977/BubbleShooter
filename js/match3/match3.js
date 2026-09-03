@@ -250,6 +250,41 @@ export const Match3Feature = (() => {
     return creations;
   }
 
+  function planVerticalStripeCreations(groups, swapContext = null) {
+    // Direkter Spielerzug: vertikal eingeschoben => vertikaler Streifenball.
+    // Die Regel spiegelt die bestehende horizontale Logik, ohne sie zu verändern.
+    if (!swapContext?.from || !swapContext?.to) return [];
+
+    const isVerticalMove =
+      swapContext.from.col === swapContext.to.col &&
+      swapContext.from.row !== swapContext.to.row;
+    if (!isVerticalMove) return [];
+
+    const creations = [];
+    const used = new Set();
+
+    for (const group of groups) {
+      // Für den vertikalen Spezialball zählt ausschließlich eine exakte
+      // vertikale Viererkombination.
+      if (group.direction !== "vertical" || group.cells.length !== 4) continue;
+
+      // Der tatsächlich verschobene Ball muss die Reihe an seiner Zielposition
+      // vervollständigt haben.
+      if (!cellInGroup(group, swapContext.to)) continue;
+
+      // Vorhandene Streifenbälle feuern stattdessen und werden nicht ersetzt.
+      if (group.cells.some(({ row, col }) => isStripe(board[row]?.[col]))) continue;
+
+      const pos = swapContext.to;
+      const id = `${pos.row}:${pos.col}`;
+      if (used.has(id)) continue;
+      used.add(id);
+      creations.push({ ...pos, color: group.color, orientation: "vertical" });
+    }
+
+    return creations;
+  }
+
   function planCascadeVerticalStripeCreations(groups, dropMap = null) {
     // STEP 2:
     // Nach Gravity darf eine zufällig entstandene EXAKTE vertikale Viererreihe
@@ -940,13 +975,20 @@ export const Match3Feature = (() => {
       // Kaskade: neu ist ausschließlich eine zufällig entstandene EXAKTE
       // vertikale Viererreihe nach einem Fallvorgang.
       const creations = firstCycle && swapContext
-        ? planHorizontalStripeCreations(groups, swapContext)
+        ? [
+            ...planHorizontalStripeCreations(groups, swapContext).map((creation) => ({
+              ...creation,
+              orientation: "horizontal"
+            })),
+            ...planVerticalStripeCreations(groups, swapContext)
+          ]
         : planCascadeVerticalStripeCreations(groups, lastDropMap);
       const creationSet = new Set(creations.map((p) => `${p.row}:${p.col}`));
 
       // Der neue Spezialball bleibt auf dem Feld; alle anderen Match-Zellen werden entfernt.
       for (const creation of creations) {
-        board[creation.row][creation.col] = creation.cascadeCreated
+        const vertical = creation.orientation === "vertical" || creation.cascadeCreated;
+        board[creation.row][creation.col] = vertical
           ? makeVerticalStripe(creation.color)
           : makeHorizontalStripe(creation.color);
       }
