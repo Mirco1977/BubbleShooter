@@ -18,6 +18,8 @@ const BALLS = [
 const MATCH3_BALL_ASSET_DIR = "assets/match3/balls";
 const STRIPE_H = "stripe-h";
 const STRIPE_V = "stripe-v";
+const COLOR_BOMB = "color-bomb";
+const COLOR_BOMB_IMAGE = "assets/ui/color-bomb.png";
 const PIECE_SEPARATOR = "|";
 
 // Reserviert für spätere Blocker wie Frost/Ketten. Geschützte Zellen werden
@@ -109,7 +111,16 @@ export const Match3Feature = (() => {
   }
 
   function baseColor(piece) {
-    return pieceInfo(piece).color;
+    const info = pieceInfo(piece);
+    return info.special === COLOR_BOMB ? null : info.color;
+  }
+
+  function isColorBomb(piece) {
+    return pieceInfo(piece).special === COLOR_BOMB;
+  }
+
+  function makeColorBomb() {
+    return `special${PIECE_SEPARATOR}${COLOR_BOMB}`;
   }
 
   function isHorizontalStripe(piece) {
@@ -139,6 +150,7 @@ export const Match3Feature = (() => {
 
   function imageFor(piece) {
     const { color, special } = pieceInfo(piece);
+    if (special === COLOR_BOMB) return COLOR_BOMB_IMAGE;
     if (special === STRIPE_H && color) return `${MATCH3_BALL_ASSET_DIR}/${color}-streif-h.png`;
     if (special === STRIPE_V && color) return `${MATCH3_BALL_ASSET_DIR}/${color}-streif-v.png`;
     return normalImageFor(color);
@@ -208,6 +220,74 @@ export const Match3Feature = (() => {
 
   function cellInGroup(group, pos) {
     return Boolean(pos && group.cells.some((cell) => cell.row === pos.row && cell.col === pos.col));
+  }
+
+  function planColorBombCreations(groups, swapContext = null) {
+    // Eine EXAKTE 5er-Reihe hat Vorrang vor allen 4er-Spezialbällen.
+    // Beim Spielerzug entsteht die Farbbombe genau an der Zielzelle des Balls,
+    // der die horizontale oder vertikale Fünferreihe vervollständigt hat.
+    if (!swapContext?.to) return [];
+
+    const creations = [];
+    const used = new Set();
+
+    for (const group of groups) {
+      if (group.cells.length !== 5) continue;
+      if (!cellInGroup(group, swapContext.to)) continue;
+
+      const pos = swapContext.to;
+      const id = `${pos.row}:${pos.col}`;
+      if (used.has(id)) continue;
+      used.add(id);
+      creations.push({ ...pos, special: COLOR_BOMB, fiveMatch: true });
+    }
+
+    return creations;
+  }
+
+  function planCascadeColorBombCreations(groups, dropMap = null) {
+    // Zufällige 5er-Kombi durch Gravity/Fallen:
+    // Die Farbbombe wird an der Zelle des zuletzt hineinbewegten Balls erzeugt.
+    if (!dropMap) return [];
+
+    const creations = [];
+    const used = new Set();
+
+    for (const group of groups) {
+      if (group.cells.length !== 5) continue;
+
+      const movedCandidates = group.cells
+        .map((cell) => {
+          const drop = dropMap.get(`${cell.row}:${cell.col}`);
+          if (!drop) return null;
+          const moved = Boolean(drop.spawned || drop.fromRow !== cell.row);
+          if (!moved) return null;
+          const distance = Math.max(0, cell.row - Number(drop.fromRow));
+          return { ...cell, distance, spawned: Boolean(drop.spawned) };
+        })
+        .filter(Boolean)
+        .sort((a, b) => {
+          if (a.spawned !== b.spawned) return Number(b.spawned) - Number(a.spawned);
+          if (a.distance !== b.distance) return b.distance - a.distance;
+          return b.row - a.row;
+        });
+
+      const pos = movedCandidates[0];
+      if (!pos) continue;
+
+      const id = `${pos.row}:${pos.col}`;
+      if (used.has(id)) continue;
+      used.add(id);
+      creations.push({
+        row: pos.row,
+        col: pos.col,
+        special: COLOR_BOMB,
+        fiveMatch: true,
+        cascadeCreated: true
+      });
+    }
+
+    return creations;
   }
 
   function planHorizontalStripeCreations(groups, swapContext = null) {
@@ -382,6 +462,16 @@ export const Match3Feature = (() => {
         ].filter((p) => p.row < ROWS && p.col < COLS);
 
         for (const to of candidates) {
+          const fromPiece = boardToCheck[from.row]?.[from.col];
+          const toPiece = boardToCheck[to.row]?.[to.col];
+
+          // Eine Farbbombe darf jederzeit mit einem direkt benachbarten
+          // farbigen Ball kombiniert werden.
+          if (
+            (isColorBomb(fromPiece) && baseColor(toPiece)) ||
+            (isColorBomb(toPiece) && baseColor(fromPiece))
+          ) return true;
+
           const test = cloneBoard(boardToCheck);
           swapIn(test, from, to);
           if (findMatches(test).length) return true;
@@ -816,8 +906,17 @@ export const Match3Feature = (() => {
           ? " horizontaler Streifenball"
           : info.special === STRIPE_V
             ? " vertikaler Streifenball"
-            : " Ball";
-        tile.setAttribute("aria-label", key ? `${info.color}${specialLabel}, Reihe ${row + 1}, Spalte ${col + 1}` : "Leeres Feld");
+            : info.special === COLOR_BOMB
+              ? "Farbbombe"
+              : " Ball";
+        tile.setAttribute(
+          "aria-label",
+          key
+            ? info.special === COLOR_BOMB
+              ? `Farbbombe, Reihe ${row + 1}, Spalte ${col + 1}`
+              : `${info.color}${specialLabel}, Reihe ${row + 1}, Spalte ${col + 1}`
+            : "Leeres Feld"
+        );
         tile.disabled = busy || finished || !key;
 
         if (selected?.row === row && selected?.col === col) tile.classList.add("is-selected");
@@ -826,6 +925,7 @@ export const Match3Feature = (() => {
         if (createdSet.has(`${row}:${col}`)) tile.classList.add("is-created-special");
         if (info.special === STRIPE_H) tile.classList.add("is-stripe-h");
         if (info.special === STRIPE_V) tile.classList.add("is-stripe-v");
+        if (info.special === COLOR_BOMB) tile.classList.add("is-color-bomb");
         if (isProtectedCell(row, col)) tile.classList.add("is-protected");
 
         if (key) {
@@ -837,6 +937,10 @@ export const Match3Feature = (() => {
             img.addEventListener("error", () => {
               tile.classList.add("uses-special-fallback");
               img.src = normalImageFor(info.color);
+            }, { once: true });
+          } else if (info.special === COLOR_BOMB) {
+            img.addEventListener("error", () => {
+              tile.classList.add("uses-special-fallback");
             }, { once: true });
           }
           tile.appendChild(img);
@@ -962,11 +1066,11 @@ export const Match3Feature = (() => {
     return dropMap;
   }
 
-  async function resolveBoard(initialMatches, swapContext = null) {
+  async function resolveBoard(initialMatches, swapContext = null, initialDropMap = null) {
     let matches = initialMatches;
     let cascade = 1;
     let firstCycle = true;
-    let lastDropMap = null;
+    let lastDropMap = initialDropMap;
 
     while (matches.length) {
       const groups = findMatchGroups(board);
@@ -974,7 +1078,15 @@ export const Match3Feature = (() => {
       // Spielerzug: bestehende Regel bleibt unverändert.
       // Kaskade: neu ist ausschließlich eine zufällig entstandene EXAKTE
       // vertikale Viererreihe nach einem Fallvorgang.
-      const creations = firstCycle && swapContext
+      // 5er-Kombinationen werden IMMER zuerst ausgewertet. Eine Fünferreihe
+      // darf deshalb nie versehentlich als 4er-Streifenball verarbeitet werden.
+      const colorBombCreations = firstCycle && swapContext
+        ? planColorBombCreations(groups, swapContext)
+        : planCascadeColorBombCreations(groups, lastDropMap);
+
+      const colorBombSet = new Set(colorBombCreations.map((p) => `${p.row}:${p.col}`));
+
+      const stripeCreations = firstCycle && swapContext
         ? [
             ...planHorizontalStripeCreations(groups, swapContext).map((creation) => ({
               ...creation,
@@ -983,10 +1095,23 @@ export const Match3Feature = (() => {
             ...planVerticalStripeCreations(groups, swapContext)
           ]
         : planCascadeVerticalStripeCreations(groups, lastDropMap);
+
+      // Falls dieselbe Abschlusszelle Teil einer 5er-Erzeugung ist, gewinnt
+      // immer die Farbbombe gegenüber einem Streifenball.
+      const creations = [
+        ...colorBombCreations,
+        ...stripeCreations.filter((creation) => !colorBombSet.has(`${creation.row}:${creation.col}`))
+      ];
       const creationSet = new Set(creations.map((p) => `${p.row}:${p.col}`));
 
-      // Der neue Spezialball bleibt auf dem Feld; alle anderen Match-Zellen werden entfernt.
+      // Der neu erzeugte Spezialball bleibt auf dem Feld; alle anderen Match-Zellen
+      // werden entfernt.
       for (const creation of creations) {
+        if (creation.special === COLOR_BOMB || creation.fiveMatch) {
+          board[creation.row][creation.col] = makeColorBomb();
+          continue;
+        }
+
         const vertical = creation.orientation === "vertical" || creation.cascadeCreated;
         board[creation.row][creation.col] = vertical
           ? makeVerticalStripe(creation.color)
@@ -1006,6 +1131,10 @@ export const Match3Feature = (() => {
 
       updateHud(cascade);
       if (stripeTriggers.length) setStatus("Streifenschuss!");
+      else if (colorBombCreations.length) {
+        const byCascade = colorBombCreations.some((creation) => creation.cascadeCreated);
+        setStatus(byCascade ? "Kaskaden-5er – Farbbombe entstanden!" : "5er-Kombi – Farbbombe erstellt!");
+      }
       else if (creations.length) {
         const byCascade = creations.some((creation) => creation.cascadeCreated);
         setStatus(byCascade ? "Kaskaden-4er – Streifenball entstanden!" : "4er-Kombi – Streifenball erstellt!");
@@ -1078,6 +1207,67 @@ export const Match3Feature = (() => {
     }
   }
 
+  async function resolveColorBombSwap(bombPos, targetColor) {
+    if (!targetColor) return;
+
+    const removalMap = new Map();
+
+    // Die Farbbombe selbst verschwindet bei der Aktivierung.
+    if (!isProtectedCell(bombPos.row, bombPos.col)) {
+      removalMap.set(`${bombPos.row}:${bombPos.col}`, { row: bombPos.row, col: bombPos.col });
+    }
+
+    // Alle Bälle der gewählten Nachbarfarbe auf dem gesamten Spielfeld markieren.
+    for (let row = 0; row < ROWS; row++) {
+      for (let col = 0; col < COLS; col++) {
+        if (isProtectedCell(row, col)) continue;
+        if (baseColor(board[row]?.[col]) !== targetColor) continue;
+        removalMap.set(`${row}:${col}`, { row, col });
+      }
+    }
+
+    // Wird dabei ein Streifenball derselben Farbe getroffen, darf die bestehende
+    // Kettenreaktionslogik normal weiterlaufen.
+    const stripeTriggers = expandStripeShots(removalMap);
+    const removal = [...removalMap.values()];
+
+    updateHud(1);
+    setStatus(`Farbbombe – alle ${targetColor}-Bälle platzen!`);
+
+    if (stripeTriggers.length) {
+      await animateStripeShots(stripeTriggers, removal);
+      renderBoard({ matched: removal });
+      await wait(220);
+    } else {
+      await animateNormalMatchPops(removal);
+    }
+
+    score += removal.length * POINTS_PER_BALL;
+
+    if (currentLevel.type === "collect") {
+      for (const { row, col } of removal) {
+        if (baseColor(board[row]?.[col]) === currentLevel.collectKey) collectedBlue++;
+      }
+    }
+    updateHud(1);
+
+    for (const { row, col } of removal) {
+      if (!isProtectedCell(row, col)) board[row][col] = null;
+    }
+
+    renderBoard({ matched: removal });
+    await wait(120);
+
+    const dropMap = collapseAndRefill();
+    const dropDuration = renderBoard({ dropMap });
+    await wait(Math.max(300, dropDuration + 25));
+
+    // Anschließende Matches werden wieder von der normalen Kaskadenlogik
+    // inklusive 4er- und 5er-Spezialbildung verarbeitet.
+    const nextMatches = findMatches(board);
+    await resolveBoard(nextMatches, null, dropMap);
+  }
+
   async function attemptSwap(from, to) {
     if (busy || finished || !adjacent(from, to)) return;
     busy = true;
@@ -1085,10 +1275,30 @@ export const Match3Feature = (() => {
     renderBoard();
     setStatus("Zug wird geprüft …");
 
+    const fromPieceBeforeSwap = board[from.row]?.[from.col];
+    const toPieceBeforeSwap = board[to.row]?.[to.col];
+    const colorBombSwap =
+      (isColorBomb(fromPieceBeforeSwap) && baseColor(toPieceBeforeSwap)) ||
+      (isColorBomb(toPieceBeforeSwap) && baseColor(fromPieceBeforeSwap));
+
     // Erst die beiden sichtbaren Bälle wirklich in das Nachbarfeld gleiten lassen.
     await animateSwapVisual(from, to, 190);
     swapIn(board, from, to);
     renderBoard();
+
+    // Farbbombe + beliebiger direkt angrenzender farbiger Ball:
+    // Die Farbe des Nachbarballs bestimmt, welche Farbe global entfernt wird.
+    if (colorBombSwap) {
+      const bombStartedAtFrom = isColorBomb(fromPieceBeforeSwap);
+      const bombPos = bombStartedAtFrom ? to : from;
+      const targetPiece = bombStartedAtFrom ? toPieceBeforeSwap : fromPieceBeforeSwap;
+      const targetColor = baseColor(targetPiece);
+
+      await resolveColorBombSwap(bombPos, targetColor);
+      busy = false;
+      renderBoard();
+      return;
+    }
 
     const matches = findMatches(board);
     if (!matches.length) {
