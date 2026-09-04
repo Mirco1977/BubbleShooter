@@ -283,13 +283,20 @@ export const Match3Feature = (() => {
 
   function exactFiveCandidates(groups) {
     return groups
-      .filter((group) => group.cells.length === 5)
+      .filter((group) => group.cells.length >= 5)
       .map((group) => ({ type: COLOR_BOMB, color: group.color, cells: group.cells }));
   }
 
   function tlCandidates(groups) {
-    const horizontal = groups.filter((group) => group.direction === "horizontal" && group.cells.length === 3);
-    const vertical = groups.filter((group) => group.direction === "vertical" && group.cells.length === 3);
+    // T-/L-Flächenbomben: nur Arme mit Länge 3 oder 4.
+    // Damit bleiben klassisch 3x3 sowie zusätzlich 3x4, 4x3 und 4x4 erlaubt.
+    // Ab einer 5er-Reihe greift ausschließlich die Farbbomben-Regel.
+    const horizontal = groups.filter((group) =>
+      group.direction === "horizontal" && group.cells.length >= 3 && group.cells.length <= 4
+    );
+    const vertical = groups.filter((group) =>
+      group.direction === "vertical" && group.cells.length >= 3 && group.cells.length <= 4
+    );
     const candidates = [];
 
     for (const h of horizontal) {
@@ -302,14 +309,24 @@ export const Match3Feature = (() => {
         const hIndex = h.cells.findIndex((cell) => cellId(cell) === cellId(intersection));
         const vIndex = v.cells.findIndex((cell) => cellId(cell) === cellId(intersection));
 
-        // Mitte/Mitte wäre ein Plus und keine T-/L-Form. Alle übrigen
-        // Kombinationen aus Endpunkt/Mitte ergeben die erlaubten T- und L-Ausrichtungen.
-        if (hIndex === 1 && vIndex === 1) continue;
+        const hAtEnd = hIndex === 0 || hIndex === h.cells.length - 1;
+        const vAtEnd = vIndex === 0 || vIndex === v.cells.length - 1;
+
+        // Ist der Schnittpunkt in beiden Reihen innen, entsteht ein Plus.
+        // Für T/L muss mindestens eine der beiden Reihen am Schnittpunkt enden.
+        if (!hAtEnd && !vAtEnd) continue;
 
         const unique = new Map();
         for (const cell of [...h.cells, ...v.cells]) unique.set(cellId(cell), cell);
-        if (unique.size !== 5) continue;
-        candidates.push({ type: AREA_BOMB, color: h.color, cells: [...unique.values()] });
+
+        // Mindestens die klassische 3+3-Form (5 eindeutige Felder).
+        if (unique.size < 5) continue;
+
+        candidates.push({
+          type: AREA_BOMB,
+          color: h.color,
+          cells: [...unique.values()]
+        });
       }
     }
     return candidates;

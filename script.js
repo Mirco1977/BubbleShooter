@@ -10,7 +10,7 @@
   import { applyAlbumLevelConfig } from "./js/config/albumLevel.js";
   import { Level1Tutorial } from "./js/tutorial/level1Tutorial.js";
   import { Level6LoadoutGuide } from "./js/tutorial/level6LoadoutGuide.js";
-  import { Match3Feature } from "./js/match3/match3.js?v=20260904-crest-size110-stone-slow15-v5";
+  import { Match3Feature } from "./js/match3/match3.js?v=20260904-tl-max4-color5plus-v7";
   import { saveLevelResult, flushPendingLevelResults, getRanking as getSupabaseRanking, setActivePlayer, betaRegisterBandenkickUser, betaGetGuestStatus, betaRegisterGuest, betaLoginGuest, betaSetLegacyGuestPin, betaRefreshBandenkickUser, betaResetPlayerProgress } from "./js/api/bandenkickSupabase.js?v=20260830-reset-progress-fix";
   import { evaluateLogin, approveCurrentDevice, getPrimaryDevice, readAccountSecurity, maskEmail, createTestEmailCode } from "./js/api/accountSecurity.js?v=20260829-1";
 
