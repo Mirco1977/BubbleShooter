@@ -127,10 +127,30 @@
   grid-template-rows: repeat(var(--match3-rows), var(--match3-cell));
   gap: var(--match3-gap);
   justify-content: center;
-  border: 1px solid rgba(255,212,92,.34);
+  border: 1px solid rgba(205,255,205,.30);
   border-radius: 16px;
-  background: rgba(6,9,14,.72);
-  box-shadow: inset 0 0 18px rgba(0,0,0,.46), 0 10px 24px rgba(0,0,0,.25);
+  /* Grüner Sportrasen: Mähstreifen + feine Grasstruktur, rein per CSS. */
+  background:
+    radial-gradient(ellipse at 16% 22%, rgba(255,255,255,.070) 0 1px, transparent 1.6px),
+    radial-gradient(ellipse at 74% 62%, rgba(5,65,19,.13) 0 1px, transparent 1.7px),
+    repeating-linear-gradient(
+      88deg,
+      rgba(255,255,255,.018) 0 1px,
+      rgba(0,0,0,.022) 1px 3px,
+      transparent 3px 6px
+    ),
+    repeating-linear-gradient(
+      0deg,
+      rgba(76,167,78,.26) 0 42px,
+      rgba(34,125,52,.26) 42px 84px
+    ),
+    linear-gradient(180deg, #3b9a4f 0%, #2f8845 52%, #27783b 100%);
+  background-size: 13px 17px, 19px 23px, auto, auto, auto;
+  background-position: center;
+  box-shadow:
+    inset 0 0 22px rgba(0,0,0,.22),
+    inset 0 1px 0 rgba(255,255,255,.08),
+    0 10px 24px rgba(0,0,0,.25);
   touch-action: none;
   user-select: none;
   position: relative;
