@@ -1049,7 +1049,7 @@ export const Match3Feature = (() => {
           { transform: `translate3d(${part.dx*.18}px,${part.dy*.12}px,0) scale(1.04) rotate(${part.rot*.15}deg)`, opacity: 1, filter: "brightness(1.45)", offset: .18 },
           { transform: `translate3d(${part.dx}px,${part.dy}px,0) scale(.92) rotate(${part.rot}deg)`, opacity: .96, filter: "brightness(1.08)", offset: .68 },
           { transform: `translate3d(${part.dx*1.38}px,${part.dy*1.5+12}px,0) scale(.68) rotate(${part.rot*1.65}deg)`, opacity: 0, offset: 1 }
-        ], { duration: 480+i*35, easing: "cubic-bezier(.16,.72,.2,1)", fill: "forwards" }))
+        ], { duration: 552+i*40.25, easing: "cubic-bezier(.16,.72,.2,1)", fill: "forwards" }))
           .finally(() => fragment.remove());
       });
 
@@ -1059,7 +1059,7 @@ export const Match3Feature = (() => {
         { transform: "scale(1.12) rotate(1deg)", filter: "brightness(1.8)", opacity: .72, offset: .28 },
         { transform: "scale(1.12)", filter: "brightness(2)", opacity: 0, offset: .34 },
         { transform: "scale(1.12)", opacity: 0, offset: 1 }
-      ], { duration: 500, easing: "ease-out", fill: "forwards" }));
+      ], { duration: 575, easing: "ease-out", fill: "forwards" }));
 
       await Promise.all([crack, ...fragmentAnimations]);
     });

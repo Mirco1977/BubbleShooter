@@ -622,3 +622,14 @@
   transform-origin:50% 50%;
   will-change:transform,opacity,filter;
 }
+
+/* Level 3 Feinjustierung: Wappen im Spielfeld und im Auffangbehälter +10%. */
+.match3-tile.is-goal-crest img {
+  transform: scale(1.10);
+  transform-origin: 50% 50%;
+}
+
+.match3-crest-catcher img {
+  width: 31px;
+  height: 31px;
+}
