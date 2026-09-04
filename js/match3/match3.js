@@ -994,83 +994,107 @@ export const Match3Feature = (() => {
 
     tile.classList.add("is-area-bomb-charging");
 
-    // Phase 1: dieselbe bestätigte Aufbläh-Größe beibehalten.
-    // Die Bombe bekommt kurz vor dem Knall einen kleinen "Ruck", damit der Bruch
-    // nicht wie ein weiches Ausblenden wirkt.
-    const charge = img.animate(
-      [
-        { transform: "scale(1)", filter: "brightness(1) saturate(1)", offset: 0 },
-        { transform: "scale(1.28)", filter: "brightness(1.14) saturate(1.06)", offset: .22 },
-        { transform: "scale(1.92)", filter: "brightness(1.22) saturate(1.1)", offset: .58 },
-        { transform: "scale(2.46) rotate(-1.2deg)", filter: "brightness(1.34) saturate(1.15)", offset: .84 },
-        { transform: "scale(2.56) rotate(1deg)", filter: "brightness(1.62) saturate(1.18)", offset: 1 }
-      ],
-      { duration: 330, easing: "cubic-bezier(.18,.76,.18,1)", fill: "forwards" }
-    );
-    await animationFinished(charge);
-    charge.cancel();
-
-    // Phase 2: echter Knall. Die sichtbare Bomben-PNG wird NICHT ausgeblendet,
-    // sondern in ausgeschnittene Fragmente zerlegt und in einem kurzen Stoß verteilt.
     const tileBox = tile.getBoundingClientRect();
     const boardBox = dom.board.getBoundingClientRect();
     const left = tileBox.left - boardBox.left;
     const top = tileBox.top - boardBox.top;
+    const centerX = left + tileBox.width / 2;
+    const centerY = top + tileBox.height / 2;
     const src = img.currentSrc || img.src;
+
+    // Eine durchgehende Animation: Aufblähen -> instabil werden -> Aufreißen -> Knall.
+    // Wichtig: Splitter starten bereits, während die Originalbombe noch sichtbar ist.
+    const charge = img.animate([
+      { transform: "scale(1) rotate(0deg)", opacity: 1, filter: "brightness(1) saturate(1)", offset: 0 },
+      { transform: "scale(1.22) rotate(-.35deg)", opacity: 1, filter: "brightness(1.08) saturate(1.04)", offset: .22 },
+      { transform: "scale(1.68) rotate(.65deg)", opacity: 1, filter: "brightness(1.16) saturate(1.08)", offset: .48 },
+      { transform: "scale(2.12) rotate(-1.25deg)", opacity: 1, filter: "brightness(1.3) saturate(1.13)", offset: .67 },
+      { transform: "scale(2.42) rotate(1.5deg)", opacity: 1, filter: "brightness(1.62) saturate(1.16)", offset: .78 },
+      { transform: "scale(2.55) rotate(-1deg)", opacity: .92, filter: "brightness(2.05) saturate(1.1)", offset: .84 },
+      { transform: "scale(2.62) rotate(.4deg)", opacity: .28, filter: "brightness(2.7) saturate(.75)", offset: .92 },
+      { transform: "scale(2.68) rotate(0deg)", opacity: 0, filter: "brightness(3) saturate(.5)", offset: 1 }
+    ], { duration: 610, easing: "cubic-bezier(.18,.7,.18,1)", fill: "forwards" });
+
+    // Kleine Vorfunken beginnen schon in der instabilen Aufblähphase.
+    const preSparks = Array.from({ length: 8 }, (_, i) => {
+      const spark = document.createElement("span");
+      spark.className = "match3-pop-particle is-spark";
+      spark.style.left = `${centerX}px`;
+      spark.style.top = `${centerY}px`;
+      spark.style.setProperty("--pop-color", "#ffb13b");
+      spark.style.setProperty("--pop-size", `${2 + (i % 2)}px`);
+      dom.board.appendChild(spark);
+      const a = ((i * 47) - 18) * Math.PI / 180;
+      const d = tileBox.width * (.42 + (i % 3) * .12);
+      return animationFinished(spark.animate([
+        { transform: "translate(-50%,-50%) scale(.2)", opacity: 0, offset: 0 },
+        { transform: "translate(-50%,-50%) scale(.2)", opacity: 0, offset: .42 },
+        { transform: "translate(-50%,-50%) scale(1.15)", opacity: 1, offset: .55 },
+        { transform: `translate(calc(-50% + ${Math.cos(a)*d}px),calc(-50% + ${Math.sin(a)*d}px)) scale(.35)`, opacity: 0, offset: 1 }
+      ], { duration: 500 + (i%3)*35, easing: "cubic-bezier(.15,.72,.2,1)", fill: "forwards" })).finally(() => spark.remove());
+    });
+
+    // Nicht bis zum Ende des Aufblähens warten: ab hier beginnt die Bombe bereits zu zerreißen.
+    await wait(455);
+
     const shardClips = [
-      "polygon(0 0,34% 0,42% 34%,12% 45%)",
-      "polygon(34% 0,68% 0,58% 36%,42% 34%)",
-      "polygon(68% 0,100% 0,100% 42%,58% 36%)",
-      "polygon(0 0,12% 45%,40% 48%,0 72%)",
-      "polygon(12% 45%,42% 34%,58% 36%,40% 48%)",
-      "polygon(58% 36%,100% 42%,100% 70%,62% 54%)",
-      "polygon(0 72%,40% 48%,43% 74%,18% 100%,0 100%)",
-      "polygon(40% 48%,62% 54%,58% 78%,43% 74%)",
-      "polygon(62% 54%,100% 70%,100% 100%,72% 100%,58% 78%)",
-      "polygon(18% 100%,43% 74%,58% 78%,72% 100%)"
+      "polygon(0 0,34% 0,42% 34%,12% 45%)", "polygon(34% 0,68% 0,58% 36%,42% 34%)",
+      "polygon(68% 0,100% 0,100% 42%,58% 36%)", "polygon(0 0,12% 45%,40% 48%,0 72%)",
+      "polygon(12% 45%,42% 34%,58% 36%,40% 48%)", "polygon(58% 36%,100% 42%,100% 70%,62% 54%)",
+      "polygon(0 72%,40% 48%,43% 74%,18% 100%,0 100%)", "polygon(40% 48%,62% 54%,58% 78%,43% 74%)",
+      "polygon(62% 54%,100% 70%,100% 100%,72% 100%,58% 78%)", "polygon(18% 100%,43% 74%,58% 78%,72% 100%)"
     ];
 
     const shardAnimations = shardClips.map((clip, i) => {
       const shard = document.createElement("img");
-      shard.src = src;
-      shard.alt = "";
+      shard.src = src; shard.alt = "";
       Object.assign(shard.style, {
-        position: "absolute",
-        left: `${left}px`,
-        top: `${top}px`,
-        width: `${tileBox.width}px`,
-        height: `${tileBox.height}px`,
-        objectFit: "contain",
-        pointerEvents: "none",
-        zIndex: "80",
-        transformOrigin: "50% 50%",
-        clipPath: clip,
+        position: "absolute", left: `${left}px`, top: `${top}px`, width: `${tileBox.width}px`, height: `${tileBox.height}px`,
+        objectFit: "contain", pointerEvents: "none", zIndex: "80", transformOrigin: "50% 50%", clipPath: clip,
         willChange: "transform,opacity,filter"
       });
       dom.board.appendChild(shard);
-
-      const angle = ((360 / shardClips.length) * i + (i % 2 ? 9 : -7)) * Math.PI / 180;
-      const distance = Math.max(tileBox.width, tileBox.height) * (1.05 + (i % 4) * .18);
-      const dx = Math.cos(angle) * distance;
-      const dy = Math.sin(angle) * distance;
-      const rot = (i % 2 ? 1 : -1) * (90 + (i % 5) * 38);
-      const burst = shard.animate(
-        [
-          { transform: "translate3d(0,0,0) scale(2.56) rotate(0deg)", opacity: 1, filter: "brightness(1.6)", offset: 0 },
-          { transform: `translate3d(${dx*.18}px,${dy*.18}px,0) scale(2.34) rotate(${rot*.16}deg)`, opacity: 1, filter: "brightness(2.25)", offset: .16 },
-          { transform: `translate3d(${dx*.72}px,${dy*.72}px,0) scale(1.18) rotate(${rot*.72}deg)`, opacity: 1, filter: "brightness(1.55)", offset: .62 },
-          { transform: `translate3d(${dx}px,${dy}px,0) scale(.62) rotate(${rot}deg)`, opacity: .82, filter: "brightness(1.2)", offset: .82 },
-          { transform: `translate3d(${dx*1.14}px,${dy*1.14}px,0) scale(.28) rotate(${rot*1.22}deg)`, opacity: 0, filter: "brightness(1)", offset: 1 }
-        ],
-        { duration: 230, easing: "cubic-bezier(.08,.78,.14,1)", fill: "forwards" }
-      );
+      const angle = ((360 / shardClips.length) * i + (i % 2 ? 11 : -8)) * Math.PI / 180;
+      const distance = Math.max(tileBox.width, tileBox.height) * (.92 + (i % 4) * .17);
+      const dx = Math.cos(angle) * distance, dy = Math.sin(angle) * distance;
+      const rot = (i % 2 ? 1 : -1) * (105 + (i % 5) * 34);
+      const burst = shard.animate([
+        { transform: "translate3d(0,0,0) scale(2.48) rotate(0deg)", opacity: .12, filter: "brightness(2.2)", offset: 0 },
+        { transform: `translate3d(${dx*.06}px,${dy*.06}px,0) scale(2.54) rotate(${rot*.06}deg)`, opacity: 1, filter: "brightness(2.7)", offset: .10 },
+        { transform: `translate3d(${dx*.28}px,${dy*.28}px,0) scale(2.08) rotate(${rot*.28}deg)`, opacity: 1, filter: "brightness(2.0)", offset: .28 },
+        { transform: `translate3d(${dx*.76}px,${dy*.76}px,0) scale(1.05) rotate(${rot*.76}deg)`, opacity: .9, filter: "brightness(1.35)", offset: .68 },
+        { transform: `translate3d(${dx*1.12}px,${dy*1.12}px,0) scale(.22) rotate(${rot*1.25}deg)`, opacity: 0, filter: "brightness(1)", offset: 1 }
+      ], { duration: 390 + (i%3)*25, easing: "cubic-bezier(.1,.7,.14,1)", fill: "forwards" });
       return animationFinished(burst).finally(() => shard.remove());
     });
 
-    // Harte Umschaltung: Original verschwindet exakt wenn die Fragmente starten.
+    // Flash und Druckring liegen exakt über dem Moment, in dem die Bombe aufreißt.
+    const flash = document.createElement("span");
+    flash.className = "match3-pop-flash";
+    flash.style.left = `${centerX}px`; flash.style.top = `${centerY}px`;
+    flash.style.setProperty("--pop-color", "#ff9f32");
+    dom.board.appendChild(flash);
+    const flashAnim = animationFinished(flash.animate([
+      { transform: "translate(-50%,-50%) scale(.35)", opacity: 0 },
+      { transform: "translate(-50%,-50%) scale(1.05)", opacity: 1, offset: .16 },
+      { transform: "translate(-50%,-50%) scale(1.65)", opacity: 0 }
+    ], { duration: 245, easing: "ease-out", fill: "forwards" })).finally(() => flash.remove());
+
+    const ring = document.createElement("span");
+    ring.className = "match3-pop-ring";
+    ring.style.left = `${centerX}px`; ring.style.top = `${centerY}px`;
+    ring.style.setProperty("--pop-color", "#ffb13b");
+    dom.board.appendChild(ring);
+    const ringAnim = animationFinished(ring.animate([
+      { transform: "translate(-50%,-50%) scale(.35)", opacity: .2 },
+      { transform: "translate(-50%,-50%) scale(.72)", opacity: 1, offset: .15 },
+      { transform: "translate(-50%,-50%) scale(1.8)", opacity: 0 }
+    ], { duration: 330, easing: "cubic-bezier(.12,.72,.18,1)", fill: "forwards" })).finally(() => ring.remove());
+
+    await Promise.all([animationFinished(charge), flashAnim, ringAnim, ...shardAnimations, ...preSparks]);
+    charge.cancel();
     img.style.opacity = "0";
-    img.style.transform = "scale(2.56)";
-    await Promise.all(shardAnimations);
+    img.style.transform = "scale(2.68)";
   }
 
   async function resolveSpecialSwap(plan) {
