@@ -250,89 +250,8 @@
 }
 
 
-/* =========================================================
-   4er-Kombi – horizontale + vertikale Streifenbälle
-   Assets: assets/match3/balls/<farbe>-streif-h.png / -streif-v.png
-   ========================================================= */
-.match3-tile.is-stripe-h,
-.match3-tile.is-stripe-v {
-  z-index: 2;
-}
-
-.match3-tile.is-stripe-h img,
-.match3-tile.is-stripe-v img {
-  filter: drop-shadow(0 0 5px rgba(255,255,255,.34)) drop-shadow(0 3px 4px rgba(0,0,0,.34));
-}
-
-/* Falls ein Streifen-PNG fehlt, bleibt der normale Ball sichtbar
-   und bekommt eine provisorische Streifenmarkierung. */
-.match3-tile.is-stripe-h.uses-special-fallback::after {
-  content: "";
-  position: absolute;
-  left: 12%;
-  right: 12%;
-  top: 50%;
-  height: 9px;
-  transform: translateY(-50%);
-  border-top: 3px solid rgba(255,255,255,.92);
-  border-bottom: 3px solid rgba(255,255,255,.92);
-  border-radius: 50%;
-  pointer-events: none;
-  filter: drop-shadow(0 0 3px rgba(255,255,255,.7));
-}
-
-.match3-tile.is-stripe-v.uses-special-fallback::after {
-  content: "";
-  position: absolute;
-  top: 12%;
-  bottom: 12%;
-  left: 50%;
-  width: 9px;
-  transform: translateX(-50%);
-  border-left: 3px solid rgba(255,255,255,.92);
-  border-right: 3px solid rgba(255,255,255,.92);
-  border-radius: 50%;
-  pointer-events: none;
-  filter: drop-shadow(0 0 3px rgba(255,255,255,.7));
-}
-
 .match3-tile.is-created-special {
   animation: match3SpecialCreate .38s cubic-bezier(.16,.8,.22,1) both;
-}
-
-.match3-stripe-shot-ball {
-  position: absolute;
-  z-index: 40;
-  object-fit: contain;
-  pointer-events: none;
-  will-change: transform, opacity;
-  filter: drop-shadow(0 0 8px rgba(255,255,255,.9)) drop-shadow(0 0 16px rgba(255,223,102,.58));
-}
-
-.match3-stripe-beam {
-  position: absolute;
-  left: -6%;
-  width: 112%;
-  height: 5px;
-  z-index: 35;
-  pointer-events: none;
-  border-radius: 999px;
-  background: linear-gradient(90deg, transparent, rgba(255,255,255,.95) 18%, #fff 50%, rgba(255,255,255,.95) 82%, transparent);
-  box-shadow: 0 0 7px rgba(255,255,255,.95), 0 0 18px rgba(255,223,102,.72);
-  transform-origin: center;
-}
-
-.match3-stripe-beam.is-horizontal {
-  top: 50%;
-}
-
-.match3-stripe-beam.is-vertical {
-  top: -6%;
-  left: 50%;
-  width: 7px;
-  height: 112%;
-  transform-origin: center;
-  background: linear-gradient(180deg, transparent, rgba(255,245,185,.92) 12%, #fff 32%, #fff 68%, rgba(255,245,185,.92) 88%, transparent);
 }
 
 .match3-tile.is-protected {
@@ -343,57 +262,6 @@
   0% { transform: scale(.72) rotate(-7deg); filter: brightness(1.7); }
   58% { transform: scale(1.16) rotate(3deg); filter: brightness(1.28); }
   100% { transform: scale(1) rotate(0); filter: brightness(1); }
-}
-
-
-/* =========================================================
-   Streifenball-Schuss v3: Aufladen -> Explosion -> Kontakt-Pop
-   ========================================================= */
-.match3-tile.is-stripe-charging {
-  z-index: 45;
-}
-
-.match3-stripe-burst {
-  position: absolute;
-  z-index: 44;
-  width: calc(var(--match3-cell) * 1.55);
-  height: calc(var(--match3-cell) * 1.55);
-  pointer-events: none;
-  border-radius: 50%;
-  background:
-    radial-gradient(circle, rgba(255,255,255,1) 0 15%, rgba(255,245,180,.95) 16% 28%, rgba(255,255,255,.42) 29% 43%, rgba(255,255,255,0) 66%),
-    conic-gradient(from 0deg, transparent 0 7%, rgba(255,255,255,.95) 8% 10%, transparent 11% 22%, rgba(255,240,145,.9) 23% 26%, transparent 27% 42%, rgba(255,255,255,.95) 43% 46%, transparent 47% 100%);
-  filter: drop-shadow(0 0 8px rgba(255,255,255,.95)) drop-shadow(0 0 15px rgba(255,221,105,.8));
-}
-
-.match3-stripe-beam.is-impact {
-  height: 7px;
-  background: linear-gradient(90deg, transparent, rgba(255,245,185,.92) 12%, #fff 32%, #fff 68%, rgba(255,245,185,.92) 88%, transparent);
-  box-shadow: 0 0 7px rgba(255,255,255,1), 0 0 17px rgba(255,230,120,.92), 0 0 28px rgba(255,255,255,.48);
-}
-
-.match3-stripe-beam.is-impact.is-vertical {
-  width: 7px;
-  height: 112%;
-  background: linear-gradient(180deg, transparent, rgba(255,245,185,.92) 12%, #fff 32%, #fff 68%, rgba(255,245,185,.92) 88%, transparent);
-}
-
-.match3-tile.is-stripe-impact::before {
-  content: "";
-  position: absolute;
-  inset: 8%;
-  z-index: 8;
-  pointer-events: none;
-  border-radius: 50%;
-  border: 2px solid rgba(255,255,255,.92);
-  box-shadow: 0 0 8px rgba(255,255,255,.95), 0 0 14px rgba(255,228,128,.76);
-  animation: match3StripeImpact .16s ease-out both;
-}
-
-@keyframes match3StripeImpact {
-  0% { transform: scale(.4); opacity: 0; }
-  35% { transform: scale(.92); opacity: 1; }
-  100% { transform: scale(1.45); opacity: 0; }
 }
 
 
