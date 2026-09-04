@@ -511,6 +511,14 @@
   right: var(--match3-pad);
   top: calc(100% - var(--match3-pad) - 3px);
   height: 6px;
+  z-index: 11;
+  pointer-events: none;
+}
+
+.match3-finish-segment {
+  position: absolute;
+  top: 0;
+  height: 6px;
   border-radius: 2px;
   background:
     conic-gradient(
@@ -522,8 +530,6 @@
   box-shadow:
     0 0 0 1px rgba(255,255,255,.34),
     0 2px 6px rgba(0,0,0,.28);
-  z-index: 11;
-  pointer-events: none;
 }
 
 .match3-crest-catcher {

@@ -767,6 +767,28 @@ export const Match3Feature = (() => {
     const finish = document.createElement("div");
     finish.className = "match3-finish-line";
     finish.setAttribute("aria-hidden", "true");
+
+    // Ziellinie in den drei Wappen-Spalten exakt um eine Zellbreite öffnen.
+    // stoneColumns sind 0-basiert: [1,3,5] = sichtbare Spalten 2,4,6.
+    const openCols = [...(currentLevel.stoneColumns || [])].sort((a, b) => a - b);
+    let segmentStart = 0;
+    for (const openCol of openCols) {
+      if (openCol > segmentStart) {
+        const segment = document.createElement("span");
+        segment.className = "match3-finish-segment";
+        segment.style.left = `calc(${segmentStart} * (var(--match3-cell) + var(--match3-gap)))`;
+        segment.style.width = `calc(${openCol - segmentStart} * var(--match3-cell) + ${openCol - segmentStart} * var(--match3-gap))`;
+        finish.appendChild(segment);
+      }
+      segmentStart = openCol + 1;
+    }
+    if (segmentStart < COLS) {
+      const segment = document.createElement("span");
+      segment.className = "match3-finish-segment";
+      segment.style.left = `calc(${segmentStart} * (var(--match3-cell) + var(--match3-gap)))`;
+      segment.style.width = `calc(${COLS - segmentStart} * var(--match3-cell) + ${Math.max(0, COLS - segmentStart - 1)} * var(--match3-gap))`;
+      finish.appendChild(segment);
+    }
     dom.board.appendChild(finish);
 
     for (const col of currentLevel.stoneColumns || []) {
