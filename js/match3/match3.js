@@ -494,7 +494,9 @@ export const Match3Feature = (() => {
       particle.style.top = `${centerY}px`;
 
       const angle = (360 / count) * i + ((i * 17) % 23) - 11;
-      const distance = isSpark ? 24 + (i % 3) * 5 : 18 + (i % 5) * 4;
+      const distance = count > 30
+        ? (isSpark ? 46 + (i % 4) * 8 : 34 + (i % 6) * 7)
+        : (isSpark ? 24 + (i % 3) * 5 : 18 + (i % 5) * 4);
       const size = isSpark ? 2.5 + (i % 2) : 4 + (i % 3);
 
       particle.style.setProperty("--pop-color", burstColor);
@@ -522,6 +524,46 @@ export const Match3Feature = (() => {
     return { particles, ring, flash };
   }
 
+  function spawnAreaBombImageShards(tile, img) {
+    if (!dom.board || !tile || !img) return [];
+    const tileBox = tile.getBoundingClientRect();
+    const boardBox = dom.board.getBoundingClientRect();
+    const left = tileBox.left - boardBox.left;
+    const top = tileBox.top - boardBox.top;
+    const size = Math.max(tileBox.width, tileBox.height);
+    const src = img.currentSrc || img.src;
+    const clips = [
+      "polygon(0 0,50% 0,42% 42%,0 48%)", "polygon(50% 0,100% 0,100% 42%,58% 42%)",
+      "polygon(0 48%,42% 42%,46% 72%,0 100%)", "polygon(58% 42%,100% 42%,100% 78%,62% 70%)",
+      "polygon(0 100%,46% 72%,50% 100%)", "polygon(50% 100%,62% 70%,100% 78%,100% 100%)",
+      "polygon(42% 42%,58% 42%,62% 70%,46% 72%)", "polygon(18% 18%,42% 8%,42% 42%,8% 42%)",
+      "polygon(58% 8%,84% 18%,92% 42%,58% 42%)", "polygon(10% 54%,42% 48%,42% 76%,20% 88%)",
+      "polygon(58% 48%,92% 52%,82% 88%,58% 76%)", "polygon(38% 18%,62% 18%,58% 48%,42% 48%)"
+    ];
+    return clips.map((clip, i) => {
+      const shard = document.createElement("img");
+      shard.src = src;
+      shard.alt = "";
+      Object.assign(shard.style, {
+        position: "absolute", left: `${left}px`, top: `${top}px`, width: `${tileBox.width}px`, height: `${tileBox.height}px`,
+        objectFit: "contain", pointerEvents: "none", zIndex: "40", transformOrigin: "50% 50%", clipPath: clip
+      });
+      dom.board.appendChild(shard);
+      const angle = ((360 / clips.length) * i - 12) * Math.PI / 180;
+      const distance = size * (0.72 + (i % 4) * 0.16);
+      const dx = Math.cos(angle) * distance;
+      const dy = Math.sin(angle) * distance;
+      const rot = (i % 2 ? 1 : -1) * (65 + (i % 5) * 24);
+      const anim = shard.animate([
+        { transform: "translate(0,0) scale(2.56) rotate(0deg)", opacity: 1, filter: "brightness(1.7)", offset: 0 },
+        { transform: `translate(${dx*.25}px,${dy*.25}px) scale(2.05) rotate(${rot*.25}deg)`, opacity: 1, filter: "brightness(2.15)", offset: .18 },
+        { transform: `translate(${dx}px,${dy}px) scale(.72) rotate(${rot}deg)`, opacity: .72, filter: "brightness(1.35)", offset: .68 },
+        { transform: `translate(${dx*1.28}px,${dy*1.28}px) scale(.18) rotate(${rot*1.35}deg)`, opacity: 0, filter: "brightness(1.1)", offset: 1 }
+      ], { duration: 280, easing: "cubic-bezier(.12,.72,.18,1)", fill: "forwards" });
+      return animationFinished(anim).finally(() => shard.remove());
+    });
+  }
+
   async function animateNormalMatchPops(removal = [], options = {}) {
     if (!dom.board || !removal?.length) return;
 
@@ -544,7 +586,8 @@ export const Match3Feature = (() => {
       const piece = board[cell.row]?.[cell.col];
       const isDetonatingAreaBomb = areaBombPos && cell.row === areaBombPos.row && cell.col === areaBombPos.col;
       if (isDetonatingAreaBomb) tile.classList.add("is-area-bomb-detonating");
-      const { particles, ring, flash } = spawnMatchPopBurst(tile, piece, isDetonatingAreaBomb ? 30 : 16);
+      const { particles, ring, flash } = spawnMatchPopBurst(tile, piece, isDetonatingAreaBomb ? 38 : 16);
+      const bombShardAnimations = isDetonatingAreaBomb ? spawnAreaBombImageShards(tile, img) : [];
 
       const particleAnimations = particles.map((particle, particleIndex) => {
         const angle = Number(particle.dataset.angle || 0);
@@ -630,7 +673,7 @@ export const Match3Feature = (() => {
         { duration: isDetonatingAreaBomb ? 205 : popDuration, easing: "cubic-bezier(.16,.74,.2,1)", fill: "forwards" }
       ));
 
-      await Promise.all([pop, ringAnimation, flashAnimation, ...particleAnimations]);
+      await Promise.all([pop, ringAnimation, flashAnimation, ...particleAnimations, ...bombShardAnimations]);
     })());
 
     await Promise.all(animations);
@@ -964,6 +1007,9 @@ export const Match3Feature = (() => {
       { duration: 360, easing: "cubic-bezier(.18,.76,.18,1)", fill: "forwards" }
     );
     await animationFinished(charge);
+    img.style.transform = "scale(2.56)";
+    img.style.filter = "brightness(1.42) saturate(1.14)";
+    charge.cancel();
   }
 
   async function resolveSpecialSwap(plan) {
