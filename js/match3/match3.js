@@ -1,6 +1,14 @@
 const MAX_COLS = 9;
 const LEVEL_1 = Object.freeze({ id: 1, rows: 4, cols: 4, type: "score", targetScore: 1500 });
 const LEVEL_2 = Object.freeze({ id: 2, rows: 6, cols: 6, type: "collect", collectKey: "blue", collectTarget: 20 });
+const LEVEL_3 = Object.freeze({
+  id: 3,
+  rows: 7,
+  cols: 7,
+  type: "deliver-crests",
+  crestTarget: 3,
+  stoneColumns: [1, 3, 5]
+});
 let currentLevel = LEVEL_1;
 let ROWS = LEVEL_1.rows;
 let COLS = LEVEL_1.cols;
@@ -20,6 +28,10 @@ const COLOR_BOMB = "color-bomb";
 const AREA_BOMB = "area-bomb";
 const COLOR_BOMB_IMAGE = "assets/ui/color-bomb.png";
 const AREA_BOMB_IMAGE = "assets/ui/bomb-ball.png";
+const STONE = "stone";
+const GOAL_CREST_PREFIX = "goal-crest@";
+const STONE_IMAGE = "assets/ui/stone.png";
+const GOAL_CREST_IMAGE = "assets/ui/stuttgarter-kickers.png";
 const LEGACY_STRIPES = new Set(["stripe-h", "stripe-v", "streif-h", "streif-v"]);
 
 // Reserviert für spätere Blocker wie Frost/Ketten. Geschützte Zellen werden
@@ -38,6 +50,9 @@ export const Match3Feature = (() => {
   let board = [];
   let score = 0;
   let collectedBlue = 0;
+  let deliveredCrests = 0;
+  const releasedCrestColumns = new Set();
+  const deliveredCrestColumns = new Set();
   let busy = false;
   let finished = false;
   let selected = null;
@@ -51,6 +66,7 @@ export const Match3Feature = (() => {
     dom.mapBack = document.getElementById("match3MapBackButton");
     dom.level1 = document.getElementById("match3Level1Button");
     dom.level2 = document.getElementById("match3Level2Button");
+    dom.level3 = document.getElementById("match3Level3Button");
     dom.playBack = document.getElementById("match3PlayBackButton");
     dom.board = document.getElementById("match3Board");
     dom.score = document.getElementById("match3Score");
@@ -104,8 +120,30 @@ export const Match3Feature = (() => {
     return BALLS[Math.floor(Math.random() * BALLS.length)].key;
   }
 
+  function isStone(piece) {
+    return piece === STONE;
+  }
+
+  function isGoalCrest(piece) {
+    return typeof piece === "string" && piece.startsWith(GOAL_CREST_PREFIX);
+  }
+
+  function crestOriginColumn(piece) {
+    return isGoalCrest(piece) ? Number(piece.slice(GOAL_CREST_PREFIX.length)) : -1;
+  }
+
+  function makeGoalCrest(col) {
+    return `${GOAL_CREST_PREFIX}${col}`;
+  }
+
+  function isMovablePiece(piece) {
+    return Boolean(piece) && !isStone(piece) && !isGoalCrest(piece);
+  }
+
   function pieceInfo(piece) {
     if (!piece) return { color: null, special: null };
+    if (isStone(piece)) return { color: null, special: STONE };
+    if (isGoalCrest(piece)) return { color: null, special: "goal-crest" };
     const [rawColor = "", rawSpecial = null] = String(piece).split(PIECE_SEPARATOR);
 
     // Alte gespeicherte Streifenball-Werte bleiben kompatibel, besitzen aber
@@ -144,11 +182,13 @@ export const Match3Feature = (() => {
     const { color, special } = pieceInfo(piece);
     if (special === COLOR_BOMB) return COLOR_BOMB_IMAGE;
     if (special === AREA_BOMB) return AREA_BOMB_IMAGE;
+    if (special === STONE) return STONE_IMAGE;
+    if (special === "goal-crest") return GOAL_CREST_IMAGE;
     return normalImageFor(color);
   }
 
   function isProtectedCell(row, col) {
-    return protectedCells.has(`${row}:${col}`);
+    return protectedCells.has(`${row}:${col}`) || isStone(board[row]?.[col]);
   }
 
   function swapIn(boardToChange, a, b) {
@@ -314,6 +354,7 @@ export const Match3Feature = (() => {
         for (const to of candidates) {
           const fromPiece = boardToCheck[from.row]?.[from.col];
           const toPiece = boardToCheck[to.row]?.[to.col];
+          if (!isMovablePiece(fromPiece) || !isMovablePiece(toPiece)) continue;
           if ((isColorBomb(fromPiece) && baseColor(toPiece)) ||
               (isColorBomb(toPiece) && baseColor(fromPiece)) ||
               isAreaBomb(fromPiece) || isAreaBomb(toPiece)) return true;
@@ -326,12 +367,20 @@ export const Match3Feature = (() => {
     return false;
   }
 
+  function applyLevel3StartLayout(candidate) {
+    if (currentLevel.type !== "deliver-crests") return candidate;
+    for (const col of currentLevel.stoneColumns || []) {
+      if (candidate[0]?.[col] !== undefined) candidate[0][col] = STONE;
+    }
+    return candidate;
+  }
+
   function createPlayableBoard() {
     for (let attempt = 0; attempt < 2500; attempt++) {
       const candidate = Array.from({ length: ROWS }, () =>
         Array.from({ length: COLS }, () => randomBall())
       );
-      if (!findMatches(candidate).length && hasPossibleMove(candidate)) return candidate;
+      if (!findMatches(candidate).length && hasPossibleMove(candidate)) return applyLevel3StartLayout(candidate);
     }
 
     // Fallback für das aktuelle 4×4-Testlevel. Für spätere Layouts wird
@@ -351,7 +400,7 @@ export const Match3Feature = (() => {
         Array.from({ length: COLS }, () => randomBall())
       );
     } while (findMatches(candidate).length || !hasPossibleMove(candidate));
-    return candidate;
+    return applyLevel3StartLayout(candidate);
   }
 
   function setStatus(text) {
@@ -369,6 +418,13 @@ export const Match3Feature = (() => {
         dom.target.innerHTML = `<img src="${imageFor(currentLevel.collectKey)}" alt="Blauer Ball"><span>${remaining}</span>`;
       }
       if (dom.goalHud) dom.goalHud.textContent = `${remaining} blaue Bälle`;
+    } else if (currentLevel.type === "deliver-crests") {
+      const target = Number(currentLevel.crestTarget || 3);
+      if (dom.target) {
+        dom.target.className = "match3-crest-target";
+        dom.target.innerHTML = `<img src="${GOAL_CREST_IMAGE}" alt="Wappen"><span>${deliveredCrests}/${target}</span>`;
+      }
+      if (dom.goalHud) dom.goalHud.textContent = `Wappen ${deliveredCrests}/${target}`;
     } else {
       if (dom.target) {
         dom.target.className = "";
@@ -676,6 +732,58 @@ export const Match3Feature = (() => {
     await Promise.all(animations);
   }
 
+  function renderLevel3Decor() {
+    if (!dom.board || currentLevel.type !== "deliver-crests") return;
+    for (const col of currentLevel.stoneColumns || []) {
+      const holder = document.createElement("div");
+      holder.className = "match3-crest-holder";
+      holder.style.setProperty("--slot-col", String(col));
+      const stoneStillThere = isStone(board[0]?.[col]);
+      const released = releasedCrestColumns.has(col);
+      const delivered = deliveredCrestColumns.has(col);
+      holder.classList.toggle("is-locked", stoneStillThere);
+      holder.classList.toggle("is-released", released && !delivered);
+      holder.classList.toggle("is-delivered", delivered);
+      if (stoneStillThere) {
+        const img = document.createElement("img");
+        img.src = GOAL_CREST_IMAGE;
+        img.alt = "";
+        holder.appendChild(img);
+        const lock = document.createElement("span");
+        lock.className = "match3-crest-holder-lock";
+        lock.textContent = "▼";
+        holder.appendChild(lock);
+      } else if (delivered) {
+        holder.innerHTML = '<span class="match3-holder-check">✓</span>';
+      }
+      dom.board.appendChild(holder);
+    }
+
+    const finish = document.createElement("div");
+    finish.className = "match3-finish-line";
+    finish.setAttribute("aria-hidden", "true");
+    dom.board.appendChild(finish);
+
+    for (const col of currentLevel.stoneColumns || []) {
+      const catcher = document.createElement("div");
+      catcher.className = "match3-crest-catcher";
+      catcher.style.setProperty("--slot-col", String(col));
+      catcher.classList.toggle("is-filled", deliveredCrestColumns.has(col));
+      if (deliveredCrestColumns.has(col)) {
+        const img = document.createElement("img");
+        img.src = GOAL_CREST_IMAGE;
+        img.alt = "";
+        catcher.appendChild(img);
+      }
+      dom.board.appendChild(catcher);
+    }
+
+    const counter = document.createElement("div");
+    counter.className = "match3-delivery-counter";
+    counter.textContent = `${deliveredCrests}/${Number(currentLevel.crestTarget || 3)} Wappen im Ziel`;
+    dom.board.appendChild(counter);
+  }
+
   function renderBoard({ matched = [], dropMap = null, invalid = [], createdSpecial = [] } = {}) {
     if (!dom.board) return 0;
     const matchedSet = new Set(matched.map((p) => `${p.row}:${p.col}`));
@@ -683,6 +791,7 @@ export const Match3Feature = (() => {
     const createdSet = new Set(createdSpecial.map((p) => `${p.row}:${p.col}`));
 
     dom.board.classList.toggle("is-busy", busy);
+    dom.board.classList.toggle("is-level-3", currentLevel.type === "deliver-crests");
     dom.board.style.setProperty("--match3-cols", String(COLS));
     dom.board.style.setProperty("--match3-rows", String(ROWS));
     dom.board.innerHTML = "";
@@ -701,15 +810,21 @@ export const Match3Feature = (() => {
           ? "Farbbombe"
           : info.special === AREA_BOMB
             ? "Bombe"
-            : `${info.color || "Unbekannter"} Ball`;
+            : info.special === STONE
+              ? "Stein"
+              : info.special === "goal-crest"
+                ? "Stuttgarter Kickers Wappen"
+                : `${info.color || "Unbekannter"} Ball`;
         tile.setAttribute("aria-label", key ? `${label}, Reihe ${row + 1}, Spalte ${col + 1}` : "Leeres Feld");
-        tile.disabled = busy || finished || !key;
+        tile.disabled = busy || finished || !key || isStone(key) || isGoalCrest(key);
 
         if (selected?.row === row && selected?.col === col) tile.classList.add("is-selected");
         if (matchedSet.has(`${row}:${col}`)) tile.classList.add("is-matched");
         if (invalidSet.has(`${row}:${col}`)) tile.classList.add("is-invalid");
         if (createdSet.has(`${row}:${col}`)) tile.classList.add("is-created-special");
         if (isProtectedCell(row, col)) tile.classList.add("is-protected");
+        if (isStone(key)) tile.classList.add("is-stone");
+        if (isGoalCrest(key)) tile.classList.add("is-goal-crest");
 
         if (key) {
           const img = document.createElement("img");
@@ -720,7 +835,7 @@ export const Match3Feature = (() => {
         }
 
         tile.addEventListener("pointerdown", (event) => {
-          if (busy || finished) return;
+          if (busy || finished || !isMovablePiece(board[row]?.[col])) return;
           pointerStart = { row, col, x: event.clientX, y: event.clientY };
         });
 
@@ -743,7 +858,7 @@ export const Match3Feature = (() => {
         });
 
         tile.addEventListener("click", () => {
-          if (Date.now() < suppressClickUntil || busy || finished) return;
+          if (Date.now() < suppressClickUntil || busy || finished || !isMovablePiece(board[row]?.[col])) return;
           const current = { row, col };
           if (!selected) {
             selected = current;
@@ -769,6 +884,7 @@ export const Match3Feature = (() => {
       }
     }
 
+    renderLevel3Decor();
     return startDropAnimations(dropMap);
   }
 
@@ -777,16 +893,25 @@ export const Match3Feature = (() => {
     setStatus("Keine Züge mehr – Bälle werden neu gemischt …");
     await wait(350);
 
-    const values = board.flat();
+    const movablePositions = [];
+    const values = [];
+    for (let row = 0; row < ROWS; row++) {
+      for (let col = 0; col < COLS; col++) {
+        if (!isMovablePiece(board[row]?.[col])) continue;
+        movablePositions.push({ row, col });
+        values.push(board[row][col]);
+      }
+    }
     for (let attempt = 0; attempt < 1200; attempt++) {
       const shuffled = values.slice();
       for (let i = shuffled.length - 1; i > 0; i--) {
         const j = Math.floor(Math.random() * (i + 1));
         [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
       }
-      const candidate = Array.from({ length: ROWS }, (_, row) =>
-        shuffled.slice(row * COLS, row * COLS + COLS)
-      );
+      const candidate = cloneBoard(board);
+      movablePositions.forEach((pos, index) => {
+        candidate[pos.row][pos.col] = shuffled[index];
+      });
       if (!findMatches(candidate).length && hasPossibleMove(candidate)) {
         board = candidate;
         renderBoard();
@@ -795,7 +920,11 @@ export const Match3Feature = (() => {
         return;
       }
     }
-    board = createPlayableBoard();
+    if (currentLevel.type === "deliver-crests") {
+      for (const pos of movablePositions) board[pos.row][pos.col] = randomBall();
+    } else {
+      board = createPlayableBoard();
+    }
     renderBoard();
     await wait(220);
     renderBoard();
@@ -839,6 +968,107 @@ export const Match3Feature = (() => {
     return dropMap;
   }
 
+  function breakableStonesFromRemoval(removal) {
+    if (currentLevel.type !== "deliver-crests" || !removal?.length) return [];
+    const removed = new Set(removal.map(cellId));
+    const stones = [];
+    for (let row = 0; row < ROWS; row++) {
+      for (let col = 0; col < COLS; col++) {
+        if (!isStone(board[row]?.[col])) continue;
+        const neighbors = [
+          { row, col: col - 1 },
+          { row, col: col + 1 },
+          { row: row + 1, col }
+        ].filter((p) => p.row >= 0 && p.row < ROWS && p.col >= 0 && p.col < COLS);
+        if (neighbors.some((p) => removed.has(cellId(p)))) stones.push({ row, col });
+      }
+    }
+    return stones;
+  }
+
+  async function animateStoneBreaks(stones) {
+    if (!stones.length || !dom.board) return;
+    const animations = stones.map(async (pos) => {
+      const tile = tileAt(pos);
+      const img = tile?.querySelector("img");
+      if (!tile || !img) return;
+      tile.classList.add("is-stone-breaking");
+      const box = tile.getBoundingClientRect();
+      const boardBox = dom.board.getBoundingClientRect();
+      const cx = box.left - boardBox.left + box.width / 2;
+      const cy = box.top - boardBox.top + box.height / 2;
+      const shards = Array.from({ length: 8 }, (_, i) => {
+        const shard = document.createElement("span");
+        shard.className = "match3-stone-shard";
+        shard.style.left = `${cx}px`;
+        shard.style.top = `${cy}px`;
+        shard.style.setProperty("--stone-angle", `${i * 45 + (i % 2 ? 12 : -8)}deg`);
+        shard.style.setProperty("--stone-distance", `${24 + (i % 3) * 8}px`);
+        dom.board.appendChild(shard);
+        const a = (i * 45 + (i % 2 ? 12 : -8)) * Math.PI / 180;
+        const d = 24 + (i % 3) * 8;
+        const anim = shard.animate([
+          { transform: "translate(-50%,-50%) scale(.65) rotate(0deg)", opacity: 0 },
+          { transform: "translate(-50%,-50%) scale(1.1) rotate(12deg)", opacity: 1, offset: .18 },
+          { transform: `translate(calc(-50% + ${Math.cos(a)*d}px),calc(-50% + ${Math.sin(a)*d}px)) scale(.25) rotate(${100 + i*24}deg)`, opacity: 0 }
+        ], { duration: 330 + (i % 3) * 28, easing: "cubic-bezier(.15,.7,.18,1)", fill: "forwards" });
+        return animationFinished(anim).finally(() => shard.remove());
+      });
+      const crack = animationFinished(img.animate([
+        { transform: "scale(1) rotate(0deg)", filter: "brightness(1)", opacity: 1 },
+        { transform: "scale(1.08) rotate(-2deg)", filter: "brightness(1.35)", opacity: 1, offset: .32 },
+        { transform: "scale(.94) rotate(2deg)", filter: "brightness(1.9)", opacity: .9, offset: .55 },
+        { transform: "scale(.2) rotate(-8deg)", filter: "brightness(2.2)", opacity: 0 }
+      ], { duration: 315, easing: "cubic-bezier(.2,.72,.2,1)", fill: "forwards" }));
+      await Promise.all([crack, ...shards]);
+    });
+    await Promise.all(animations);
+  }
+
+  function releaseCrestsForBrokenStones(stones) {
+    for (const stone of stones) {
+      board[stone.row][stone.col] = makeGoalCrest(stone.col);
+      releasedCrestColumns.add(stone.col);
+    }
+  }
+
+  async function collectBottomCrests() {
+    if (currentLevel.type !== "deliver-crests" || !dom.board) return false;
+    const bottom = ROWS - 1;
+    const arrivals = [];
+    for (let col = 0; col < COLS; col++) {
+      if (isGoalCrest(board[bottom]?.[col])) arrivals.push({ row: bottom, col, piece: board[bottom][col] });
+    }
+    if (!arrivals.length) return false;
+
+    await Promise.all(arrivals.map(async (pos) => {
+      const tile = tileAt(pos);
+      const img = tile?.querySelector("img");
+      if (!img) return;
+      tile.classList.add("is-crest-delivering");
+      const anim = img.animate([
+        { transform: "translate3d(0,0,0) scale(1)", opacity: 1 },
+        { transform: "translate3d(0,12px,0) scale(1.06)", opacity: 1, offset: .35 },
+        { transform: "translate3d(0,52px,0) scale(.72)", opacity: .95, offset: .82 },
+        { transform: "translate3d(0,58px,0) scale(.58)", opacity: 0 }
+      ], { duration: 430, easing: "cubic-bezier(.2,.72,.2,1)", fill: "forwards" });
+      await animationFinished(anim);
+    }));
+
+    for (const pos of arrivals) {
+      const originCol = crestOriginColumn(pos.piece);
+      board[pos.row][pos.col] = null;
+      if (originCol >= 0 && !deliveredCrestColumns.has(originCol)) {
+        deliveredCrestColumns.add(originCol);
+        deliveredCrests++;
+      }
+    }
+    updateHud(1);
+    renderBoard();
+    await wait(110);
+    return true;
+  }
+
   function addScoreAndCollect(removal, cascade = 1) {
     const multiplier = Math.min(cascade, 4);
     score += removal.length * POINTS_PER_BALL * multiplier;
@@ -853,20 +1083,59 @@ export const Match3Feature = (() => {
     if (!removal.length) return new Map();
     if (!popOptions.skipInitialRender) renderBoard({ createdSpecial });
     if (createdSpecial.length) await wait(145);
+    const stonesToBreak = breakableStonesFromRemoval(removal);
     await animateNormalMatchPops(removal, popOptions);
+    if (stonesToBreak.length) await animateStoneBreaks(stonesToBreak);
     addScoreAndCollect(removal, cascade);
     updateHud(cascade);
 
     for (const { row, col } of removal) {
       if (!isProtectedCell(row, col)) board[row][col] = null;
     }
+    if (stonesToBreak.length) {
+      releaseCrestsForBrokenStones(stonesToBreak);
+      setStatus(stonesToBreak.length > 1 ? `${stonesToBreak.length} Steine gesprengt – Wappen frei!` : "Stein gesprengt – Wappen frei!");
+    }
     renderBoard({ matched: removal });
     await wait(120);
 
-    const dropMap = collapseAndRefill();
-    const dropDuration = renderBoard({ dropMap });
+    let dropMap = collapseAndRefill();
+    let dropDuration = renderBoard({ dropMap });
     await wait(Math.max(300, dropDuration + 25));
+
+    if (await collectBottomCrests()) {
+      dropMap = collapseAndRefill();
+      dropDuration = renderBoard({ dropMap });
+      await wait(Math.max(300, dropDuration + 25));
+    }
     return dropMap;
+  }
+
+  function levelCompletedNow() {
+    if (currentLevel.type === "collect") return collectedBlue >= Number(currentLevel.collectTarget || 0);
+    if (currentLevel.type === "deliver-crests") return deliveredCrests >= Number(currentLevel.crestTarget || 3);
+    return score >= TARGET_SCORE;
+  }
+
+  function showLevelVictory() {
+    finished = true;
+    setStatus("Ziel erreicht!");
+    if (dom.victoryTitle) {
+      dom.victoryTitle.textContent = currentLevel.type === "collect"
+        ? "20 blaue Bälle gesammelt!"
+        : currentLevel.type === "deliver-crests"
+          ? "Alle 3 Wappen im Ziel!"
+          : `${TARGET_SCORE.toLocaleString("de-DE")} Punkte erreicht!`;
+    }
+    if (dom.victoryText) {
+      dom.victoryText.textContent = currentLevel.type === "collect"
+        ? `Level 2 geschafft. Deine Punkte: ${score.toLocaleString("de-DE")}.`
+        : currentLevel.type === "deliver-crests"
+          ? `Level 3 geschafft. Alle drei Stuttgarter-Kickers-Wappen wurden sicher über die Ziellinie gebracht.`
+          : "Die Nachrück- und Kaskadenmechanik wurde erfolgreich durchgespielt.";
+    }
+    dom.victory?.classList.remove("hidden");
+    renderBoard();
   }
 
   async function resolveBoard(initialMatches, swapContext = null, initialDropMap = null) {
@@ -918,28 +1187,13 @@ export const Match3Feature = (() => {
     await shuffleIfNeeded();
     updateHud(1);
 
-    const levelCompleted = currentLevel.type === "collect"
-      ? collectedBlue >= Number(currentLevel.collectTarget || 0)
-      : score >= TARGET_SCORE;
-
-    if (levelCompleted) {
-      finished = true;
-      setStatus("Ziel erreicht!");
-      if (dom.victoryTitle) {
-        dom.victoryTitle.textContent = currentLevel.type === "collect"
-          ? "20 blaue Bälle gesammelt!"
-          : `${TARGET_SCORE.toLocaleString("de-DE")} Punkte erreicht!`;
-      }
-      if (dom.victoryText) {
-        dom.victoryText.textContent = currentLevel.type === "collect"
-          ? `Level 2 geschafft. Deine Punkte: ${score.toLocaleString("de-DE")}.`
-          : "Die Nachrück- und Kaskadenmechanik wurde erfolgreich durchgespielt.";
-      }
-      dom.victory?.classList.remove("hidden");
-      renderBoard();
+    if (levelCompletedNow()) {
+      showLevelVictory();
       // Match Arena ist weiterhin reiner Testbetrieb: bewusst KEIN Speichern.
     } else {
-      setStatus("Tausche zwei benachbarte Bälle.");
+      setStatus(currentLevel.type === "deliver-crests"
+        ? "Sprenge die Steine und bringe alle 3 Wappen übers Ziel."
+        : "Tausche zwei benachbarte Bälle.");
     }
   }
 
@@ -1116,31 +1370,22 @@ export const Match3Feature = (() => {
     else {
       await shuffleIfNeeded();
       updateHud(1);
-      const levelCompleted = currentLevel.type === "collect"
-        ? collectedBlue >= Number(currentLevel.collectTarget || 0)
-        : score >= TARGET_SCORE;
-      if (levelCompleted) {
-        finished = true;
-        setStatus("Ziel erreicht!");
-        if (dom.victoryTitle) {
-          dom.victoryTitle.textContent = currentLevel.type === "collect"
-            ? "20 blaue Bälle gesammelt!"
-            : `${TARGET_SCORE.toLocaleString("de-DE")} Punkte erreicht!`;
-        }
-        if (dom.victoryText) {
-          dom.victoryText.textContent = currentLevel.type === "collect"
-            ? `Level 2 geschafft. Deine Punkte: ${score.toLocaleString("de-DE")}.`
-            : "Die Nachrück- und Kaskadenmechanik wurde erfolgreich durchgespielt.";
-        }
-        dom.victory?.classList.remove("hidden");
+      if (levelCompletedNow()) {
+        showLevelVictory();
       } else {
-        setStatus("Tausche zwei benachbarte Bälle.");
+        setStatus(currentLevel.type === "deliver-crests"
+          ? "Sprenge die Steine und bringe alle 3 Wappen übers Ziel."
+          : "Tausche zwei benachbarte Bälle.");
       }
     }
   }
 
   async function attemptSwap(from, to) {
     if (busy || finished || !adjacent(from, to)) return;
+    if (!isMovablePiece(board[from.row]?.[from.col]) || !isMovablePiece(board[to.row]?.[to.col])) {
+      setStatus("Steine und Wappen können nicht direkt getauscht werden.");
+      return;
+    }
     busy = true;
     selected = null;
     renderBoard();
@@ -1191,6 +1436,9 @@ export const Match3Feature = (() => {
     board = createPlayableBoard();
     score = 0;
     collectedBlue = 0;
+    deliveredCrests = 0;
+    releasedCrestColumns.clear();
+    deliveredCrestColumns.clear();
     busy = false;
     finished = false;
     selected = null;
@@ -1198,13 +1446,14 @@ export const Match3Feature = (() => {
     if (dom.playTitle) dom.playTitle.textContent = `Level ${currentLevel.id}`;
     if (dom.board) dom.board.setAttribute("aria-label", `Match Arena Spielfeld ${ROWS} mal ${COLS}`);
     updateHud(1);
-    setStatus("Tausche zwei benachbarte Bälle.");
+    setStatus(currentLevel.type === "deliver-crests" ? "Sprenge die 3 Steine und bringe alle Wappen übers Ziel." : "Tausche zwei benachbarte Bälle.");
     renderBoard();
     showScreen("match3Play");
   }
 
   function startLevel1() { startLevel(LEVEL_1); }
   function startLevel2() { startLevel(LEVEL_2); }
+  function startLevel3() { startLevel(LEVEL_3); }
 
   function bindEvents() {
     dom.homeButton?.addEventListener("click", () => {
@@ -1214,6 +1463,7 @@ export const Match3Feature = (() => {
     dom.mapBack?.addEventListener("click", () => showScreen("home"));
     dom.level1?.addEventListener("click", startLevel1);
     dom.level2?.addEventListener("click", startLevel2);
+    dom.level3?.addEventListener("click", startLevel3);
     dom.playBack?.addEventListener("click", () => showScreen("match3Map"));
   }
 
@@ -1228,5 +1478,5 @@ export const Match3Feature = (() => {
     initialized = true;
   }
 
-  return { init, refreshAccess, startLevel1, startLevel2 };
+  return { init, refreshAccess, startLevel1, startLevel2, startLevel3 };
 })();
