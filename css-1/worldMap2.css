@@ -1,0 +1,1774 @@
+/*
+ * =========================================================
+ * BANDENKICK – LEVELKARTE
+ * Datei: css/worldMap2.css
+ * =========================================================
+ */
+
+#worldMap2Screen {
+  padding: 0 !important;
+  overflow: hidden;
+}
+
+.world2-shell {
+  width: min(100%, 530px);
+  height: calc(100dvh - 92px);
+  min-height: 560px;
+  margin: 0 auto;
+  position: relative;
+  overflow: hidden;
+  border-radius: 24px;
+  background: #121722;
+  box-shadow: 0 18px 50px rgba(0,0,0,.42);
+}
+
+.world2-toolbar {
+  position: absolute;
+  z-index: 40;
+  top: 0;
+  left: 0;
+  right: 0;
+  min-height: 78px;
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  background:
+    linear-gradient(180deg, rgba(15,18,26,.96), rgba(15,18,26,.80) 72%, transparent);
+  pointer-events: none;
+}
+
+.world2-toolbar > * {
+  pointer-events: auto;
+}
+
+.world2-back,
+.world2-current {
+  min-height: 40px;
+  border: 0;
+  border-radius: 999px;
+  padding: 0 12px;
+  color: #fff;
+  font-weight: 900;
+  background: rgba(134,0,0,.96);
+  box-shadow: 0 5px 14px rgba(0,0,0,.30);
+}
+
+.world2-title {
+  min-width: 0;
+  text-align: center;
+  color: #fff;
+  text-shadow: 0 2px 5px rgba(0,0,0,.75);
+}
+
+.world2-title strong,
+.world2-title span {
+  display: block;
+}
+
+.world2-title strong {
+  font-size: 17px;
+}
+
+.world2-title span {
+  margin-top: 2px;
+  font-size: 12px;
+  color: rgba(255,255,255,.78);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+#worldMap2Viewport {
+  position: absolute;
+  inset: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scroll-behavior: smooth;
+
+  /* MOBILE-SCROLL-FIX:
+     Vertikales Finger-Scrolling immer explizit erlauben. Das verhindert,
+     dass ein zuvor gesetztes touch-action:none (z. B. aus der
+     Fortschrittsanimation) auf Android/Samsung Browser das weitere
+     Scrollen der Endloskarte blockiert. */
+  touch-action: pan-y;
+  -ms-touch-action: pan-y;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+
+#worldMap2Viewport::-webkit-scrollbar {
+  display: none;
+}
+
+#worldMap2World {
+  position: relative;
+  width: 100%;
+  min-height: 100%;
+  overflow: hidden;
+  background-repeat: repeat-y;
+  background-position: center bottom;
+  isolation: isolate;
+}
+
+/* leichte Vignette, damit Levelpunkte immer gut lesbar bleiben */
+#worldMap2World::after {
+  content: "";
+  position: absolute;
+  z-index: 2;
+  inset: 0;
+  pointer-events: none;
+  background:
+    linear-gradient(90deg, rgba(7,10,17,.25), transparent 22%, transparent 78%, rgba(7,10,17,.25)),
+    linear-gradient(180deg, rgba(0,0,0,.05), transparent 20%, transparent 80%, rgba(0,0,0,.18));
+}
+
+.world2-path-svg {
+  position: absolute;
+  z-index: 3;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  pointer-events: none;
+}
+
+.world2-path-line {
+  fill: none;
+  stroke: rgba(255,255,255,.28);
+  stroke-width: 5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-dasharray: 5 12;
+}
+
+.world2-level {
+  position: absolute;
+  z-index: 10;
+  width: 74px;
+  min-width: 74px;
+  height: 84px;
+  padding: 0;
+  border: 0;
+  transform: translateX(-50%) scale(.78);
+  transform-origin: center bottom;
+  background: transparent;
+  overflow: visible;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.world2-level-orb {
+  width: 64px;
+  height: 64px;
+  margin: 0 auto;
+  display: grid;
+  place-items: center;
+  border: 4px solid rgba(255,255,255,.92);
+  border-radius: 50%;
+  background:
+    radial-gradient(circle at 34% 25%, #ff7777 0 9%, #b90d1a 31%, #860000 68%, #4c0000 100%);
+  box-shadow:
+    0 7px 0 #460000,
+    0 10px 18px rgba(0,0,0,.45),
+    inset 0 2px 4px rgba(255,255,255,.38);
+}
+
+.world2-level-number {
+  color: #fff;
+  font-size: 20px;
+  font-weight: 1000;
+  line-height: 1;
+  text-shadow: 0 2px 3px rgba(0,0,0,.75);
+}
+
+.world2-stars {
+  display: block;
+  height: 18px;
+  margin-top: 4px;
+  color: #ffd84a;
+  font-size: 17px;
+  letter-spacing: -2px;
+  line-height: 1;
+  text-shadow: 0 2px 2px rgba(0,0,0,.75);
+}
+
+.world2-level.completed .world2-level-orb {
+  background:
+    radial-gradient(circle at 34% 25%, #ffcb6c 0 9%, #ff941f 31%, #d66300 69%, #7b3000 100%);
+  box-shadow:
+    0 7px 0 #733000,
+    0 10px 18px rgba(0,0,0,.42),
+    inset 0 2px 4px rgba(255,255,255,.45);
+}
+
+.world2-level.current {
+  z-index: 16;
+}
+
+.world2-level.current .world2-level-orb {
+  animation: world2CurrentPulse 1.45s ease-in-out infinite;
+  outline: 5px solid rgba(255,220,75,.20);
+}
+
+.world2-level.locked {
+  opacity: .58;
+  cursor: default;
+}
+
+.world2-level.locked .world2-level-orb {
+  filter: grayscale(.75);
+  background: linear-gradient(#59606c, #313741);
+  box-shadow:
+    0 7px 0 #242832,
+    0 10px 18px rgba(0,0,0,.35);
+}
+
+.world2-milestone {
+  position: absolute;
+  z-index: 13;
+  width: 112px;
+  min-height: 58px;
+  transform: translateX(-50%);
+  display: grid;
+  justify-items: center;
+  align-content: center;
+  gap: 2px;
+  pointer-events: none;
+  filter: drop-shadow(0 6px 7px rgba(0,0,0,.42));
+}
+
+.world2-milestone-icon {
+  font-size: 34px;
+  line-height: 1;
+}
+
+.world2-milestone-text {
+  max-width: 112px;
+  padding: 4px 7px;
+  border-radius: 999px;
+  color: #fff;
+  font-size: 10px;
+  font-weight: 900;
+  line-height: 1.05;
+  text-align: center;
+  background: rgba(24,27,36,.84);
+  border: 1px solid rgba(255,255,255,.18);
+}
+
+.world2-milestone.stage .world2-milestone-icon {
+  font-size: 43px;
+}
+
+.world2-milestone.passed {
+  filter:
+    drop-shadow(0 0 7px rgba(255,212,67,.62))
+    drop-shadow(0 6px 7px rgba(0,0,0,.42));
+}
+
+.world2-decoration {
+  position: absolute;
+  z-index: 5;
+  width: 76px;
+  height: 76px;
+  display: grid;
+  place-items: center;
+  font-size: 48px;
+  opacity: .88;
+  pointer-events: none;
+  filter: drop-shadow(0 7px 8px rgba(0,0,0,.32));
+}
+
+.world2-decoration.left {
+  left: 4%;
+}
+
+.world2-decoration.right {
+  right: 4%;
+}
+
+.world2-hint {
+  position: absolute;
+  z-index: 60;
+  right: 16px;
+  bottom: 18px;
+  left: 16px;
+  padding: 12px 14px;
+  border-radius: 16px;
+  color: #fff;
+  font-size: 13px;
+  font-weight: 800;
+  text-align: center;
+  background: rgba(20,23,31,.95);
+  border: 1px solid rgba(255,255,255,.16);
+  box-shadow: 0 10px 30px rgba(0,0,0,.42);
+  opacity: 0;
+  transform: translateY(18px);
+  pointer-events: none;
+  transition: .22s ease;
+}
+
+.world2-hint.show {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* Startseitenkarte bekommt ohne zusätzliche PNG ein eigenes Icon */
+.world2-menu-icon {
+  width: 94px;
+  height: 94px;
+  justify-self: end;
+  position: relative;
+  border-radius: 26px;
+  background:
+    radial-gradient(circle at 50% 72%, #ffcc52 0 8%, transparent 9%),
+    radial-gradient(circle at 32% 50%, #ffcc52 0 8%, transparent 9%),
+    radial-gradient(circle at 66% 31%, #ffcc52 0 8%, transparent 9%),
+    linear-gradient(145deg, #9b0010, #4f0007);
+  border: 3px solid rgba(255,255,255,.18);
+  box-shadow:
+    0 8px 15px rgba(0,0,0,.35),
+    inset 0 1px 0 rgba(255,255,255,.28);
+  overflow: hidden;
+}
+
+.world2-menu-icon::before {
+  content: "";
+  position: absolute;
+  width: 18px;
+  height: 108px;
+  left: 38px;
+  top: -8px;
+  border-radius: 999px;
+  background: rgba(255,255,255,.82);
+  transform: rotate(28deg);
+  box-shadow: 0 0 0 5px rgba(134,0,0,.75);
+}
+
+.world2-menu-icon::after {
+  content: "∞";
+  position: absolute;
+  right: 7px;
+  bottom: 2px;
+  color: #fff;
+  font-size: 34px;
+  font-weight: 1000;
+  text-shadow: 0 2px 4px rgba(0,0,0,.8);
+}
+
+@keyframes world2CurrentPulse {
+  0%,100% { transform: scale(1); }
+  50% { transform: scale(1.12); }
+}
+
+@media (max-width: 420px) {
+  .world2-shell {
+    border-radius: 0;
+    height: calc(100dvh - 74px);
+  }
+
+  .world2-toolbar {
+    grid-template-columns: auto 1fr;
+  }
+
+  .world2-current {
+    grid-column: 1 / -1;
+    justify-self: center;
+    min-height: 34px;
+  }
+
+  .world2-level {
+  transform: translateX(-50%) scale(.68);
+  transform-origin: center bottom;
+}
+
+.world2-milestone {
+  transform: translateX(-50%) scale(.68);
+  transform-origin: center center;
+}
+
+.world2-next-item {
+  transform: translateX(-50%) scale(.72);
+}
+}
+
+/* =========================================================
+   ENDLOSKARTE – LEVELVORSCHAU ALS OVERLAY
+   ========================================================= */
+
+#levelScreen.world2-level-overlay {
+  position: fixed;
+  inset: 0;
+
+  z-index: 9999;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  padding: 20px;
+
+  background: rgba(0, 0, 0, 0.72);
+
+  overflow-y: auto;
+}
+
+#levelScreen.world2-level-overlay .screen-toolbar {
+  width: min(100%, 530px);
+
+  margin: auto;
+
+  position: relative;
+
+  z-index: 2;
+}
+
+#levelScreen.world2-level-overlay > * {
+  width: min(100%, 530px);
+}
+
+#levelScreen.world2-level-overlay .level-preview-card,
+#levelScreen.world2-level-overlay .level-preview,
+#levelScreen.world2-level-overlay .preview-card {
+  margin-left: auto;
+  margin-right: auto;
+}
+
+body:has(#levelScreen.world2-level-overlay:not(.hidden)) {
+  overflow: hidden;
+}
+
+/* =========================================================
+   ENDLOSKARTE – LEVELVORSCHAU UNTEREINANDER ZENTRIEREN
+   ========================================================= */
+
+#levelScreen.world2-level-overlay {
+  flex-direction: column;
+  gap: 14px;
+}
+
+#levelScreen.world2-level-overlay .screen-toolbar {
+  flex: 0 0 auto;
+  width: min(100%, 530px);
+  margin: 0;
+}
+
+#levelScreen.world2-level-overlay > * {
+  flex: 0 0 auto;
+  width: min(100%, 530px);
+}
+
+/* =========================================================
+   ENDLOSKARTE – EINZELNE LANGE COMIC-WELTKARTE
+   ========================================================= */
+
+/*
+ * Die Straße ist jetzt Bestandteil von world-road-long.svg.
+ * Alte zusätzliche Pfad-/Emoji-Deko wird nicht mehr gebraucht.
+ */
+.world2-path-svg,
+.world2-decoration {
+  display: none !important;
+}
+
+/* Stage-Logo links/rechts neben der Straße */
+.world2-stage-marker {
+  position: absolute;
+  z-index: 8;
+
+  width: 142px;
+  min-height: 112px;
+
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+
+  gap: 5px;
+
+  pointer-events: none;
+
+  filter:
+    drop-shadow(0 7px 10px rgba(0, 0, 0, .42));
+}
+
+.world2-stage-marker.left {
+  left: 2%;
+}
+
+.world2-stage-marker.right {
+  right: 2%;
+}
+
+.world2-stage-logo-wrap {
+  width: 78px;
+  height: 78px;
+
+  display: grid;
+  place-items: center;
+
+  border-radius: 50%;
+
+  background:
+    radial-gradient(
+      circle,
+      rgba(255,255,255,.22),
+      rgba(255,255,255,.06) 58%,
+      transparent 72%
+    );
+
+  border:
+    2px solid color-mix(
+      in srgb,
+      var(--stage-accent) 72%,
+      white
+    );
+
+  box-shadow:
+    0 0 18px
+      color-mix(
+        in srgb,
+        var(--stage-accent) 50%,
+        transparent
+      );
+}
+
+.world2-stage-logo {
+  display: block;
+
+  width: 68px;
+  height: 68px;
+
+  object-fit: contain;
+
+  filter:
+    drop-shadow(0 4px 5px rgba(0,0,0,.55));
+}
+
+.world2-stage-copy {
+  max-width: 142px;
+
+  padding: 5px 9px 6px;
+
+  border-radius: 14px;
+
+  text-align: center;
+
+  color: #fff;
+
+  background:
+    linear-gradient(
+      145deg,
+      rgba(18,22,29,.92),
+      rgba(18,22,29,.76)
+    );
+
+  border:
+    1px solid rgba(255,255,255,.18);
+
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.10);
+}
+
+.world2-stage-copy span,
+.world2-stage-copy strong {
+  display: block;
+}
+
+.world2-stage-copy span {
+  color:
+    color-mix(
+      in srgb,
+      var(--stage-accent) 72%,
+      white
+    );
+
+  font-size: 9px;
+  font-weight: 1000;
+  letter-spacing: .12em;
+}
+
+.world2-stage-copy strong {
+  margin-top: 2px;
+
+  font-size: 11px;
+  line-height: 1.05;
+}
+
+/*
+ * Hintergrund bleibt bewusst comicartig und ruhig,
+ * damit Levelpunkte und Stage-Logos die Hauptrolle spielen.
+ */
+#worldMap2World::after {
+  background:
+    linear-gradient(
+      90deg,
+      rgba(7,10,17,.17),
+      transparent 19%,
+      transparent 81%,
+      rgba(7,10,17,.17)
+    );
+}
+
+@media (max-width: 420px) {
+  .world2-stage-marker {
+    transform: scale(.90);
+  }
+
+  .world2-stage-marker.left {
+    left: -1%;
+  }
+
+  .world2-stage-marker.right {
+    right: -10%;
+  }
+}
+
+/* =========================================================
+   ENDLOSKARTE – WIEDERVERWENDBARE STAGE-GERÜSTE
+   ========================================================= */
+
+.world2-stage-background {
+  overflow: hidden;
+
+  border-radius: 0;
+
+  user-select: none;
+
+  -webkit-user-select: none;
+
+  filter:
+    saturate(0.92)
+    brightness(0.82);
+}
+
+/*
+ * Leicht abdunkeln,
+ * damit dynamische Levelpunkte klar darüber stehen.
+ */
+.world2-stage-background::after {
+  content: "";
+
+  position: absolute;
+  inset: 0;
+
+  background:
+    linear-gradient(
+      90deg,
+      rgba(0,0,0,.16),
+      transparent 24%,
+      transparent 76%,
+      rgba(0,0,0,.16)
+    );
+}
+
+/* Hauptheader auf der Endloskarte ausblenden */
+.app-header.world2-header-hidden {
+  display: none !important;
+}
+
+/* =========================================================
+   STAGE-LOGO – FESTE POSITION IN JEDEM 10ER-BLOCK
+   ========================================================= */
+
+.world2-stage-marker.fixed {
+  left: auto !important;
+  right: 15% !important;
+}
+
+/* =========================================================
+   NEXT ITEM – FESTE POSITION LINKS
+   ========================================================= */
+
+.world2-next-item {
+  position: absolute;
+  z-index: 13;
+
+  width: 100px;
+  height: 100px;
+
+  transform: translateX(-50%);
+
+  display: grid;
+  place-items: center;
+
+  pointer-events: none;
+
+  filter: drop-shadow(0 6px 8px rgba(0,0,0,.42));
+}
+
+.world2-next-item img {
+  display: block;
+
+  width: 92px;
+  height: 92px;
+
+  object-fit: contain;
+}
+
+/* ITEM-PNG AUF DER ENDLOSKARTE */
+
+.world2-milestone-icon img {
+  display: block;
+  width: 58px;
+  height: 58px;
+  object-fit: contain;
+
+  filter: drop-shadow(0 5px 7px rgba(0,0,0,.45));
+}
+
+/* =========================================================
+   NEXT ITEM – HANDYGRÖSSE
+   MUSS GANZ UNTEN IN DER DATEI STEHEN
+   ========================================================= */
+
+@media (max-width: 600px) {
+
+  .world2-next-item {
+    width: 68px !important;
+    height: 68px !important;
+  }
+
+  .world2-next-item img {
+    width: 64px !important;
+    height: 64px !important;
+    object-fit: contain;
+  }
+
+}
+
+@media (max-width: 420px) {
+
+    .world2-stage-marker.fixed,
+    .world2-stage-marker.fixed.right {
+        left: auto !important;
+        right: 9% !important;
+        transform: translateY(40px) scale(.90) !important;
+    }
+
+}
+
+/* STAGE 1 – HANDY SEPARAT */
+@media (max-width: 420px) {
+
+  .world2-stage-marker.stage-1 {
+    right: 6% !important;
+    left: auto !important;
+    transform: translateY(20px) scale(1.00) !important;
+  }
+
+}
+
+/* =========================================================
+   FORTSCHRITTSANIMATION / BILDSCHIRMSPERRE
+   ========================================================= */
+
+/* Transparente Sperrschicht ueber der kompletten Endloskarte.
+   Sie blockiert Toolbar, Buttons, Touch und Maus waehrend der Fahrt. */
+.world2-animation-lock {
+  position: absolute;
+  inset: 0;
+  z-index: 1000;
+  pointer-events: all;
+  touch-action: none;
+  cursor: wait;
+  background: transparent;
+}
+
+/* Der Bewegungsmarker lebt in der festen world2-shell und damit in
+   sichtbaren Bildschirmkoordinaten. Er ist von der gescrollten Karten-Geometrie unabhaengig. */
+.world2-progress-mover {
+  position: absolute;
+  z-index: 1002;
+  width: 64px;
+  height: 64px;
+  margin-left: -32px;
+  margin-top: -32px;
+  pointer-events: none;
+  will-change: left, top;
+  transform: scale(.792); /* normal .78 × 1.015 = +1.5 % */
+  transform-origin: center center;
+  filter: drop-shadow(0 9px 13px rgba(0,0,0,.48));
+}
+
+.world2-progress-mover-orb {
+  width: 64px;
+  height: 64px;
+  display: grid;
+  place-items: center;
+  border: 4px solid rgba(255,255,255,.96);
+  border-radius: 50%;
+  background:
+    radial-gradient(circle at 34% 25%, #ff7777 0 9%, #b90d1a 31%, #860000 68%, #4c0000 100%);
+  box-shadow:
+    0 7px 0 #460000,
+    0 10px 18px rgba(0,0,0,.45),
+    inset 0 2px 4px rgba(255,255,255,.38);
+}
+
+.world2-progress-mover-number {
+  color: #fff;
+  font-size: 20px;
+  font-weight: 1000;
+  line-height: 1;
+  text-shadow: 0 2px 3px rgba(0,0,0,.75);
+}
+
+/* Waehrend der Fahrt keinerlei Bedienung der Karte zulassen. */
+#worldMap2Screen.world2-progress-moving #worldMap2Viewport,
+#worldMap2Screen.world2-progress-moving .world2-toolbar {
+  user-select: none;
+}
+
+
+/* Kurzes Einrasten des neu erreichten Levels */
+.world2-level.world2-arrival .world2-level-orb {
+  animation: world2ArrivalImpact .68s cubic-bezier(.2,.9,.25,1.25) both !important;
+}
+
+@keyframes world2ArrivalImpact {
+  0%   { transform: scale(.82); filter: brightness(1); }
+  45%  { transform: scale(1.18); filter: brightness(1.35); }
+  72%  { transform: scale(.96); filter: brightness(1.08); }
+  100% { transform: scale(1); filter: brightness(1); }
+}
+
+/* =========================================================
+   STAGE FINISH CELEBRATION
+   Wird nur bei 10->11, 20->21, ... eingeblendet.
+   ========================================================= */
+
+/* Der rote Fortschrittspunkt bleibt am Finish-Tor kurz stehen
+   und bekommt dort einen Lichtimpuls. */
+.world2-progress-mover.world2-at-finish .world2-progress-mover-orb {
+  animation: world2FinishOrbPulse 1.05s ease-in-out infinite;
+}
+
+@keyframes world2FinishOrbPulse {
+  0%, 100% {
+    transform: scale(1);
+    filter: brightness(1);
+  }
+  50% {
+    transform: scale(1.09);
+    filter: brightness(1.32);
+  }
+}
+
+.world2-stage-finish-celebration {
+  position: absolute;
+  z-index: 1003;
+  width: 0;
+  height: 0;
+  pointer-events: none;
+  opacity: 0;
+  transform: translateZ(0);
+}
+
+.world2-stage-finish-celebration.show {
+  opacity: 1;
+}
+
+/* Lichtwelle direkt vom Finish-Tor aus */
+.world2-stage-finish-burst {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 54px;
+  height: 54px;
+  margin: -27px;
+  border-radius: 50%;
+  border: 3px solid rgba(255, 220, 92, .88);
+  box-shadow:
+    0 0 18px rgba(255, 215, 70, .78),
+    0 0 42px rgba(255, 189, 48, .48),
+    inset 0 0 16px rgba(255,255,255,.36);
+  animation: world2FinishBurst 1.5s ease-out both;
+}
+
+.world2-stage-finish-burst::before,
+.world2-stage-finish-burst::after {
+  content: "";
+  position: absolute;
+  inset: 50%;
+  width: 14px;
+  height: 118px;
+  margin: -59px -7px;
+  border-radius: 999px;
+  background: linear-gradient(180deg, transparent, rgba(255,223,102,.76), transparent);
+  opacity: .72;
+}
+
+.world2-stage-finish-burst::after {
+  transform: rotate(90deg);
+}
+
+@keyframes world2FinishBurst {
+  0% {
+    transform: scale(.35);
+    opacity: 0;
+  }
+  28% {
+    opacity: 1;
+  }
+  100% {
+    transform: scale(3.4);
+    opacity: 0;
+  }
+}
+
+.world2-stage-particles {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 1px;
+  height: 1px;
+}
+
+.world2-stage-particle {
+  --a: 0deg;
+  --d: 90px;
+  --delay: 0ms;
+  position: absolute;
+  left: -4px;
+  top: -4px;
+  width: 8px;
+  height: 8px;
+  border-radius: 2px;
+  background: #ffd95e;
+  box-shadow: 0 0 7px rgba(255,210,63,.9);
+  opacity: 0;
+  transform: rotate(var(--a)) translateY(0);
+  animation: world2FinishParticle 1.15s cubic-bezier(.15,.75,.2,1) var(--delay) both;
+}
+
+.world2-stage-particle:nth-child(3n) {
+  width: 6px;
+  height: 12px;
+  border-radius: 999px;
+  background: #ffffff;
+}
+
+.world2-stage-particle:nth-child(4n) {
+  background: color-mix(in srgb, var(--stage-accent) 72%, #ffd95e);
+}
+
+@keyframes world2FinishParticle {
+  0% {
+    opacity: 0;
+    transform: rotate(var(--a)) translateY(0) scale(.5);
+  }
+  16% {
+    opacity: 1;
+  }
+  72% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: rotate(var(--a)) translateY(calc(var(--d) * -1)) scale(1.15);
+  }
+}
+
+/* Die eigentliche Stage-Plakette sitzt direkt ueber dem Finish-Tor. */
+.world2-stage-finish-card {
+  position: absolute;
+  left: 0;
+  top: -82px;
+  width: min(310px, 82vw);
+  min-height: 126px;
+  padding: 27px 20px 18px;
+  overflow: hidden;
+  border: 2px solid rgba(255, 220, 91, .96);
+  border-radius: 22px;
+  color: #fff;
+  text-align: center;
+  background:
+    radial-gradient(circle at 50% -10%, rgba(255,220,91,.24), transparent 45%),
+    linear-gradient(155deg, rgba(25,16,17,.98), rgba(80,0,0,.98) 58%, rgba(28,13,15,.98));
+  box-shadow:
+    0 15px 38px rgba(0,0,0,.55),
+    0 0 24px color-mix(in srgb, var(--stage-accent) 42%, transparent),
+    inset 0 1px 0 rgba(255,255,255,.22);
+  transform: translate(-50%, -100%) scale(.1) rotate(-2deg);
+  transform-origin: 50% 100%;
+  opacity: 0;
+}
+
+.world2-stage-finish-celebration.show .world2-stage-finish-card {
+  animation: world2StageCardPop .72s cubic-bezier(.18,.9,.24,1.24) both;
+}
+
+.world2-stage-finish-celebration.leave .world2-stage-finish-card {
+  animation: world2StageCardLeave .42s ease-in both;
+}
+
+@keyframes world2StageCardPop {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, -100%) scale(.1) rotate(-3deg);
+  }
+  58% {
+    opacity: 1;
+    transform: translate(-50%, -100%) scale(1.1) rotate(1deg);
+  }
+  78% {
+    transform: translate(-50%, -100%) scale(.96) rotate(-.4deg);
+  }
+  100% {
+    opacity: 1;
+    transform: translate(-50%, -100%) scale(1) rotate(0);
+  }
+}
+
+@keyframes world2StageCardLeave {
+  from {
+    opacity: 1;
+    transform: translate(-50%, -100%) scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: translate(-50%, -100%) scale(.78) translateY(-16px);
+  }
+}
+
+.world2-stage-finish-kicker,
+.world2-stage-finish-name {
+  display: block;
+}
+
+.world2-stage-finish-kicker {
+  color: #ffd95e;
+  font-size: 12px;
+  font-weight: 1000;
+  letter-spacing: 2.1px;
+  text-shadow: 0 2px 5px rgba(0,0,0,.6);
+}
+
+.world2-stage-finish-card strong {
+  display: block;
+  margin-top: 3px;
+  color: #fff;
+  font-size: clamp(27px, 7vw, 38px);
+  font-weight: 1000;
+  line-height: 1;
+  letter-spacing: .3px;
+  text-shadow:
+    0 3px 0 rgba(78,0,0,.8),
+    0 5px 12px rgba(0,0,0,.58);
+}
+
+.world2-stage-finish-name {
+  margin-top: 8px;
+  color: rgba(255,255,255,.88);
+  font-size: 13px;
+  font-weight: 900;
+}
+
+/* Kleine goldene Krone ohne Emoji/Grafikdatei */
+.world2-stage-finish-crown {
+  position: absolute;
+  top: 8px;
+  left: 50%;
+  width: 45px;
+  height: 20px;
+  transform: translateX(-50%);
+}
+
+.world2-stage-finish-crown::after {
+  content: "";
+  position: absolute;
+  left: 4px;
+  right: 4px;
+  bottom: 0;
+  height: 7px;
+  border-radius: 3px 3px 6px 6px;
+  background: linear-gradient(#ffe994, #d99d18);
+  box-shadow: 0 2px 7px rgba(255,199,52,.38);
+}
+
+.world2-stage-finish-crown span {
+  position: absolute;
+  bottom: 4px;
+  width: 14px;
+  height: 14px;
+  background: linear-gradient(135deg, #fff0a4, #d69b13);
+  transform: rotate(45deg);
+  border-radius: 2px;
+}
+
+.world2-stage-finish-crown span:nth-child(1) { left: 3px; }
+.world2-stage-finish-crown span:nth-child(2) { left: 16px; bottom: 8px; }
+.world2-stage-finish-crown span:nth-child(3) { right: 3px; }
+
+/* Goldener Glanz-Sweep ueber der Plakette */
+.world2-stage-finish-shine {
+  position: absolute;
+  top: -45%;
+  left: -42%;
+  width: 26%;
+  height: 190%;
+  transform: rotate(18deg);
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,.7), transparent);
+  opacity: 0;
+}
+
+.world2-stage-finish-celebration.show .world2-stage-finish-shine {
+  animation: world2StageShine 1.05s .7s ease-out both;
+}
+
+@keyframes world2StageShine {
+  0% { left: -42%; opacity: 0; }
+  22% { opacity: .9; }
+  100% { left: 125%; opacity: 0; }
+}
+
+@media (max-width: 420px) {
+  .world2-stage-finish-card {
+    width: min(280px, 78vw);
+    min-height: 116px;
+    top: -74px;
+    padding: 25px 16px 15px;
+  }
+
+  .world2-stage-finish-card strong {
+    font-size: 30px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .world2-stage-finish-celebration *,
+  .world2-progress-mover.world2-at-finish .world2-progress-mover-orb {
+    animation-duration: .01ms !important;
+    animation-iteration-count: 1 !important;
+  }
+}
+
+/* =========================================================
+   ENDLOSKARTE – ZIELLEVEL BLEIBT SICHTBAR
+   ========================================================= */
+.world2-level.world2-animation-target .world2-level-orb {
+  filter: grayscale(.75);
+  background: linear-gradient(#59606c, #313741) !important;
+  box-shadow:
+    0 7px 0 #242832,
+    0 10px 18px rgba(0,0,0,.35),
+    inset 0 2px 4px rgba(255,255,255,.22) !important;
+  outline: none !important;
+  animation: none !important;
+}
+
+.world2-level.world2-animation-target .world2-level-number {
+  font-size: 0 !important;
+}
+
+.world2-level.world2-animation-target .world2-level-number::after {
+  content: "🔒";
+  font-size: 20px;
+  line-height: 1;
+}
+
+.world2-level.world2-animation-target .world2-stars {
+  visibility: hidden;
+}
+
+/* Handy: normale Levelpunkte laufen dort mit scale(.68).
+   Der Wanderpunkt ist auch hier nur ca. 1,5 % groesser. */
+@media (max-width: 420px) {
+  .world2-progress-mover {
+    transform: scale(.6902); /* .68 × 1.015 */
+  }
+}
+
+
+/* =========================================================
+   ENDLOSKARTE – SAUBERER UEBERGANG BEI ENGEN LEVELPUNKTEN
+   ========================================================= */
+
+/* Der wandernde rote Punkt liegt immer eindeutig ueber Leveln,
+   Schloessern, Sternen und Stage-Dekoration. */
+.world2-progress-mover {
+  z-index: 1004 !important;
+  pointer-events: none !important;
+  will-change: left, top;
+}
+
+/* Ziellevel bleibt waehrend der Fahrt unter dem roten Punkt.
+   Das JS blendet es erst in den letzten 20 % weich aus. */
+.world2-level.world2-animation-target {
+  z-index: 11 !important;
+  transition: opacity .18s linear;
+}
+
+/* Abgeschlossene Level duerfen durch den Animationszustand
+   niemals unsichtbar werden. */
+.world2-level.completed:not(.world2-animation-target) {
+  visibility: visible !important;
+  opacity: 1;
+}
+
+/* =========================================================
+   STAGEWECHSEL – NEUE STAGE FREIGESCHALTET
+   Erweiterung der MODERNEN WorldMap2-Stage-Celebration.
+   ========================================================= */
+.world2-stage-unlock-card {
+  position: absolute;
+  left: 0;
+  top: -82px;
+  z-index: 3;
+  width: min(310px, 82vw);
+  min-height: 142px;
+  padding: 18px 20px 16px;
+  overflow: hidden;
+  border: 2px solid rgba(255, 220, 91, .96);
+  border-radius: 22px;
+  color: #fff;
+  text-align: center;
+  background:
+    radial-gradient(circle at 50% -10%, rgba(255,220,91,.24), transparent 45%),
+    linear-gradient(155deg, rgba(25,16,17,.98), rgba(80,0,0,.98) 58%, rgba(28,13,15,.98));
+  box-shadow:
+    0 15px 38px rgba(0,0,0,.55),
+    0 0 24px color-mix(in srgb, var(--stage-accent) 42%, transparent),
+    inset 0 1px 0 rgba(255,255,255,.22);
+  opacity: 0;
+  transform: translate(-50%, -190%) scale(.72);
+  transform-origin: 50% 100%;
+}
+
+.world2-stage-unlock-card::before {
+  content: "";
+  position: absolute;
+  inset: -55%;
+  pointer-events: none;
+  opacity: .15;
+  background: repeating-conic-gradient(
+    rgba(255,220,91,.32) 0deg 7deg,
+    transparent 7deg 20deg
+  );
+}
+
+.world2-stage-unlock-card > * {
+  position: relative;
+  z-index: 1;
+}
+
+.world2-stage-unlock-kicker,
+.world2-stage-unlock-name,
+.world2-stage-unlock-number {
+  display: block;
+}
+
+.world2-stage-unlock-kicker {
+  margin-bottom: 8px;
+  color: #ffd95e;
+  font-size: 10px;
+  font-weight: 1000;
+  letter-spacing: 1.45px;
+  text-shadow: 0 2px 5px rgba(0,0,0,.6);
+}
+
+.world2-stage-unlock-logo-wrap {
+  width: 64px;
+  height: 64px;
+  display: grid;
+  place-items: center;
+  margin: 0 auto 7px;
+  border: 2px solid rgba(255,220,91,.9);
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(255,255,255,.18), rgba(0,0,0,.1) 72%);
+  box-shadow: 0 0 17px color-mix(in srgb, var(--stage-accent) 45%, transparent);
+}
+
+.world2-stage-unlock-logo {
+  width: 55px;
+  height: 55px;
+  object-fit: contain;
+  filter: drop-shadow(0 4px 5px rgba(0,0,0,.55));
+}
+
+.world2-stage-unlock-name {
+  font-size: 18px;
+  font-weight: 1000;
+  line-height: 1.05;
+  text-transform: uppercase;
+  text-shadow: 0 3px 5px rgba(0,0,0,.7);
+}
+
+.world2-stage-unlock-number {
+  margin-top: 4px;
+  color: rgba(255,255,255,.72);
+  font-size: 9px;
+  font-weight: 900;
+  letter-spacing: 1.8px;
+}
+
+/* Beide Karten werden beim Einblenden als gemeinsames Paar verschoben.
+   JS berechnet den Wert pro Endgeraet so, dass der Mittelpunkt des
+   Zwischenraums exakt in der sichtbaren Bildschirmmitte liegt. */
+.world2-stage-finish-card,
+.world2-stage-unlock-card {
+  margin-top: 0;
+  transition: margin-top .7s cubic-bezier(.18,.9,.24,1.16);
+}
+
+/* Erst nachdem Stage geschafft sauber aufgeploppt ist. */
+.world2-stage-finish-celebration.unlock-show .world2-stage-finish-card,
+.world2-stage-finish-celebration.unlock-show .world2-stage-unlock-card {
+  margin-top: var(--world2-stage-pair-shift, 0px);
+}
+
+.world2-stage-finish-celebration.unlock-show .world2-stage-finish-card {
+  animation: world2StageCardShiftDown .7s cubic-bezier(.18,.9,.24,1.16) both;
+}
+
+.world2-stage-finish-celebration.unlock-show .world2-stage-unlock-card {
+  animation: world2StageUnlockCardIn .72s cubic-bezier(.18,.9,.24,1.24) both;
+}
+
+.world2-stage-finish-celebration.unlock-show .world2-stage-unlock-card::before {
+  animation: world2StageUnlockRays 8s linear infinite;
+}
+
+@keyframes world2StageCardShiftDown {
+  from { transform: translate(-50%, -100%) scale(1); opacity: 1; }
+  to   { transform: translate(-50%, -20%) scale(.94); opacity: 1; }
+}
+
+@keyframes world2StageUnlockCardIn {
+  0%   { opacity: 0; transform: translate(-50%, -150%) scale(.58); }
+  62%  { opacity: 1; transform: translate(-50%, -194%) scale(1.07); }
+  82%  { opacity: 1; transform: translate(-50%, -188%) scale(.97); }
+  100% { opacity: 1; transform: translate(-50%, -190%) scale(1); }
+}
+
+@keyframes world2StageUnlockRays {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+
+@media (max-width: 430px) {
+  .world2-stage-unlock-card {
+    width: min(292px, 84vw);
+    min-height: 132px;
+    padding: 15px 16px 13px;
+  }
+  .world2-stage-unlock-logo-wrap { width: 58px; height: 58px; }
+  .world2-stage-unlock-logo { width: 49px; height: 49px; }
+  .world2-stage-unlock-name { font-size: 17px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .world2-stage-finish-celebration.unlock-show .world2-stage-finish-card,
+  .world2-stage-finish-celebration.unlock-show .world2-stage-unlock-card,
+  .world2-stage-finish-celebration.unlock-show .world2-stage-unlock-card::before {
+    animation-duration: .01ms !important;
+    animation-iteration-count: 1 !important;
+  }
+}
+
+
+/* =========================================================
+   V7 – STAGE-LOGOS: KLEINER + IMMER EXAKT QUADRATISCH
+   Nie breiter als das Fussballfeld, keine ovale Verzerrung.
+   ========================================================= */
+
+.world2-stage-marker.world2-stage-watermark {
+  left: 50% !important;
+  right: auto !important;
+  z-index: 4 !important; /* hinter Levelpunkten / Schloessern */
+
+  min-width: 0 !important;
+  min-height: 0 !important;
+  max-width: 305px !important;
+  max-height: 305px !important;
+
+  display: grid !important;
+  place-items: center !important;
+  transform: translate(-50%, -50%) !important;
+  transform-origin: center center !important;
+  pointer-events: none !important;
+  filter: none !important;
+}
+
+.world2-stage-marker.world2-stage-watermark .world2-stage-logo-wrap {
+  width: 100% !important;
+  height: 100% !important;
+  aspect-ratio: 1 / 1 !important;
+  box-sizing: border-box !important;
+
+  display: grid !important;
+  place-items: center !important;
+
+  border-radius: 50% !important;
+  background: rgba(8, 12, 16, .11) !important;
+  border: 3px solid rgba(255, 255, 255, .28) !important;
+  overflow: hidden !important;
+
+  box-shadow:
+    0 0 0 6px rgba(0, 0, 0, .08),
+    0 9px 28px rgba(0, 0, 0, .16) !important;
+}
+
+.world2-stage-marker.world2-stage-watermark .world2-stage-logo {
+  width: 84% !important;
+  height: 84% !important;
+  max-width: 84% !important;
+  max-height: 84% !important;
+  object-fit: contain !important;
+  object-position: center !important;
+  opacity: .84 !important;
+  filter: drop-shadow(0 7px 11px rgba(0, 0, 0, .34)) !important;
+}
+
+/* Kein Stage-Name und keine Stage-Nummer auf den Spielfeldern. */
+.world2-stage-marker.world2-stage-watermark .world2-stage-copy {
+  display: none !important;
+}
+
+/* Alte responsive Links/Rechts-Regeln duerfen das Wasserzeichen nie verschieben
+   oder sein Seitenverhaeltnis veraendern. Die Pixelgroesse setzt JS anhand
+   der echten Kartenbreite. */
+@media (max-width: 600px) {
+  .world2-stage-marker.world2-stage-watermark,
+  .world2-stage-marker.world2-stage-watermark.fixed,
+  .world2-stage-marker.world2-stage-watermark.fixed.right,
+  .world2-stage-marker.world2-stage-watermark.stage-1 {
+    left: 50% !important;
+    right: auto !important;
+    min-width: 0 !important;
+    min-height: 0 !important;
+    transform: translate(-50%, -50%) !important;
+  }
+}
+
+/* =========================================================
+   ITEM-INFO AUF DER ENDLOSKARTE
+   ========================================================= */
+.world2-milestone-icon {
+  position: relative;
+  display: inline-grid;
+  place-items: center;
+}
+
+.world2-item-info {
+  position: absolute;
+  top: -8px;
+  right: -9px;
+  width: 20px;
+  height: 20px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: rgba(245,245,245,.96);
+  border: 1px solid rgba(255,255,255,.8);
+  color: #1b1b1b;
+  font-size: 13px;
+  font-weight: 900;
+  line-height: 1;
+  cursor: pointer;
+  z-index: 20;
+  opacity: .94;
+  box-shadow: 0 2px 7px rgba(0,0,0,.45);
+  animation: world2ItemInfoPulse 2.4s ease-in-out infinite;
+}
+
+.world2-item-info:active { transform: scale(.9); }
+
+@keyframes world2ItemInfoPulse {
+  0%, 100% { transform: scale(1); box-shadow: 0 2px 7px rgba(0,0,0,.45); }
+  50% { transform: scale(1.12); box-shadow: 0 0 0 4px rgba(255,216,102,.18), 0 2px 8px rgba(0,0,0,.5); }
+}
+
+
+/* FIX: Info-i auf Item-Meilensteinen muss trotz pointer-events:none am
+   Milestone selbst anklickbar/touchbar bleiben. */
+.world2-milestone .world2-milestone-icon {
+  pointer-events: none;
+}
+
+.world2-milestone .world2-item-info {
+  pointer-events: auto !important;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+}
+
+/* =========================================================
+   ONLINE-SPIELER AUF DER LEVELKARTE
+   ========================================================= */
+.world2-player-marker {
+  position: absolute;
+  z-index: 18;
+  left: calc(100% + 2px);
+  top: 20px;
+  width: 34px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  padding: 2px;
+  border: 2px solid rgba(255,255,255,.94);
+  border-radius: 50%;
+  background: rgba(12,14,20,.92);
+  box-shadow: 0 4px 10px rgba(0,0,0,.48);
+  transform: scale(1.28); /* gleicht den .78-Scale des Levelbuttons aus */
+  transform-origin: center;
+  cursor: pointer;
+  overflow: hidden;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.world2-player-crest {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  display: block;
+  width: 94%;
+  height: 94%;
+  max-width: 94%;
+  max-height: 94%;
+  opacity: 1;
+  object-fit: contain;
+  object-position: center center;
+  transform: translate(-50%, -50%);
+  transform-origin: center center;
+}
+
+.world2-player-marker.world2-player-ball {
+  font-size: 22px;
+  line-height: 1;
+  background: rgba(255,255,255,.96);
+}
+
+.world2-player-popup-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1000002;
+  display: grid;
+  place-items: center;
+  padding: 22px;
+  background: rgba(0,0,0,.68);
+  backdrop-filter: blur(3px);
+}
+
+.world2-player-popup {
+  width: min(360px, 92vw);
+  max-height: min(520px, 75vh);
+  overflow: auto;
+  padding: 22px;
+  border: 1px solid rgba(255,255,255,.18);
+  border-radius: 24px;
+  background: #151820;
+  color: #fff;
+  box-shadow: 0 20px 55px rgba(0,0,0,.55);
+  text-align: left;
+}
+
+.world2-player-popup > strong {
+  display: block;
+  margin-bottom: 14px;
+  color: #ffd54a;
+  font-size: 20px;
+}
+
+.world2-player-popup ul {
+  margin: 0 0 18px;
+  padding: 0;
+  list-style: none;
+}
+
+.world2-player-popup li {
+  padding: 10px 0;
+  border-bottom: 1px solid rgba(255,255,255,.1);
+  font-size: 17px;
+  font-weight: 800;
+}
+
+.world2-player-popup li:last-child { border-bottom: 0; }
+
+.world2-player-popup button {
+  width: 100%;
+  min-height: 46px;
+  border: 0;
+  border-radius: 14px;
+  background: #860000;
+  color: #fff;
+  font: inherit;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+/* =========================================================
+   DESKTOP-FIX: Spielerwappen auf der Levelkarte
+   Mobile Darstellung bleibt unverändert.
+   Auf groesseren Viewports wird nur der Spieler-Marker
+   vergroessert, damit Wappen/Ball denselben sichtbaren
+   Fuellgrad wie auf dem Smartphone haben.
+   ========================================================= */
+@media (min-width: 769px) {
+  .world2-player-marker {
+    transform: scale(1.62);
+    transform-origin: center center;
+  }
+
+  .world2-player-crest {
+    left: 50%;
+    top: 50%;
+    width: 94%;
+    height: 94%;
+    max-width: 94%;
+    max-height: 94%;
+    opacity: 1;
+    object-fit: contain;
+    object-position: center center;
+    transform: translate(-50%, -50%);
+  }
+}
+
+/* =========================================================
+   DESKTOP-FIX 2: Online-Spieler immer klar und exakt zentriert
+   ---------------------------------------------------------
+   Ein Spieler-Marker liegt innerhalb des Levelbuttons. Bei gesperrten
+   Levels wurde deshalb die opacity:.58 des Eltern-Elements auf Wappen
+   und Fremdspieler-Ball mit angewendet. Das wird hier getrennt:
+   Nur Levelkugel + Sterne bleiben ausgegraut, der Spieler-Marker selbst
+   bleibt immer bei voller Deckkraft.
+   ========================================================= */
+@media (min-width: 769px) {
+  /* Falls auf einem gesperrten Level ein Online-Spieler steht, darf die
+     Deckkraft nicht mehr auf den kompletten Levelbutton wirken. */
+  .world2-level.locked:has(.world2-player-marker) {
+    opacity: 1 !important;
+  }
+
+  /* Gesperrten Level optisch weiterhin wie vorher abdunkeln. */
+  .world2-level.locked:has(.world2-player-marker) > .world2-level-orb,
+  .world2-level.locked:has(.world2-player-marker) > .world2-stars {
+    opacity: .58 !important;
+  }
+
+  .world2-player-marker {
+    opacity: 1 !important;
+    filter: none !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    box-sizing: border-box;
+    padding: 2px !important;
+  }
+
+  /* Teamwappen: volle Deckkraft, exakt geometrisch zentriert und bis
+     dicht an den weissen Ring gefuellt. */
+  .world2-player-marker .world2-player-crest {
+    position: absolute !important;
+    left: 50% !important;
+    top: 50% !important;
+    width: 96% !important;
+    height: 96% !important;
+    max-width: 96% !important;
+    max-height: 96% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    opacity: 1 !important;
+    filter: none !important;
+    object-fit: contain !important;
+    object-position: 50% 50% !important;
+    transform: translate(-50%, -50%) !important;
+    transform-origin: 50% 50% !important;
+  }
+
+  /* Fremdspieler-Ball: kein Baseline-Versatz des Emoji. */
+  .world2-player-marker.world2-player-ball {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    padding: 0 !important;
+    opacity: 1 !important;
+    filter: none !important;
+    text-align: center !important;
+    line-height: 1 !important;
+    font-size: 24px !important;
+    text-indent: 0 !important;
+  }
+}
+
+/* =========================================================
+   FINALER DESKTOP-RENDER-FIX FUER ONLINE-SPIELER
+   ---------------------------------------------------------
+   Auf Desktop/Laptop werden die Marker von worldMap2.js direkt
+   in #worldMap2World gelegt. Sie sind damit KEIN Kind des mit
+   scale(.78) transformierten .world2-level mehr.
+
+   Ergebnis:
+   - echte feste CSS-Endgroesse -> scharfes Rendering
+   - volle Deckkraft auch auf gesperrten Levels
+   - Teamwappen geometrisch exakt zentriert
+   - Gastspieler als echtes vorhandenes Ball-PNG statt Emoji
+   - Mobile bleibt von diesen Regeln unberuehrt
+   ========================================================= */
+@media (min-width: 769px) {
+  .world2-player-marker.world2-player-marker-overlay {
+    position: absolute !important;
+    z-index: 19 !important;
+    top: auto !important;
+    width: 44px !important;
+    min-width: 44px !important;
+    height: 44px !important;
+    min-height: 44px !important;
+    margin: 0 !important;
+    padding: 2px !important;
+    box-sizing: border-box !important;
+    border: 3px solid rgba(255,255,255,.98) !important;
+    border-radius: 50% !important;
+    background-color: rgba(12,14,20,.98) !important;
+    box-shadow: 0 3px 9px rgba(0,0,0,.48) !important;
+    opacity: 1 !important;
+    filter: none !important;
+    transform: translateX(44px) !important;
+    transform-origin: 50% 50% !important;
+    overflow: hidden !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    isolation: isolate;
+  }
+
+  .world2-player-marker.world2-player-marker-overlay .world2-player-crest {
+    position: absolute !important;
+    left: 50% !important;
+    top: 50% !important;
+    width: 96% !important;
+    height: 96% !important;
+    max-width: 96% !important;
+    max-height: 96% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    display: block !important;
+    object-fit: contain !important;
+    object-position: 50% 50% !important;
+    opacity: 1 !important;
+    filter: none !important;
+    transform: translate(-50%, -50%) !important;
+    transform-origin: 50% 50% !important;
+    image-rendering: auto !important;
+  }
+
+  /* Desktop-Gastspieler: echtes Spiel-Asset statt Emoji.
+     Das vermeidet Font-/Baseline-Unterschiede zwischen Safari,
+     Chrome, Windows und macOS und bleibt gestochen scharf. */
+  .world2-player-marker.world2-player-marker-overlay.world2-player-ball {
+    color: transparent !important;
+    font-size: 0 !important;
+    line-height: 0 !important;
+    text-shadow: none !important;
+    background-color: rgba(255,255,255,.98) !important;
+    background-image: url("../assets/balls/bk-arena-balls/black.png") !important;
+    background-repeat: no-repeat !important;
+    background-position: 50% 50% !important;
+    background-size: 90% 90% !important;
+    opacity: 1 !important;
+    filter: none !important;
+  }
+}
