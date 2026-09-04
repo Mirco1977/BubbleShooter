@@ -137,7 +137,7 @@ export const Match3Feature = (() => {
   }
 
   function isMovablePiece(piece) {
-    return Boolean(piece) && !isStone(piece) && !isGoalCrest(piece);
+    return Boolean(piece) && !isStone(piece);
   }
 
   function pieceInfo(piece) {
@@ -189,6 +189,11 @@ export const Match3Feature = (() => {
 
   function isProtectedCell(row, col) {
     return protectedCells.has(`${row}:${col}`) || isStone(board[row]?.[col]);
+  }
+
+  // Wappen dürfen fallen, aber niemals durch Matches/Bomben entfernt werden.
+  function isRemovalProtectedCell(row, col) {
+    return isProtectedCell(row, col) || isGoalCrest(board[row]?.[col]);
   }
 
   function swapIn(boardToChange, a, b) {
@@ -816,7 +821,7 @@ export const Match3Feature = (() => {
                 ? "Stuttgarter Kickers Wappen"
                 : `${info.color || "Unbekannter"} Ball`;
         tile.setAttribute("aria-label", key ? `${label}, Reihe ${row + 1}, Spalte ${col + 1}` : "Leeres Feld");
-        tile.disabled = busy || finished || !key || isStone(key) || isGoalCrest(key);
+        tile.disabled = busy || finished || !key || isStone(key);
 
         if (selected?.row === row && selected?.col === col) tile.classList.add("is-selected");
         if (matchedSet.has(`${row}:${col}`)) tile.classList.add("is-matched");
@@ -992,35 +997,49 @@ export const Match3Feature = (() => {
       const tile = tileAt(pos);
       const img = tile?.querySelector("img");
       if (!tile || !img) return;
+
       tile.classList.add("is-stone-breaking");
       const box = tile.getBoundingClientRect();
       const boardBox = dom.board.getBoundingClientRect();
-      const cx = box.left - boardBox.left + box.width / 2;
-      const cy = box.top - boardBox.top + box.height / 2;
-      const shards = Array.from({ length: 8 }, (_, i) => {
-        const shard = document.createElement("span");
-        shard.className = "match3-stone-shard";
-        shard.style.left = `${cx}px`;
-        shard.style.top = `${cy}px`;
-        shard.style.setProperty("--stone-angle", `${i * 45 + (i % 2 ? 12 : -8)}deg`);
-        shard.style.setProperty("--stone-distance", `${24 + (i % 3) * 8}px`);
-        dom.board.appendChild(shard);
-        const a = (i * 45 + (i % 2 ? 12 : -8)) * Math.PI / 180;
-        const d = 24 + (i % 3) * 8;
-        const anim = shard.animate([
-          { transform: "translate(-50%,-50%) scale(.65) rotate(0deg)", opacity: 0 },
-          { transform: "translate(-50%,-50%) scale(1.1) rotate(12deg)", opacity: 1, offset: .18 },
-          { transform: `translate(calc(-50% + ${Math.cos(a)*d}px),calc(-50% + ${Math.sin(a)*d}px)) scale(.25) rotate(${100 + i*24}deg)`, opacity: 0 }
-        ], { duration: 330 + (i % 3) * 28, easing: "cubic-bezier(.15,.7,.18,1)", fill: "forwards" });
-        return animationFinished(anim).finally(() => shard.remove());
+      const left = box.left - boardBox.left;
+      const top = box.top - boardBox.top;
+      const src = img.currentSrc || img.src;
+
+      const pieces = [
+        { clip: "polygon(0 0,58% 0,48% 54%,0 72%)", dx: -34, dy: -18, rot: -32 },
+        { clip: "polygon(58% 0,100% 0,100% 72%,48% 54%)", dx: 35, dy: -13, rot: 38 },
+        { clip: "polygon(0 72%,48% 54%,100% 72%,100% 100%,0 100%)", dx: 4, dy: 38, rot: 22 }
+      ];
+
+      const fragmentAnimations = pieces.map((part, i) => {
+        const fragment = document.createElement("img");
+        fragment.src = src;
+        fragment.alt = "";
+        fragment.className = "match3-stone-fragment";
+        Object.assign(fragment.style, {
+          left: `${left}px`, top: `${top}px`,
+          width: `${box.width}px`, height: `${box.height}px`,
+          clipPath: part.clip, WebkitClipPath: part.clip
+        });
+        dom.board.appendChild(fragment);
+        return animationFinished(fragment.animate([
+          { transform: "translate3d(0,0,0) scale(1) rotate(0deg)", opacity: 1, filter: "brightness(1)", offset: 0 },
+          { transform: `translate3d(${part.dx*.18}px,${part.dy*.12}px,0) scale(1.04) rotate(${part.rot*.15}deg)`, opacity: 1, filter: "brightness(1.45)", offset: .18 },
+          { transform: `translate3d(${part.dx}px,${part.dy}px,0) scale(.92) rotate(${part.rot}deg)`, opacity: .96, filter: "brightness(1.08)", offset: .68 },
+          { transform: `translate3d(${part.dx*1.38}px,${part.dy*1.5+12}px,0) scale(.68) rotate(${part.rot*1.65}deg)`, opacity: 0, offset: 1 }
+        ], { duration: 480+i*35, easing: "cubic-bezier(.16,.72,.2,1)", fill: "forwards" }))
+          .finally(() => fragment.remove());
       });
+
       const crack = animationFinished(img.animate([
-        { transform: "scale(1) rotate(0deg)", filter: "brightness(1)", opacity: 1 },
-        { transform: "scale(1.08) rotate(-2deg)", filter: "brightness(1.35)", opacity: 1, offset: .32 },
-        { transform: "scale(.94) rotate(2deg)", filter: "brightness(1.9)", opacity: .9, offset: .55 },
-        { transform: "scale(.2) rotate(-8deg)", filter: "brightness(2.2)", opacity: 0 }
-      ], { duration: 315, easing: "cubic-bezier(.2,.72,.2,1)", fill: "forwards" }));
-      await Promise.all([crack, ...shards]);
+        { transform: "scale(1)", filter: "brightness(1)", opacity: 1, offset: 0 },
+        { transform: "scale(1.07) rotate(-1deg)", filter: "brightness(1.35)", opacity: 1, offset: .18 },
+        { transform: "scale(1.12) rotate(1deg)", filter: "brightness(1.8)", opacity: .72, offset: .28 },
+        { transform: "scale(1.12)", filter: "brightness(2)", opacity: 0, offset: .34 },
+        { transform: "scale(1.12)", opacity: 0, offset: 1 }
+      ], { duration: 500, easing: "ease-out", fill: "forwards" }));
+
+      await Promise.all([crack, ...fragmentAnimations]);
     });
     await Promise.all(animations);
   }
@@ -1090,7 +1109,7 @@ export const Match3Feature = (() => {
     updateHud(cascade);
 
     for (const { row, col } of removal) {
-      if (!isProtectedCell(row, col)) board[row][col] = null;
+      if (!isRemovalProtectedCell(row, col)) board[row][col] = null;
     }
     if (stonesToBreak.length) {
       releaseCrestsForBrokenStones(stonesToBreak);
@@ -1161,7 +1180,7 @@ export const Match3Feature = (() => {
       const removalMap = new Map();
       for (const cell of matches) {
         const id = cellId(cell);
-        if (!creationSet.has(id) && !isProtectedCell(cell.row, cell.col)) removalMap.set(id, cell);
+        if (!creationSet.has(id) && !isRemovalProtectedCell(cell.row, cell.col)) removalMap.set(id, cell);
       }
       const removal = [...removalMap.values()];
 
@@ -1221,7 +1240,7 @@ export const Match3Feature = (() => {
       removalMap.set(cellId(plan.specialPos), { ...plan.specialPos });
       for (let row = 0; row < ROWS; row++) {
         for (let col = 0; col < COLS; col++) {
-          if (baseColor(board[row]?.[col]) === plan.color && !isProtectedCell(row, col)) {
+          if (baseColor(board[row]?.[col]) === plan.color && !isRemovalProtectedCell(row, col)) {
             removalMap.set(`${row}:${col}`, { row, col });
           }
         }
@@ -1229,12 +1248,12 @@ export const Match3Feature = (() => {
     } else if (plan.type === AREA_BOMB) {
       for (let row = plan.specialPos.row - 1; row <= plan.specialPos.row + 1; row++) {
         for (let col = plan.specialPos.col - 1; col <= plan.specialPos.col + 1; col++) {
-          if (row < 0 || row >= ROWS || col < 0 || col >= COLS || isProtectedCell(row, col)) continue;
+          if (row < 0 || row >= ROWS || col < 0 || col >= COLS || isRemovalProtectedCell(row, col)) continue;
           if (board[row]?.[col]) removalMap.set(`${row}:${col}`, { row, col });
         }
       }
       // Tauschpartner zusätzlich explizit absichern – auch wenn er bereits im 3x3 liegt.
-      if (!isProtectedCell(plan.partnerPos.row, plan.partnerPos.col) && board[plan.partnerPos.row]?.[plan.partnerPos.col]) {
+      if (!isRemovalProtectedCell(plan.partnerPos.row, plan.partnerPos.col) && board[plan.partnerPos.row]?.[plan.partnerPos.col]) {
         removalMap.set(cellId(plan.partnerPos), { ...plan.partnerPos });
       }
     }
@@ -1383,7 +1402,7 @@ export const Match3Feature = (() => {
   async function attemptSwap(from, to) {
     if (busy || finished || !adjacent(from, to)) return;
     if (!isMovablePiece(board[from.row]?.[from.col]) || !isMovablePiece(board[to.row]?.[to.col])) {
-      setStatus("Steine und Wappen können nicht direkt getauscht werden.");
+      setStatus("Steine können nicht direkt getauscht werden.");
       return;
     }
     busy = true;
@@ -1393,11 +1412,41 @@ export const Match3Feature = (() => {
 
     const fromPiece = board[from.row]?.[from.col];
     const toPiece = board[to.row]?.[to.col];
+    const crestSwap = isGoalCrest(fromPiece) || isGoalCrest(toPiece);
 
-    // Erst die beiden sichtbaren Bälle wirklich in das Nachbarfeld gleiten lassen.
+    // Sichtbarer Tausch beider Nachbarfelder.
     await animateSwapVisual(from, to, 190);
     swapIn(board, from, to);
     renderBoard();
+
+    // Wappen dürfen in alle vier Richtungen getauscht werden, bleiben aber
+    // ein normales Zugziel: Der Partnerball muss an seiner neuen Position
+    // selbst Teil eines gültigen Matches sein. Sonst wird der Tausch zurückgesetzt.
+    if (crestSwap) {
+      const partnerPos = isGoalCrest(fromPiece) ? from : to;
+      const crestMatches = findMatches(board);
+      const partnerCreatesMatch = crestMatches.some((cell) =>
+        cell.row === partnerPos.row && cell.col === partnerPos.col
+      );
+
+      if (!partnerCreatesMatch) {
+        setStatus("Kein Match durch den Partnerball – Zug zurückgesetzt.");
+        await wait(45);
+        await animateSwapVisual(from, to, 155);
+        swapIn(board, from, to);
+        renderBoard({ invalid: [from, to] });
+        await wait(120);
+        busy = false;
+        renderBoard();
+        setStatus("Tausche das Wappen nur, wenn der Partnerball ein Match bildet.");
+        return;
+      }
+
+      await resolveBoard(crestMatches, { from, to });
+      busy = false;
+      renderBoard();
+      return;
+    }
 
     const specialPlan = specialSwapPlan(from, to, fromPiece, toPiece);
     if (specialPlan) {

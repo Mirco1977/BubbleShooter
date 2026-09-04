@@ -606,3 +606,13 @@
     margin-bottom: 72px;
   }
 }
+
+.match3-stone-fragment {
+  position:absolute;
+  display:block;
+  object-fit:contain;
+  pointer-events:none;
+  z-index:36;
+  transform-origin:50% 50%;
+  will-change:transform,opacity,filter;
+}
