@@ -529,6 +529,7 @@ export const Match3Feature = (() => {
     const ordered = [...removal].sort((a, b) => a.row - b.row || a.col - b.col);
     const stagger = Number.isFinite(options.stagger) ? options.stagger : 46;
     const delayForCell = typeof options.delayForCell === "function" ? options.delayForCell : null;
+    const areaBombPos = options.areaBombPos || null;
     const popDuration = 154;
 
     const animations = ordered.map((cell, index) => (async () => {
@@ -541,7 +542,9 @@ export const Match3Feature = (() => {
 
       tile.classList.add("is-match-popping");
       const piece = board[cell.row]?.[cell.col];
-      const { particles, ring, flash } = spawnMatchPopBurst(tile, piece, 16);
+      const isDetonatingAreaBomb = areaBombPos && cell.row === areaBombPos.row && cell.col === areaBombPos.col;
+      if (isDetonatingAreaBomb) tile.classList.add("is-area-bomb-detonating");
+      const { particles, ring, flash } = spawnMatchPopBurst(tile, piece, isDetonatingAreaBomb ? 30 : 16);
 
       const particleAnimations = particles.map((particle, particleIndex) => {
         const angle = Number(particle.dataset.angle || 0);
@@ -584,17 +587,28 @@ export const Match3Feature = (() => {
         { duration: 150, easing: "ease-out", fill: "forwards" }
       )).finally(() => flash.remove()) : Promise.resolve();
 
+      const popFrames = isDetonatingAreaBomb
+        ? [
+            { transform: "scale(2.95)", opacity: 1, filter: "brightness(1.18) saturate(1.08)", offset: 0 },
+            { transform: "scale(3.18)", opacity: 1, filter: "brightness(1.55) saturate(1.18)", offset: .20 },
+            { transform: "scale(3.34)", opacity: 1, filter: "brightness(2.15) saturate(1.28)", offset: .34 },
+            { transform: "scale(2.35)", opacity: .78, filter: "brightness(2.55) saturate(.92)", offset: .50 },
+            { transform: "scale(.62)", opacity: .30, filter: "brightness(2.8) saturate(.66)", offset: .72 },
+            { transform: "scale(.12)", opacity: 0, filter: "brightness(2.9) saturate(.5)", offset: 1 }
+          ]
+        : [
+            { transform: "scale(1)", opacity: 1, filter: "brightness(1) saturate(1)", offset: 0 },
+            { transform: "scale(1.10)", opacity: 1, filter: "brightness(1.08) saturate(1.06)", offset: .18 },
+            { transform: "scale(1.27)", opacity: 1, filter: "brightness(1.22) saturate(1.12)", offset: .34 },
+            { transform: "scale(1.43)", opacity: 1, filter: "brightness(1.72) saturate(1.2)", offset: .43 },
+            { transform: "scale(.88)", opacity: .62, filter: "brightness(2.15) saturate(.8)", offset: .56 },
+            { transform: "scale(.28)", opacity: 0, filter: "brightness(2.35) saturate(.5)", offset: .76 },
+            { transform: "scale(.12)", opacity: 0, filter: "brightness(2.35) saturate(.5)", offset: 1 }
+          ];
+
       const pop = animationFinished(img.animate(
-        [
-          { transform: "scale(1)", opacity: 1, filter: "brightness(1) saturate(1)", offset: 0 },
-          { transform: "scale(1.10)", opacity: 1, filter: "brightness(1.08) saturate(1.06)", offset: .18 },
-          { transform: "scale(1.27)", opacity: 1, filter: "brightness(1.22) saturate(1.12)", offset: .34 },
-          { transform: "scale(1.43)", opacity: 1, filter: "brightness(1.72) saturate(1.2)", offset: .43 },
-          { transform: "scale(.88)", opacity: .62, filter: "brightness(2.15) saturate(.8)", offset: .56 },
-          { transform: "scale(.28)", opacity: 0, filter: "brightness(2.35) saturate(.5)", offset: .76 },
-          { transform: "scale(.12)", opacity: 0, filter: "brightness(2.35) saturate(.5)", offset: 1 }
-        ],
-        { duration: popDuration, easing: "cubic-bezier(.16,.74,.2,1)", fill: "forwards" }
+        popFrames,
+        { duration: isDetonatingAreaBomb ? 205 : popDuration, easing: "cubic-bezier(.16,.74,.2,1)", fill: "forwards" }
       ));
 
       await Promise.all([pop, ringAnimation, flashAnimation, ...particleAnimations]);
@@ -776,11 +790,11 @@ export const Match3Feature = (() => {
     }
   }
 
-  async function removeAndDrop(removal, cascade = 1, createdSpecial = []) {
+  async function removeAndDrop(removal, cascade = 1, createdSpecial = [], popOptions = {}) {
     if (!removal.length) return new Map();
-    renderBoard({ createdSpecial });
+    if (!popOptions.skipInitialRender) renderBoard({ createdSpecial });
     if (createdSpecial.length) await wait(145);
-    await animateNormalMatchPops(removal);
+    await animateNormalMatchPops(removal, popOptions);
     addScoreAndCollect(removal, cascade);
     updateHud(cascade);
 
@@ -914,10 +928,39 @@ export const Match3Feature = (() => {
     return [...removalMap.values()];
   }
 
+  async function animateAreaBombCharge(position) {
+    const tile = tileAt(position);
+    const img = tile?.querySelector("img");
+    if (!tile || !img) return;
+
+    tile.classList.add("is-area-bomb-charging");
+    const charge = img.animate(
+      [
+        { transform: "scale(1)", filter: "brightness(1) saturate(1)", offset: 0 },
+        { transform: "scale(1.32)", filter: "brightness(1.14) saturate(1.06)", offset: .22 },
+        { transform: "scale(2.20)", filter: "brightness(1.22) saturate(1.1)", offset: .58 },
+        { transform: "scale(3.12)", filter: "brightness(1.34) saturate(1.14)", offset: .88 },
+        { transform: "scale(2.95)", filter: "brightness(1.22) saturate(1.1)", offset: 1 }
+      ],
+      { duration: 430, easing: "cubic-bezier(.18,.76,.18,1)", fill: "forwards" }
+    );
+    await animationFinished(charge);
+  }
+
   async function resolveSpecialSwap(plan) {
     const removal = specialSwapRemoval(plan);
     setStatus(plan.type === COLOR_BOMB ? "Farbbombe!" : "Bombe!");
-    const dropMap = await removeAndDrop(removal, 1);
+
+    if (plan.type === AREA_BOMB) {
+      await animateAreaBombCharge(plan.specialPos);
+    }
+
+    const dropMap = await removeAndDrop(
+      removal,
+      1,
+      [],
+      plan.type === AREA_BOMB ? { stagger: 0, areaBombPos: plan.specialPos, skipInitialRender: true } : {}
+    );
     const matches = findMatches(board);
     if (matches.length) await resolveBoard(matches, null, dropMap);
     else {
