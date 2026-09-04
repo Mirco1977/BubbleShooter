@@ -553,47 +553,66 @@ export const Match3Feature = (() => {
         const dx = Math.cos(radians) * distance;
         const dy = Math.sin(radians) * distance;
         const rotate = 70 + (particleIndex % 5) * 31;
+        const particleFrames = isDetonatingAreaBomb
+          ? [
+              { transform: "translate(-50%,-50%) scale(.45) rotate(0deg)", opacity: .95, offset: 0 },
+              { transform: "translate(-50%,-50%) scale(1.35) rotate(12deg)", opacity: 1, offset: .12 },
+              { transform: `translate(calc(-50% + ${dx}px), calc(-50% + ${dy}px)) scale(.78) rotate(${rotate}deg)`, opacity: .95, offset: .62 },
+              { transform: `translate(calc(-50% + ${dx * 1.18}px), calc(-50% + ${dy * 1.18}px)) scale(.12) rotate(${rotate + 45}deg)`, opacity: 0, offset: 1 }
+            ]
+          : [
+              { transform: "translate(-50%,-50%) scale(.15) rotate(0deg)", opacity: 0, offset: 0 },
+              { transform: "translate(-50%,-50%) scale(.15) rotate(0deg)", opacity: 0, offset: .30 },
+              { transform: "translate(-50%,-50%) scale(1.25) rotate(12deg)", opacity: 1, offset: .42 },
+              { transform: `translate(calc(-50% + ${dx}px), calc(-50% + ${dy}px)) scale(.72) rotate(${rotate}deg)`, opacity: .95, offset: .72 },
+              { transform: `translate(calc(-50% + ${dx * 1.18}px), calc(-50% + ${dy * 1.18}px)) scale(.12) rotate(${rotate + 45}deg)`, opacity: 0, offset: 1 }
+            ];
 
         return animationFinished(particle.animate(
-          [
-            { transform: "translate(-50%,-50%) scale(.15) rotate(0deg)", opacity: 0, offset: 0 },
-            { transform: "translate(-50%,-50%) scale(.15) rotate(0deg)", opacity: 0, offset: .30 },
-            { transform: "translate(-50%,-50%) scale(1.25) rotate(12deg)", opacity: 1, offset: .42 },
-            { transform: `translate(calc(-50% + ${dx}px), calc(-50% + ${dy}px)) scale(.72) rotate(${rotate}deg)`, opacity: .95, offset: .72 },
-            { transform: `translate(calc(-50% + ${dx * 1.18}px), calc(-50% + ${dy * 1.18}px)) scale(.12) rotate(${rotate + 45}deg)`, opacity: 0, offset: 1 }
-          ],
-          { duration: 190, easing: "cubic-bezier(.16,.78,.22,1)", fill: "forwards" }
+          particleFrames,
+          { duration: isDetonatingAreaBomb ? 210 : 190, easing: "cubic-bezier(.16,.78,.22,1)", fill: "forwards" }
         )).finally(() => particle.remove());
       });
 
       const ringAnimation = ring ? animationFinished(ring.animate(
-        [
-          { transform: "translate(-50%,-50%) scale(.28)", opacity: 0, offset: 0 },
-          { transform: "translate(-50%,-50%) scale(.28)", opacity: 0, offset: .30 },
-          { transform: "translate(-50%,-50%) scale(.55)", opacity: .95, offset: .42 },
-          { transform: "translate(-50%,-50%) scale(1.42)", opacity: 0, offset: 1 }
-        ],
-        { duration: 176, easing: "cubic-bezier(.16,.72,.25,1)", fill: "forwards" }
+        isDetonatingAreaBomb
+          ? [
+              { transform: "translate(-50%,-50%) scale(.48)", opacity: .95, offset: 0 },
+              { transform: "translate(-50%,-50%) scale(.82)", opacity: 1, offset: .10 },
+              { transform: "translate(-50%,-50%) scale(1.48)", opacity: 0, offset: 1 }
+            ]
+          : [
+              { transform: "translate(-50%,-50%) scale(.28)", opacity: 0, offset: 0 },
+              { transform: "translate(-50%,-50%) scale(.28)", opacity: 0, offset: .30 },
+              { transform: "translate(-50%,-50%) scale(.55)", opacity: .95, offset: .42 },
+              { transform: "translate(-50%,-50%) scale(1.42)", opacity: 0, offset: 1 }
+            ],
+        { duration: isDetonatingAreaBomb ? 190 : 176, easing: "cubic-bezier(.16,.72,.25,1)", fill: "forwards" }
       )).finally(() => ring.remove()) : Promise.resolve();
 
       const flashAnimation = flash ? animationFinished(flash.animate(
-        [
-          { transform: "translate(-50%,-50%) scale(.25)", opacity: 0, offset: 0 },
-          { transform: "translate(-50%,-50%) scale(.25)", opacity: 0, offset: .30 },
-          { transform: "translate(-50%,-50%) scale(1.0)", opacity: .95, offset: .40 },
-          { transform: "translate(-50%,-50%) scale(1.38)", opacity: 0, offset: .70 },
-          { transform: "translate(-50%,-50%) scale(1.45)", opacity: 0, offset: 1 }
-        ],
-        { duration: 150, easing: "ease-out", fill: "forwards" }
+        isDetonatingAreaBomb
+          ? [
+              { transform: "translate(-50%,-50%) scale(.82)", opacity: 1, offset: 0 },
+              { transform: "translate(-50%,-50%) scale(1.18)", opacity: .98, offset: .10 },
+              { transform: "translate(-50%,-50%) scale(1.48)", opacity: 0, offset: 1 }
+            ]
+          : [
+              { transform: "translate(-50%,-50%) scale(.25)", opacity: 0, offset: 0 },
+              { transform: "translate(-50%,-50%) scale(.25)", opacity: 0, offset: .30 },
+              { transform: "translate(-50%,-50%) scale(1.0)", opacity: .95, offset: .40 },
+              { transform: "translate(-50%,-50%) scale(1.38)", opacity: 0, offset: .70 },
+              { transform: "translate(-50%,-50%) scale(1.45)", opacity: 0, offset: 1 }
+            ],
+        { duration: isDetonatingAreaBomb ? 155 : 150, easing: "ease-out", fill: "forwards" }
       )).finally(() => flash.remove()) : Promise.resolve();
 
       const popFrames = isDetonatingAreaBomb
         ? [
-            { transform: "scale(2.95)", opacity: 1, filter: "brightness(1.18) saturate(1.08)", offset: 0 },
-            { transform: "scale(3.18)", opacity: 1, filter: "brightness(1.55) saturate(1.18)", offset: .20 },
-            { transform: "scale(3.34)", opacity: 1, filter: "brightness(2.15) saturate(1.28)", offset: .34 },
-            { transform: "scale(2.35)", opacity: .78, filter: "brightness(2.55) saturate(.92)", offset: .50 },
-            { transform: "scale(.62)", opacity: .30, filter: "brightness(2.8) saturate(.66)", offset: .72 },
+            { transform: "scale(2.56)", opacity: 1, filter: "brightness(1.35) saturate(1.1)", offset: 0 },
+            { transform: "scale(2.72)", opacity: 1, filter: "brightness(2.05) saturate(1.25)", offset: .10 },
+            { transform: "scale(1.95)", opacity: .72, filter: "brightness(2.6) saturate(.9)", offset: .28 },
+            { transform: "scale(.68)", opacity: .32, filter: "brightness(2.8) saturate(.66)", offset: .58 },
             { transform: "scale(.12)", opacity: 0, filter: "brightness(2.9) saturate(.5)", offset: 1 }
           ]
         : [
@@ -937,12 +956,12 @@ export const Match3Feature = (() => {
     const charge = img.animate(
       [
         { transform: "scale(1)", filter: "brightness(1) saturate(1)", offset: 0 },
-        { transform: "scale(1.32)", filter: "brightness(1.14) saturate(1.06)", offset: .22 },
-        { transform: "scale(2.20)", filter: "brightness(1.22) saturate(1.1)", offset: .58 },
-        { transform: "scale(3.12)", filter: "brightness(1.34) saturate(1.14)", offset: .88 },
-        { transform: "scale(2.95)", filter: "brightness(1.22) saturate(1.1)", offset: 1 }
+        { transform: "scale(1.28)", filter: "brightness(1.14) saturate(1.06)", offset: .22 },
+        { transform: "scale(1.92)", filter: "brightness(1.22) saturate(1.1)", offset: .58 },
+        { transform: "scale(2.68)", filter: "brightness(1.38) saturate(1.16)", offset: .90 },
+        { transform: "scale(2.56)", filter: "brightness(1.42) saturate(1.14)", offset: 1 }
       ],
-      { duration: 430, easing: "cubic-bezier(.18,.76,.18,1)", fill: "forwards" }
+      { duration: 360, easing: "cubic-bezier(.18,.76,.18,1)", fill: "forwards" }
     );
     await animationFinished(charge);
   }
