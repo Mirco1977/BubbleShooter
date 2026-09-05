@@ -14,7 +14,7 @@ let ROWS = LEVEL_1.rows;
 let COLS = LEVEL_1.cols;
 let TARGET_SCORE = LEVEL_1.targetScore;
 const POINTS_PER_BALL = 100;
-const ACCESS_LEVEL = 195;
+const ACCESS_LEVEL = 150;
 
 const BALLS = [
   { key: "red", image: "assets/balls/bk-arena-balls/red.png" },
