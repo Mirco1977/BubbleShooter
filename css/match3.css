@@ -659,6 +659,214 @@
 }
 
 
+/* Match-3 obstacle hint sequence */
+/*
+ * Allgemeiner Hinweis für Hindernisse, die den Weg blockieren oder entfernt
+ * werden müssen. Die Sequenz läuft bewusst nicht permanent: rund alle 5 s
+ * erscheint kurz eine animierte Kontur und lenkt den Blick aufs Hindernis.
+ */
+.match3-tile.is-obstacle {
+  position: relative;
+  overflow: visible;
+  isolation: isolate;
+}
+
+.match3-tile.is-obstacle::before,
+.match3-tile.is-obstacle::after {
+  content: "";
+  position: absolute;
+  pointer-events: none;
+  border-radius: 15px;
+  opacity: 0;
+  z-index: 8;
+}
+
+/* weiche pulsierende Außenkontur */
+.match3-tile.is-obstacle::before {
+  inset: -4px;
+  border: 2px solid rgba(255, 235, 105, 0);
+  box-shadow:
+    0 0 0 0 rgba(255, 226, 72, 0),
+    0 0 0 rgba(255,255,255,0);
+  animation: match3ObstacleHintPulse 5s ease-in-out infinite;
+}
+
+/* umlaufender Lichtimpuls – wirkt wie eine kurze Sequenz um den Stein */
+.match3-tile.is-obstacle::after {
+  inset: -6px;
+  padding: 2px;
+  background: conic-gradient(
+    from 0deg,
+    rgba(255,255,255,0) 0deg,
+    rgba(255,255,255,0) 246deg,
+    rgba(255,235,105,.12) 274deg,
+    rgba(255,250,205,.98) 306deg,
+    rgba(255,206,50,.92) 329deg,
+    rgba(255,255,255,0) 360deg
+  );
+  -webkit-mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  animation: match3ObstacleHintSweep 5s linear infinite;
+}
+
+@keyframes match3ObstacleHintPulse {
+  0%, 72% {
+    opacity: 0;
+    transform: scale(.98);
+    border-color: rgba(255,235,105,0);
+    box-shadow: 0 0 0 0 rgba(255,226,72,0);
+  }
+  76% {
+    opacity: .35;
+    transform: scale(1);
+  }
+  81% {
+    opacity: 1;
+    transform: scale(1.07);
+    border-color: rgba(255,240,135,.96);
+    box-shadow:
+      0 0 0 3px rgba(255,218,52,.22),
+      0 0 13px rgba(255,230,95,.72);
+  }
+  86% {
+    opacity: .62;
+    transform: scale(1.015);
+  }
+  91% {
+    opacity: 1;
+    transform: scale(1.055);
+    border-color: rgba(255,248,185,.9);
+    box-shadow:
+      0 0 0 2px rgba(255,218,52,.18),
+      0 0 10px rgba(255,230,95,.58);
+  }
+  98%, 100% {
+    opacity: 0;
+    transform: scale(1.01);
+    border-color: rgba(255,235,105,0);
+    box-shadow: 0 0 0 7px rgba(255,226,72,0);
+  }
+}
+
+@keyframes match3ObstacleHintSweep {
+  0%, 72% {
+    opacity: 0;
+    transform: rotate(0deg) scale(.99);
+  }
+  75% {
+    opacity: 0;
+    transform: rotate(0deg) scale(1);
+  }
+  79% {
+    opacity: 1;
+  }
+  96% {
+    opacity: .9;
+    transform: rotate(360deg) scale(1.04);
+  }
+  100% {
+    opacity: 0;
+    transform: rotate(410deg) scale(1.04);
+  }
+}
+
+/* Beim tatsächlichen Zerspringen darf der Hinweis nicht weiterlaufen. */
+.match3-tile.is-obstacle.is-stone-breaking::before,
+.match3-tile.is-obstacle.is-stone-breaking::after {
+  animation: none;
+  opacity: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .match3-tile.is-obstacle::before,
+  .match3-tile.is-obstacle::after {
+    animation: none;
+  }
+}
+
+/* Candy-artiger Bombenburst: Zündstern -> Goldkern -> rosa/weißer Energieknall -> Splitter */
+.match3-bomb-star,
+.match3-bomb-ignition,
+.match3-bomb-bloom,
+.match3-bomb-shock-ring,
+.match3-bomb-orbit-spark,
+.match3-bomb-energy-fragment {
+  position: absolute;
+  pointer-events: none;
+  transform-origin: 50% 50%;
+  will-change: transform, opacity, filter;
+}
+
+.match3-bomb-star {
+  width: 120px;
+  height: 120px;
+  background:
+    linear-gradient(90deg, transparent 46%, #fff 48%, #fff 52%, transparent 54%),
+    linear-gradient(0deg, transparent 46%, #fff 48%, #fff 52%, transparent 54%),
+    linear-gradient(45deg, transparent 48%, rgba(255,255,255,.9) 49%, rgba(255,255,255,.9) 51%, transparent 52%),
+    linear-gradient(-45deg, transparent 48%, rgba(255,255,255,.9) 49%, rgba(255,255,255,.9) 51%, transparent 52%);
+  filter: drop-shadow(0 0 5px #fff) drop-shadow(0 0 12px #ffd776);
+  border-radius: 50%;
+}
+
+.match3-bomb-orbit-spark {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: radial-gradient(circle, #fff 0 24%, #ffe28c 25% 52%, #ff8f2a 53% 72%, transparent 73%);
+  box-shadow: 0 0 7px rgba(255,208,95,.95);
+}
+
+.match3-bomb-ignition {
+  width: 145px;
+  height: 145px;
+  border-radius: 50%;
+  background:
+    radial-gradient(circle, #fff 0 18%, #fffad6 19% 31%, #ffd44f 32% 45%, #ff8d26 46% 57%, rgba(255,89,55,.6) 58% 68%, transparent 69%);
+  filter: drop-shadow(0 0 9px #fff6ad) drop-shadow(0 0 20px rgba(255,129,38,.95));
+}
+
+.match3-bomb-bloom {
+  width: 185px;
+  height: 185px;
+  border-radius: 50%;
+  background:
+    radial-gradient(circle, #fff 0 17%, rgba(255,245,255,.98) 18% 28%, rgba(255,174,230,.95) 29% 43%, rgba(245,87,197,.73) 44% 57%, rgba(169,76,220,.42) 58% 70%, transparent 71%);
+  filter: drop-shadow(0 0 12px #fff) drop-shadow(0 0 28px rgba(255,93,208,.78));
+}
+
+.match3-bomb-shock-ring {
+  width: 110px;
+  height: 110px;
+  border-radius: 50%;
+  border: 7px solid rgba(255,222,247,.92);
+  box-shadow:
+    0 0 10px rgba(255,255,255,.95),
+    0 0 24px rgba(255,92,208,.78),
+    inset 0 0 12px rgba(255,190,236,.72);
+}
+
+.match3-bomb-shard-candy {
+  position: absolute;
+  object-fit: contain;
+  pointer-events: none;
+  z-index: 94;
+  transform-origin: 50% 50%;
+  will-change: transform, opacity, filter;
+}
+
+.match3-bomb-energy-fragment {
+  width: 11px;
+  height: 19px;
+  border-radius: 70% 30% 65% 35%;
+  background: var(--energy-color, #fff);
+  box-shadow: 0 0 6px color-mix(in srgb, var(--energy-color, #fff) 75%, white);
+}
+
+
 /* Level 3: dünner, ungefüllter Leuchtring um Wappen im Spielfeld.
    Keine Hintergrundfläche: auch bei Lags bleibt nur die Kontur sichtbar. */
 .match3-tile.is-goal-crest::after {

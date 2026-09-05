@@ -1162,12 +1162,19 @@ export const Match3Feature = (() => {
       releaseCrestsForBrokenStones(stonesToBreak);
       setStatus(stonesToBreak.length > 1 ? `${stonesToBreak.length} Steine gesprengt – Wappen frei!` : "Stein gesprengt – Wappen frei!");
     }
-    renderBoard({ matched: removal });
-    await wait(120);
+    // Spezialeffekte (Bombe/Farbbombe/Urknall) dürfen nach dem Treffer
+    // keinen leeren Zwischenzustand zeigen. Die getroffenen Elemente sind
+    // bereits fertig animiert; deshalb direkt kollabieren und nachfüllen.
+    // Normale 3er-Matches behalten den kurzen klassischen Pop-Nachklang.
+    const isSpecialResolution = Boolean(popOptions.skipInitialRender || popOptions.instantCollapse);
+    if (!isSpecialResolution) {
+      renderBoard({ matched: removal });
+      await wait(120);
+    }
 
     let dropMap = collapseAndRefill();
     let dropDuration = renderBoard({ dropMap });
-    await wait(Math.max(300, dropDuration + 25));
+    await wait(Math.max(isSpecialResolution ? 220 : 300, dropDuration + (isSpecialResolution ? 8 : 25)));
 
     if (await collectBottomCrests()) {
       dropMap = collapseAndRefill();
@@ -1182,6 +1189,13 @@ export const Match3Feature = (() => {
     if (currentLevel.type === "deliver-crests") return deliveredCrests >= Number(currentLevel.crestTarget || 3);
     return score >= TARGET_SCORE;
   }
+
+  function levelIdleStatus() {
+    return currentLevel.type === "deliver-crests"
+      ? "Sprenge die Steine und bringe alle 3 Wappen übers Ziel."
+      : "Tausche zwei benachbarte Bälle.";
+  }
+
 
   function findNextEndgameSpecial() {
     // Normale Bomben zuerst, danach Farbbomben. Nach jeder Auslösung wird
@@ -1327,9 +1341,7 @@ export const Match3Feature = (() => {
       await completeLevelWithFinale();
       // Match Arena ist weiterhin reiner Testbetrieb: bewusst KEIN Speichern.
     } else {
-      setStatus(currentLevel.type === "deliver-crests"
-        ? "Sprenge die Steine und bringe alle 3 Wappen übers Ziel."
-        : "Tausche zwei benachbarte Bälle.");
+      setStatus(levelIdleStatus());
     }
   }
 
@@ -1815,9 +1827,7 @@ export const Match3Feature = (() => {
       await shuffleIfNeeded();
       updateHud(1);
       if (levelCompletedNow()) await completeLevelWithFinale();
-      else setStatus(currentLevel.type === "deliver-crests"
-        ? "Sprenge die Steine und bringe alle 3 Wappen übers Ziel."
-        : "Tausche zwei benachbarte Bälle.");
+      else setStatus(levelIdleStatus());
     }
   }
 
@@ -1858,9 +1868,7 @@ export const Match3Feature = (() => {
       await shuffleIfNeeded();
       updateHud(1);
       if (levelCompletedNow()) await completeLevelWithFinale();
-      else setStatus(currentLevel.type === "deliver-crests"
-        ? "Sprenge die Steine und bringe alle 3 Wappen übers Ziel."
-        : "Tausche zwei benachbarte Bälle.");
+      else setStatus(levelIdleStatus());
     }
   }
 
@@ -1887,9 +1895,7 @@ export const Match3Feature = (() => {
       if (levelCompletedNow()) {
         await completeLevelWithFinale();
       } else {
-        setStatus(currentLevel.type === "deliver-crests"
-          ? "Sprenge die Steine und bringe alle 3 Wappen übers Ziel."
-          : "Tausche zwei benachbarte Bälle.");
+        setStatus(levelIdleStatus());
       }
     }
   }
