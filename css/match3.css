@@ -633,3 +633,27 @@
   width: 31px;
   height: 31px;
 }
+
+
+/* Level 3: Teamwappen pulsieren nur solange sie im Spielfeld liegen.
+   Wartebox und Auffangbehälter bleiben statisch. */
+.match3-tile.is-goal-crest img {
+  animation: match3GoalCrestPulse 1.35s ease-in-out infinite;
+  transform-origin: 50% 50%;
+  will-change: transform, filter;
+}
+
+@keyframes match3GoalCrestPulse {
+  0%, 100% {
+    transform: scale(1.10);
+    filter:
+      drop-shadow(0 3px 4px rgba(0,0,0,.38))
+      drop-shadow(0 0 3px rgba(255,255,255,.25));
+  }
+  50% {
+    transform: scale(1.18);
+    filter:
+      drop-shadow(0 4px 5px rgba(0,0,0,.34))
+      drop-shadow(0 0 8px rgba(255,255,255,.42));
+  }
+}

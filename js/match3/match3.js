@@ -691,7 +691,7 @@ export const Match3Feature = (() => {
 
         return animationFinished(particle.animate(
           particleFrames,
-          { duration: isDetonatingAreaBomb ? 210 : 190, easing: "cubic-bezier(.16,.78,.22,1)", fill: "forwards" }
+          { duration: isDetonatingAreaBomb ? 231 : 190, easing: "cubic-bezier(.16,.78,.22,1)", fill: "forwards" }
         )).finally(() => particle.remove());
       });
 
@@ -708,7 +708,7 @@ export const Match3Feature = (() => {
               { transform: "translate(-50%,-50%) scale(.55)", opacity: .95, offset: .42 },
               { transform: "translate(-50%,-50%) scale(1.42)", opacity: 0, offset: 1 }
             ],
-        { duration: isDetonatingAreaBomb ? 190 : 176, easing: "cubic-bezier(.16,.72,.25,1)", fill: "forwards" }
+        { duration: isDetonatingAreaBomb ? 209 : 176, easing: "cubic-bezier(.16,.72,.25,1)", fill: "forwards" }
       )).finally(() => ring.remove()) : Promise.resolve();
 
       const flashAnimation = flash ? animationFinished(flash.animate(
@@ -725,7 +725,7 @@ export const Match3Feature = (() => {
               { transform: "translate(-50%,-50%) scale(1.38)", opacity: 0, offset: .70 },
               { transform: "translate(-50%,-50%) scale(1.45)", opacity: 0, offset: 1 }
             ],
-        { duration: isDetonatingAreaBomb ? 155 : 150, easing: "ease-out", fill: "forwards" }
+        { duration: isDetonatingAreaBomb ? 171 : 150, easing: "ease-out", fill: "forwards" }
       )).finally(() => flash.remove()) : Promise.resolve();
 
       const popFrames = isDetonatingAreaBomb
@@ -745,7 +745,7 @@ export const Match3Feature = (() => {
 
       const pop = animationFinished(img.animate(
         popFrames,
-        { duration: isDetonatingAreaBomb ? 205 : popDuration, easing: "cubic-bezier(.16,.74,.2,1)", fill: "forwards" }
+        { duration: isDetonatingAreaBomb ? 226 : popDuration, easing: "cubic-bezier(.16,.74,.2,1)", fill: "forwards" }
       ));
 
       await Promise.all([pop, ringAnimation, flashAnimation, ...particleAnimations, ...bombShardAnimations]);
@@ -1325,7 +1325,7 @@ export const Match3Feature = (() => {
       { transform: "scale(2.55) rotate(-1deg)", opacity: .92, filter: "brightness(2.05) saturate(1.1)", offset: .84 },
       { transform: "scale(2.62) rotate(.4deg)", opacity: .28, filter: "brightness(2.7) saturate(.75)", offset: .92 },
       { transform: "scale(2.68) rotate(0deg)", opacity: 0, filter: "brightness(3) saturate(.5)", offset: 1 }
-    ], { duration: 610, easing: "cubic-bezier(.18,.7,.18,1)", fill: "forwards" });
+    ], { duration: 671, easing: "cubic-bezier(.18,.7,.18,1)", fill: "forwards" });
 
     // Kleine Vorfunken beginnen schon in der instabilen Aufblähphase.
     const preSparks = Array.from({ length: 8 }, (_, i) => {
@@ -1343,11 +1343,11 @@ export const Match3Feature = (() => {
         { transform: "translate(-50%,-50%) scale(.2)", opacity: 0, offset: .42 },
         { transform: "translate(-50%,-50%) scale(1.15)", opacity: 1, offset: .55 },
         { transform: `translate(calc(-50% + ${Math.cos(a)*d}px),calc(-50% + ${Math.sin(a)*d}px)) scale(.35)`, opacity: 0, offset: 1 }
-      ], { duration: 500 + (i%3)*35, easing: "cubic-bezier(.15,.72,.2,1)", fill: "forwards" })).finally(() => spark.remove());
+      ], { duration: 550 + (i%3)*38.5, easing: "cubic-bezier(.15,.72,.2,1)", fill: "forwards" })).finally(() => spark.remove());
     });
 
     // Nicht bis zum Ende des Aufblähens warten: ab hier beginnt die Bombe bereits zu zerreißen.
-    await wait(455);
+    await wait(501);
 
     const shardClips = [
       "polygon(0 0,34% 0,42% 34%,12% 45%)", "polygon(34% 0,68% 0,58% 36%,42% 34%)",
@@ -1376,7 +1376,7 @@ export const Match3Feature = (() => {
         { transform: `translate3d(${dx*.28}px,${dy*.28}px,0) scale(2.08) rotate(${rot*.28}deg)`, opacity: 1, filter: "brightness(2.0)", offset: .28 },
         { transform: `translate3d(${dx*.76}px,${dy*.76}px,0) scale(1.05) rotate(${rot*.76}deg)`, opacity: .9, filter: "brightness(1.35)", offset: .68 },
         { transform: `translate3d(${dx*1.12}px,${dy*1.12}px,0) scale(.22) rotate(${rot*1.25}deg)`, opacity: 0, filter: "brightness(1)", offset: 1 }
-      ], { duration: 390 + (i%3)*25, easing: "cubic-bezier(.1,.7,.14,1)", fill: "forwards" });
+      ], { duration: 429 + (i%3)*27.5, easing: "cubic-bezier(.1,.7,.14,1)", fill: "forwards" });
       return animationFinished(burst).finally(() => shard.remove());
     });
 
@@ -1390,7 +1390,7 @@ export const Match3Feature = (() => {
       { transform: "translate(-50%,-50%) scale(.35)", opacity: 0 },
       { transform: "translate(-50%,-50%) scale(1.05)", opacity: 1, offset: .16 },
       { transform: "translate(-50%,-50%) scale(1.65)", opacity: 0 }
-    ], { duration: 245, easing: "ease-out", fill: "forwards" })).finally(() => flash.remove());
+    ], { duration: 270, easing: "ease-out", fill: "forwards" })).finally(() => flash.remove());
 
     const ring = document.createElement("span");
     ring.className = "match3-pop-ring";
@@ -1401,7 +1401,7 @@ export const Match3Feature = (() => {
       { transform: "translate(-50%,-50%) scale(.35)", opacity: .2 },
       { transform: "translate(-50%,-50%) scale(.72)", opacity: 1, offset: .15 },
       { transform: "translate(-50%,-50%) scale(1.8)", opacity: 0 }
-    ], { duration: 330, easing: "cubic-bezier(.12,.72,.18,1)", fill: "forwards" })).finally(() => ring.remove());
+    ], { duration: 363, easing: "cubic-bezier(.12,.72,.18,1)", fill: "forwards" })).finally(() => ring.remove());
 
     await Promise.all([animationFinished(charge), flashAnim, ringAnim, ...shardAnimations, ...preSparks]);
     charge.cancel();
