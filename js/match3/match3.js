@@ -1334,6 +1334,11 @@ export const Match3Feature = (() => {
   }
 
   function specialSwapPlan(from, to, fromPiece, toPiece) {
+    // Farbbombe + Farbbombe = globaler Einzeltreffer über das komplette Spielfeld.
+    if (isColorBomb(fromPiece) && isColorBomb(toPiece)) {
+      return { type: BIG_BANG, colorBombPos: to, secondColorBombPos: from, doubleColorBomb: true };
+    }
+
     // Farbbombe + normale Bombe = globaler Urknall.
     // Die Positionen beziehen sich auf das Brett NACH dem sichtbaren Tausch.
     if (isColorBomb(fromPiece) && isAreaBomb(toPiece)) {
@@ -1565,26 +1570,147 @@ export const Match3Feature = (() => {
     const centerX = tileBox.left - boardBox.left + tileBox.width / 2;
     const centerY = tileBox.top - boardBox.top + tileBox.height / 2;
 
+    // Alle aktuell betroffenen Farbbälle merken, bevor irgendetwas entfernt wird.
+    const targets = [];
+    if (color && !bigBang) {
+      for (let row = 0; row < ROWS; row++) {
+        for (let col = 0; col < COLS; col++) {
+          if (row === position.row && col === position.col) continue;
+          if (baseColor(board[row]?.[col]) !== color) continue;
+          const targetTile = tileAt({ row, col });
+          if (!targetTile) continue;
+          const box = targetTile.getBoundingClientRect();
+          targets.push({
+            row, col, tile: targetTile,
+            x: box.left - boardBox.left + box.width / 2,
+            y: box.top - boardBox.top + box.height / 2,
+            size: Math.max(box.width, box.height)
+          });
+        }
+      }
+    }
+
     const ring = document.createElement("span");
     ring.className = bigBang ? "match3-colorbomb-ring is-bigbang" : "match3-colorbomb-ring";
     ring.style.left = `${centerX}px`;
     ring.style.top = `${centerY}px`;
     dom.board.appendChild(ring);
 
+    // Kurzes Aufladen: Farbbombe zieht sich minimal zusammen und wird dann extrem hell.
     const pulse = animationFinished(img.animate([
       { transform: "scale(1)", filter: "brightness(1) saturate(1)", opacity: 1, offset: 0 },
-      { transform: `scale(${bigBang ? 1.32 : 1.18})`, filter: "brightness(1.65) saturate(1.35)", opacity: 1, offset: .45 },
-      { transform: `scale(${bigBang ? 1.48 : 1.28})`, filter: "brightness(2.6) saturate(.7)", opacity: .2, offset: .82 },
-      { transform: `scale(${bigBang ? 1.55 : 1.34})`, filter: "brightness(3)", opacity: 0, offset: 1 }
-    ], { duration: bigBang ? 520 : 390, easing: "cubic-bezier(.18,.72,.18,1)", fill: "forwards" }));
+      { transform: "scale(.94)", filter: "brightness(1.2) saturate(1.2)", opacity: 1, offset: .18 },
+      { transform: `scale(${bigBang ? 1.34 : 1.22})`, filter: "brightness(1.9) saturate(1.45)", opacity: 1, offset: .48 },
+      { transform: `scale(${bigBang ? 1.5 : 1.32})`, filter: "brightness(3.1) saturate(.75)", opacity: .32, offset: .82 },
+      { transform: `scale(${bigBang ? 1.58 : 1.38})`, filter: "brightness(3.5)", opacity: 0, offset: 1 }
+    ], { duration: bigBang ? 540 : 520, easing: "cubic-bezier(.18,.72,.18,1)", fill: "forwards" }));
 
     const ringAnim = animationFinished(ring.animate([
-      { transform: "translate(-50%,-50%) scale(.25) rotate(0deg)", opacity: 0, offset: 0 },
-      { transform: "translate(-50%,-50%) scale(.62) rotate(45deg)", opacity: 1, offset: .28 },
-      { transform: `translate(-50%,-50%) scale(${bigBang ? 2.7 : 1.9}) rotate(155deg)`, opacity: 0, offset: 1 }
-    ], { duration: bigBang ? 600 : 440, easing: "cubic-bezier(.12,.75,.2,1)", fill: "forwards" })).finally(() => ring.remove());
+      { transform: "translate(-50%,-50%) scale(.18) rotate(0deg)", opacity: 0, offset: 0 },
+      { transform: "translate(-50%,-50%) scale(.58) rotate(45deg)", opacity: 1, offset: .26 },
+      { transform: `translate(-50%,-50%) scale(${bigBang ? 2.8 : 2.05}) rotate(165deg)`, opacity: 0, offset: 1 }
+    ], { duration: bigBang ? 620 : 560, easing: "cubic-bezier(.12,.75,.2,1)", fill: "forwards" })).finally(() => ring.remove());
 
-    await Promise.all([pulse, ringAnim]);
+    // Referenzstil: elektrische Lichtbahnen schießen von der Farbbombe zu jedem Ziel.
+    // Die Ziele zünden leicht versetzt, damit die Sequenz lebendig statt statisch wirkt.
+    const beamAnimations = targets.map((target, index) => {
+      const dx = target.x - centerX;
+      const dy = target.y - centerY;
+      const length = Math.hypot(dx, dy);
+      const angle = Math.atan2(dy, dx) * 180 / Math.PI;
+      const delay = 165 + (index % 8) * 34 + Math.floor(index / 8) * 18;
+
+      const beamWrap = document.createElement("span");
+      Object.assign(beamWrap.style, {
+        position: "absolute",
+        left: `${centerX}px`, top: `${centerY}px`,
+        width: `${length}px`, height: "9px",
+        transformOrigin: "0 50%",
+        transform: `translateY(-50%) rotate(${angle}deg)`,
+        pointerEvents: "none", zIndex: "96",
+        overflow: "visible"
+      });
+
+      const beam = document.createElement("span");
+      Object.assign(beam.style, {
+        position: "absolute", left: "0", top: "50%",
+        width: "100%", height: "3px",
+        transformOrigin: "0 50%",
+        transform: "translateY(-50%) scaleX(.02)",
+        borderRadius: "999px",
+        background: "linear-gradient(90deg, rgba(255,255,255,1), rgba(130,235,255,.98) 45%, rgba(255,255,255,.95))",
+        boxShadow: "0 0 5px rgba(255,255,255,.95), 0 0 10px rgba(75,215,255,.9), 0 0 16px rgba(139,102,255,.65)",
+        opacity: "0"
+      });
+      beamWrap.appendChild(beam);
+
+      // Zweite dünne, leicht versetzte Bahn erzeugt den elektrischen Flattereffekt.
+      const beam2 = document.createElement("span");
+      Object.assign(beam2.style, {
+        position: "absolute", left: "0", top: "50%",
+        width: "100%", height: "2px",
+        transformOrigin: "0 50%",
+        transform: "translateY(-50%) scaleX(.02) rotate(.7deg)",
+        borderRadius: "999px",
+        background: "rgba(255,255,255,.92)",
+        boxShadow: "0 0 7px rgba(170,245,255,.95)",
+        opacity: "0"
+      });
+      beamWrap.appendChild(beam2);
+      dom.board.appendChild(beamWrap);
+
+      const targetFlash = document.createElement("span");
+      Object.assign(targetFlash.style, {
+        position: "absolute", left: `${target.x}px`, top: `${target.y}px`,
+        width: `${target.size * .68}px`, height: `${target.size * .68}px`,
+        borderRadius: "50%", transform: "translate(-50%,-50%) scale(.1)",
+        background: "radial-gradient(circle, #fff 0 18%, rgba(150,240,255,.98) 28%, rgba(97,187,255,.6) 52%, rgba(133,86,255,0) 76%)",
+        boxShadow: "0 0 10px rgba(255,255,255,.95), 0 0 20px rgba(87,221,255,.82)",
+        pointerEvents: "none", zIndex: "98", opacity: "0"
+      });
+      dom.board.appendChild(targetFlash);
+
+      const targetImg = target.tile.querySelector("img");
+      const beamAnim = beam.animate([
+        { transform: "translateY(-50%) scaleX(.02)", opacity: 0, offset: 0 },
+        { transform: "translateY(-50%) scaleX(.25)", opacity: 1, offset: .22 },
+        { transform: "translateY(-50%) scaleX(1)", opacity: 1, offset: .58 },
+        { transform: "translateY(-50%) scaleX(1)", opacity: 0, offset: 1 }
+      ], { duration: 265, delay, easing: "cubic-bezier(.12,.78,.18,1)", fill: "forwards" });
+
+      const beam2Anim = beam2.animate([
+        { transform: "translateY(-50%) scaleX(.02) rotate(-1deg)", opacity: 0, offset: 0 },
+        { transform: "translateY(-50%) scaleX(.55) rotate(1.2deg)", opacity: .95, offset: .35 },
+        { transform: "translateY(-50%) scaleX(1) rotate(-.8deg)", opacity: .9, offset: .68 },
+        { transform: "translateY(-50%) scaleX(1) rotate(.5deg)", opacity: 0, offset: 1 }
+      ], { duration: 290, delay: delay + 16, easing: "ease-out", fill: "forwards" });
+
+      const flashAnim = targetFlash.animate([
+        { transform: "translate(-50%,-50%) scale(.1)", opacity: 0, offset: 0 },
+        { transform: "translate(-50%,-50%) scale(.55)", opacity: 1, offset: .28 },
+        { transform: "translate(-50%,-50%) scale(1.45)", opacity: .95, offset: .62 },
+        { transform: "translate(-50%,-50%) scale(1.85)", opacity: 0, offset: 1 }
+      ], { duration: 300, delay: delay + 92, easing: "cubic-bezier(.12,.72,.2,1)", fill: "forwards" });
+
+      let targetAnim = Promise.resolve();
+      if (targetImg) {
+        targetAnim = animationFinished(targetImg.animate([
+          { transform: "scale(1)", filter: "brightness(1)", opacity: 1, offset: 0 },
+          { transform: "scale(1.12)", filter: "brightness(2.35) saturate(.75)", opacity: 1, offset: .42 },
+          { transform: "scale(.9)", filter: "brightness(3)", opacity: .34, offset: .78 },
+          { transform: "scale(.72)", filter: "brightness(3.2)", opacity: 0, offset: 1 }
+        ], { duration: 270, delay: delay + 86, easing: "cubic-bezier(.18,.72,.2,1)", fill: "forwards" }));
+      }
+
+      return Promise.all([
+        animationFinished(beamAnim), animationFinished(beam2Anim), animationFinished(flashAnim), targetAnim
+      ]).finally(() => {
+        beamWrap.remove();
+        targetFlash.remove();
+      });
+    });
+
+    await Promise.all([pulse, ringAnim, ...beamAnimations]);
     img.style.opacity = "0";
     if (color) tile.dataset.chainColor = color;
   }
@@ -1696,11 +1822,21 @@ export const Match3Feature = (() => {
   }
 
   async function resolveBigBangSwap(plan) {
-    setStatus("URKNALL – das ganze Spielfeld wird getroffen!");
-    await Promise.all([
-      animateAreaBombCharge(plan.areaBombPos),
-      animateColorBombChain(plan.colorBombPos, null, { bigBang: true })
-    ]);
+    setStatus(plan.doubleColorBomb
+      ? "DOPPEL-FARBBOMBE – das ganze Spielfeld wird getroffen!"
+      : "URKNALL – das ganze Spielfeld wird getroffen!");
+
+    if (plan.doubleColorBomb) {
+      await Promise.all([
+        animateColorBombChain(plan.colorBombPos, null, { bigBang: true }),
+        animateColorBombChain(plan.secondColorBombPos, null, { bigBang: true })
+      ]);
+    } else {
+      await Promise.all([
+        animateAreaBombCharge(plan.areaBombPos),
+        animateColorBombChain(plan.colorBombPos, null, { bigBang: true })
+      ]);
+    }
 
     const removalMap = new Map();
     for (let row = 0; row < ROWS; row++) {
@@ -1741,7 +1877,8 @@ export const Match3Feature = (() => {
 
     const removal = specialSwapRemoval(plan);
     setStatus("Farbbombe!");
-    const dropMap = await removeAndDrop(removal, 1, []);
+    await animateColorBombChain(plan.specialPos, plan.color);
+    const dropMap = await removeAndDrop(removal, 1, [], { stagger: 0, skipInitialRender: true });
     const matches = findMatches(board);
     if (matches.length) await resolveBoard(matches, null, dropMap);
     else {
