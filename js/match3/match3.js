@@ -66,9 +66,7 @@ export const Match3Feature = (() => {
   const dom = {};
 
   function playMatch3Sound(name) {
-    try {
-      playEffect(name);
-    } catch (error) {
+    try { playEffect(name); } catch (error) {
       console.warn("[Match3] Sound konnte nicht abgespielt werden:", name, error);
     }
   }
@@ -1852,8 +1850,6 @@ export const Match3Feature = (() => {
     setStatus(plan.doubleColorBomb
       ? "DOPPEL-FARBBOMBE – das ganze Spielfeld wird getroffen!"
       : "URKNALL – das ganze Spielfeld wird getroffen!");
-
-    // Jede Kombination mit mindestens einer Farbbombe nutzt den Blitz-Sound.
     playMatch3Sound("thunder");
 
     if (plan.doubleColorBomb) {
@@ -1998,7 +1994,59 @@ export const Match3Feature = (() => {
     renderBoard();
   }
 
-\n  function setTutorialStep(step, text, caption) {\n    if (!dom.level1Tutorial) return;\n    dom.level1Tutorial.dataset.step = String(step);\n    if (dom.tutorialText) dom.tutorialText.textContent = text;\n    if (dom.tutorialCaption) dom.tutorialCaption.textContent = caption;\n    const dots = dom.level1Tutorial.querySelectorAll(".match3-tutorial-dot");\n    dots.forEach((dot, index) => dot.classList.toggle("is-active", index === step - 1));\n  }\n\n  async function playLevel1Tutorial() {\n    if (!dom.level1Tutorial || currentLevel.id !== 1) return;\n    const runId = ++level1TutorialRunId;\n    busy = true;\n    renderBoard();\n    dom.level1Tutorial.classList.remove("hidden", "is-leaving");\n    dom.level1Tutorial.setAttribute("aria-hidden", "false");\n    setTutorialStep(1, "Tausche zwei benachbarte Bälle.", "Tausche den grünen und roten Ball.");\n    await wait(900);\n    if (runId !== level1TutorialRunId || currentLevel.id !== 1) return;\n    dom.level1Tutorial.classList.add("is-swapping");\n    await wait(950);\n    if (runId !== level1TutorialRunId || currentLevel.id !== 1) return;\n    dom.level1Tutorial.classList.remove("is-swapping");\n    dom.level1Tutorial.classList.add("is-matched");\n    setTutorialStep(2, "Drei gleiche Bälle in einer Reihe bilden ein Match.", "3 gleiche Bälle werden entfernt.");\n    await wait(1150);\n    if (runId !== level1TutorialRunId || currentLevel.id !== 1) return;\n    dom.level1Tutorial.classList.remove("is-matched");\n    dom.level1Tutorial.classList.add("is-dropping");\n    setTutorialStep(3, "Die Bälle verschwinden und neue rutschen nach.", "Jetzt bist du dran!");\n    await wait(1100);\n    if (runId !== level1TutorialRunId || currentLevel.id !== 1) return;\n    dom.level1Tutorial.classList.add("is-leaving");\n    await wait(420);\n    if (runId !== level1TutorialRunId || currentLevel.id !== 1) return;\n    dom.level1Tutorial.classList.add("hidden");\n    dom.level1Tutorial.classList.remove("is-leaving", "is-dropping", "is-matched", "is-swapping");\n    dom.level1Tutorial.setAttribute("aria-hidden", "true");\n    busy = false;\n    setStatus("Jetzt bist du dran – bilde 3 gleiche Bälle.");\n    renderBoard();\n  }\n\n  function startLevel(config) {
+
+  function setTutorialStep(step, text, caption) {
+    if (!dom.level1Tutorial) return;
+    dom.level1Tutorial.dataset.step = String(step);
+    if (dom.tutorialText) dom.tutorialText.textContent = text;
+    if (dom.tutorialCaption) dom.tutorialCaption.textContent = caption;
+    dom.level1Tutorial.querySelectorAll(".match3-tutorial-dot").forEach((dot, index) => {
+      dot.classList.toggle("is-active", index === step - 1);
+    });
+  }
+
+  async function playLevel1Tutorial() {
+    if (!dom.level1Tutorial || currentLevel.id !== 1) return;
+    const runId = ++level1TutorialRunId;
+    busy = true;
+    selected = null;
+    renderBoard();
+
+    dom.level1Tutorial.classList.remove("hidden", "is-leaving", "is-swapping", "is-matched", "is-dropping");
+    dom.level1Tutorial.setAttribute("aria-hidden", "false");
+    setTutorialStep(1, "Tausche zwei benachbarte Bälle.", "Tausche den grünen und roten Ball.");
+
+    await wait(900);
+    if (runId !== level1TutorialRunId || currentLevel.id !== 1) return;
+    dom.level1Tutorial.classList.add("is-swapping");
+
+    await wait(900);
+    if (runId !== level1TutorialRunId || currentLevel.id !== 1) return;
+    dom.level1Tutorial.classList.remove("is-swapping");
+    dom.level1Tutorial.classList.add("is-matched");
+    setTutorialStep(2, "Drei gleiche Bälle in einer Reihe bilden ein Match.", "3 gleiche Bälle werden entfernt.");
+
+    await wait(1050);
+    if (runId !== level1TutorialRunId || currentLevel.id !== 1) return;
+    dom.level1Tutorial.classList.remove("is-matched");
+    dom.level1Tutorial.classList.add("is-dropping");
+    setTutorialStep(3, "Die Bälle verschwinden und neue rutschen nach.", "Jetzt bist du dran!");
+
+    await wait(1000);
+    if (runId !== level1TutorialRunId || currentLevel.id !== 1) return;
+    dom.level1Tutorial.classList.add("is-leaving");
+    await wait(360);
+    if (runId !== level1TutorialRunId || currentLevel.id !== 1) return;
+
+    dom.level1Tutorial.classList.add("hidden");
+    dom.level1Tutorial.classList.remove("is-leaving", "is-swapping", "is-matched", "is-dropping");
+    dom.level1Tutorial.setAttribute("aria-hidden", "true");
+    busy = false;
+    setStatus("Jetzt bist du dran – bilde 3 gleiche Bälle.");
+    renderBoard();
+  }
+
+  function startLevel(config) {
     if (!hasAccess()) {
       showScreen("home");
       return;
@@ -2015,19 +2063,22 @@ export const Match3Feature = (() => {
     endgameDraining = false;
     selected = null;
     dom.victory?.classList.add("hidden");
+    level1TutorialRunId++;
+    if (dom.level1Tutorial) {
+      dom.level1Tutorial.classList.add("hidden");
+      dom.level1Tutorial.classList.remove("is-leaving", "is-swapping", "is-matched", "is-dropping");
+      dom.level1Tutorial.setAttribute("aria-hidden", "true");
+    }
     if (dom.playTitle) dom.playTitle.textContent = `Level ${currentLevel.id}`;
     if (dom.board) dom.board.setAttribute("aria-label", `Match Arena Spielfeld ${ROWS} mal ${COLS}`);
     updateHud(1);
     setStatus(currentLevel.type === "deliver-crests" ? "Sprenge die 3 Steine und bringe alle Wappen übers Ziel." : "Tausche zwei benachbarte Bälle.");
-    if (dom.level1Tutorial) {
-      dom.level1Tutorial.classList.add("hidden");
-      dom.level1Tutorial.classList.remove("is-leaving", "is-dropping", "is-matched", "is-swapping");
-      dom.level1Tutorial.setAttribute("aria-hidden", "true");
-    }
     renderBoard();
     showScreen("match3Play");
     if (currentLevel.id === 1) {
-      setTimeout(() => { if (currentLevel.id === 1 && !finished) playLevel1Tutorial(); }, 120);
+      setTimeout(() => {
+        if (currentLevel.id === 1 && !finished) playLevel1Tutorial();
+      }, 120);
     }
   }
 
@@ -2046,7 +2097,10 @@ export const Match3Feature = (() => {
     dom.level3?.addEventListener("click", startLevel3);
     dom.playBack?.addEventListener("click", () => {
       level1TutorialRunId++;
-      if (dom.level1Tutorial) { dom.level1Tutorial.classList.add("hidden"); dom.level1Tutorial.setAttribute("aria-hidden", "true"); }
+      if (dom.level1Tutorial) {
+        dom.level1Tutorial.classList.add("hidden");
+        dom.level1Tutorial.setAttribute("aria-hidden", "true");
+      }
       busy = false;
       showScreen("match3Map");
     });
