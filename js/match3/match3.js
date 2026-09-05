@@ -9,6 +9,16 @@ const LEVEL_3 = Object.freeze({
   crestTarget: 3,
   stoneColumns: [1, 3, 5]
 });
+const LEVEL_4 = Object.freeze({
+  id: 4,
+  rows: 7,
+  cols: 5,
+  type: "transport-crests",
+  crestTarget: 5,
+  stoneColumns: [1, 3],
+  sourceColumns: [1, 3],
+  catcherColumn: 2
+});
 let currentLevel = LEVEL_1;
 let ROWS = LEVEL_1.rows;
 let COLS = LEVEL_1.cols;
@@ -53,6 +63,8 @@ export const Match3Feature = (() => {
   let score = 0;
   let collectedBlue = 0;
   let deliveredCrests = 0;
+  let spawnedCrests = 0;
+  let nextTransportSourceIndex = 0;
   const releasedCrestColumns = new Set();
   const deliveredCrestColumns = new Set();
   let busy = false;
@@ -77,6 +89,7 @@ export const Match3Feature = (() => {
     dom.level1 = document.getElementById("match3Level1Button");
     dom.level2 = document.getElementById("match3Level2Button");
     dom.level3 = document.getElementById("match3Level3Button");
+    dom.level4 = document.getElementById("match3Level4Button");
     dom.playBack = document.getElementById("match3PlayBackButton");
     dom.board = document.getElementById("match3Board");
     dom.score = document.getElementById("match3Score");
@@ -95,6 +108,14 @@ export const Match3Feature = (() => {
 
   function hasAccess() {
     return Number(getProgress()?.unlockedLevel || 1) >= ACCESS_LEVEL;
+  }
+
+  function isCrestLevel() {
+    return currentLevel.type === "deliver-crests" || currentLevel.type === "transport-crests";
+  }
+
+  function isTransportLevel() {
+    return currentLevel.type === "transport-crests";
   }
 
   function refreshAccess() {
@@ -403,7 +424,7 @@ export const Match3Feature = (() => {
   }
 
   function applyLevel3StartLayout(candidate) {
-    if (currentLevel.type !== "deliver-crests") return candidate;
+    if (!isCrestLevel()) return candidate;
     for (const col of currentLevel.stoneColumns || []) {
       if (candidate[0]?.[col] !== undefined) candidate[0][col] = STONE;
     }
@@ -453,7 +474,7 @@ export const Match3Feature = (() => {
         dom.target.innerHTML = `<img src="${imageFor(currentLevel.collectKey)}" alt="Blauer Ball"><span>${remaining}</span>`;
       }
       if (dom.goalHud) dom.goalHud.textContent = `${remaining} blaue Bälle`;
-    } else if (currentLevel.type === "deliver-crests") {
+    } else if (isCrestLevel()) {
       const target = Number(currentLevel.crestTarget || 3);
       if (dom.target) {
         dom.target.className = "match3-crest-target";
@@ -767,30 +788,47 @@ export const Match3Feature = (() => {
     await Promise.all(animations);
   }
 
-  function renderLevel3Decor() {
-    if (!dom.board || currentLevel.type !== "deliver-crests") return;
-    for (const col of currentLevel.stoneColumns || []) {
+  function renderCrestLevelDecor() {
+    if (!dom.board || !isCrestLevel()) return;
+
+    const sourceCols = currentLevel.sourceColumns || currentLevel.stoneColumns || [];
+
+    for (const col of sourceCols) {
       const holder = document.createElement("div");
       holder.className = "match3-crest-holder";
       holder.style.setProperty("--slot-col", String(col));
+
       const stoneStillThere = isStone(board[0]?.[col]);
       const released = releasedCrestColumns.has(col);
       const delivered = deliveredCrestColumns.has(col);
+
       holder.classList.toggle("is-locked", stoneStillThere);
       holder.classList.toggle("is-released", released && !delivered);
       holder.classList.toggle("is-delivered", delivered);
+
       if (stoneStillThere) {
         const img = document.createElement("img");
         img.src = GOAL_CREST_IMAGE;
         img.alt = "";
         holder.appendChild(img);
+
         const lock = document.createElement("span");
         lock.className = "match3-crest-holder-lock";
         lock.textContent = "▼";
         holder.appendChild(lock);
-      } else if (delivered) {
+      } else if (!isTransportLevel() && delivered) {
         holder.innerHTML = '<span class="match3-holder-check">✓</span>';
+      } else if (isTransportLevel()) {
+        holder.classList.add("is-transport-source");
+        const remaining = Math.max(0, Number(currentLevel.crestTarget || 5) - spawnedCrests);
+        if (remaining > 0 && !isGoalCrest(board[0]?.[col])) {
+          const ready = document.createElement("span");
+          ready.className = "match3-transport-ready";
+          ready.textContent = "•";
+          holder.appendChild(ready);
+        }
       }
+
       dom.board.appendChild(holder);
     }
 
@@ -798,16 +836,17 @@ export const Match3Feature = (() => {
     finish.className = "match3-finish-line";
     finish.setAttribute("aria-hidden", "true");
 
-    // Ziellinie in den drei Wappen-Spalten exakt um eine Zellbreite öffnen.
-    // stoneColumns sind 0-basiert: [1,3,5] = sichtbare Spalten 2,4,6.
-    const openCols = [...(currentLevel.stoneColumns || [])].sort((a, b) => a - b);
+    const openCols = isTransportLevel()
+      ? [Number(currentLevel.catcherColumn ?? 2)]
+      : [...(currentLevel.stoneColumns || [])].sort((a, b) => a - b);
+
     let segmentStart = 0;
     for (const openCol of openCols) {
       if (openCol > segmentStart) {
         const segment = document.createElement("span");
         segment.className = "match3-finish-segment";
         segment.style.left = `calc(${segmentStart} * (var(--match3-cell) + var(--match3-gap)))`;
-        segment.style.width = `calc(${openCol - segmentStart} * var(--match3-cell) + ${openCol - segmentStart} * var(--match3-gap))`;
+        segment.style.width = `calc(${openCol - segmentStart} * var(--match3-cell) + ${Math.max(0, openCol - segmentStart - 1)} * var(--match3-gap))`;
         finish.appendChild(segment);
       }
       segmentStart = openCol + 1;
@@ -821,23 +860,54 @@ export const Match3Feature = (() => {
     }
     dom.board.appendChild(finish);
 
-    for (const col of currentLevel.stoneColumns || []) {
+    if (isTransportLevel()) {
       const catcher = document.createElement("div");
-      catcher.className = "match3-crest-catcher";
-      catcher.style.setProperty("--slot-col", String(col));
-      catcher.classList.toggle("is-filled", deliveredCrestColumns.has(col));
-      if (deliveredCrestColumns.has(col)) {
-        const img = document.createElement("img");
-        img.src = GOAL_CREST_IMAGE;
-        img.alt = "";
-        catcher.appendChild(img);
-      }
+      catcher.className = "match3-crest-catcher match3-transport-catcher";
+      catcher.style.setProperty("--slot-col", String(currentLevel.catcherColumn ?? 2));
       dom.board.appendChild(catcher);
+
+      const system = document.createElement("div");
+      system.className = "match3-transport-system";
+      system.setAttribute("aria-hidden", "true");
+      system.innerHTML = `
+        <div class="match3-conveyor-horizontal">
+          <span></span><span></span><span></span><span></span><span></span>
+        </div>
+        <div class="match3-conveyor-corner"></div>
+        <div class="match3-conveyor-vertical">
+          <span></span><span></span><span></span><span></span><span></span>
+        </div>
+        <div class="match3-transport-tube">
+          <div class="match3-transport-tube-mouth"></div>
+          <div class="match3-transport-tube-glass">
+            ${Array.from({ length: Number(currentLevel.crestTarget || 5) }, (_, i) =>
+              `<i class="${i < deliveredCrests ? "is-filled" : ""}"></i>`).join("")}
+          </div>
+          <strong>${deliveredCrests}/${Number(currentLevel.crestTarget || 5)}</strong>
+        </div>
+      `;
+      dom.board.appendChild(system);
+    } else {
+      for (const col of currentLevel.stoneColumns || []) {
+        const catcher = document.createElement("div");
+        catcher.className = "match3-crest-catcher";
+        catcher.style.setProperty("--slot-col", String(col));
+        catcher.classList.toggle("is-filled", deliveredCrestColumns.has(col));
+        if (deliveredCrestColumns.has(col)) {
+          const img = document.createElement("img");
+          img.src = GOAL_CREST_IMAGE;
+          img.alt = "";
+          catcher.appendChild(img);
+        }
+        dom.board.appendChild(catcher);
+      }
     }
 
     const counter = document.createElement("div");
     counter.className = "match3-delivery-counter";
-    counter.textContent = `${deliveredCrests}/${Number(currentLevel.crestTarget || 3)} Wappen im Ziel`;
+    counter.textContent = isTransportLevel()
+      ? `${deliveredCrests}/${Number(currentLevel.crestTarget || 5)} Wappen in der Röhre`
+      : `${deliveredCrests}/${Number(currentLevel.crestTarget || 3)} Wappen im Ziel`;
     dom.board.appendChild(counter);
   }
 
@@ -848,7 +918,8 @@ export const Match3Feature = (() => {
     const createdSet = new Set(createdSpecial.map((p) => `${p.row}:${p.col}`));
 
     dom.board.classList.toggle("is-busy", busy);
-    dom.board.classList.toggle("is-level-3", currentLevel.type === "deliver-crests");
+    dom.board.classList.toggle("is-level-3", isCrestLevel());
+    dom.board.classList.toggle("is-level-4", isTransportLevel());
     dom.board.style.setProperty("--match3-cols", String(COLS));
     dom.board.style.setProperty("--match3-rows", String(ROWS));
     dom.board.innerHTML = "";
@@ -947,7 +1018,7 @@ export const Match3Feature = (() => {
       }
     }
 
-    renderLevel3Decor();
+    renderCrestLevelDecor();
     return startDropAnimations(dropMap);
   }
 
@@ -983,7 +1054,7 @@ export const Match3Feature = (() => {
         return;
       }
     }
-    if (currentLevel.type === "deliver-crests") {
+    if (isCrestLevel()) {
       for (const pos of movablePositions) board[pos.row][pos.col] = randomBall();
     } else {
       board = createPlayableBoard();
@@ -1032,7 +1103,7 @@ export const Match3Feature = (() => {
   }
 
   function breakableStonesFromRemoval(removal) {
-    if (currentLevel.type !== "deliver-crests" || !removal?.length) return [];
+    if (!isCrestLevel() || !removal?.length) return [];
     const removed = new Set(removal.map(cellId));
     const stones = [];
     for (let row = 0; row < ROWS; row++) {
@@ -1109,9 +1180,117 @@ export const Match3Feature = (() => {
     }
   }
 
+  function pickTransportSourceColumn() {
+    const cols = currentLevel.sourceColumns || currentLevel.stoneColumns || [];
+    if (!cols.length) return -1;
+
+    for (let offset = 0; offset < cols.length; offset++) {
+      const index = (nextTransportSourceIndex + offset) % cols.length;
+      const col = cols[index];
+      if (!isStone(board[0]?.[col])) {
+        nextTransportSourceIndex = (index + 1) % cols.length;
+        return col;
+      }
+    }
+    return -1;
+  }
+
+  function spawnNextTransportCrest() {
+    if (!isTransportLevel()) return false;
+    const target = Number(currentLevel.crestTarget || 5);
+    if (spawnedCrests >= target) return false;
+
+    const col = pickTransportSourceColumn();
+    if (col < 0) return false;
+
+    board[0][col] = makeGoalCrest(col);
+    releasedCrestColumns.add(col);
+    spawnedCrests++;
+    renderBoard();
+    return true;
+  }
+
+  async function animateTransportCrest(pos) {
+    const tile = tileAt(pos);
+    const img = tile?.querySelector("img");
+    if (!tile || !img || !dom.board) return;
+
+    const tileBox = tile.getBoundingClientRect();
+    const boardBox = dom.board.getBoundingClientRect();
+    const catcher = dom.board.querySelector(".match3-transport-catcher")?.getBoundingClientRect();
+    const corner = dom.board.querySelector(".match3-conveyor-corner")?.getBoundingClientRect();
+    const mouth = dom.board.querySelector(".match3-transport-tube-mouth")?.getBoundingClientRect();
+
+    const clone = img.cloneNode(true);
+    clone.className = "match3-transport-flying-crest";
+    Object.assign(clone.style, {
+      position: "fixed",
+      left: `${tileBox.left}px`,
+      top: `${tileBox.top}px`,
+      width: `${tileBox.width}px`,
+      height: `${tileBox.height}px`,
+      zIndex: "9999",
+      pointerEvents: "none",
+      margin: "0"
+    });
+    document.body.appendChild(clone);
+
+    const center = (rect) => ({
+      x: rect ? rect.left + rect.width / 2 - tileBox.width / 2 : tileBox.left,
+      y: rect ? rect.top + rect.height / 2 - tileBox.height / 2 : tileBox.top
+    });
+    const start = { x: tileBox.left, y: tileBox.top };
+    const p1 = center(catcher);
+    const p2 = center(corner);
+    const p3 = center(mouth);
+
+    const keyframes = [
+      { transform: "translate3d(0,0,0) scale(1)", offset: 0 },
+      { transform: `translate3d(${p1.x-start.x}px,${p1.y-start.y}px,0) scale(.92)`, offset: .18 },
+      { transform: `translate3d(${p2.x-start.x}px,${p2.y-start.y}px,0) scale(.9) rotate(6deg)`, offset: .52 },
+      { transform: `translate3d(${p3.x-start.x}px,${p3.y-start.y}px,0) scale(.82) rotate(-8deg)`, offset: .86 },
+      { transform: `translate3d(${p3.x-start.x-8}px,${p3.y-start.y+18}px,0) scale(.48) rotate(28deg)`, opacity: 0, offset: 1 }
+    ];
+
+    const anim = clone.animate(keyframes, {
+      duration: 1650,
+      easing: "cubic-bezier(.2,.68,.22,1)",
+      fill: "forwards"
+    });
+
+    await wait(330);
+    spawnNextTransportCrest();
+    await animationFinished(anim);
+    clone.remove();
+  }
+
   async function collectBottomCrests() {
-    if (currentLevel.type !== "deliver-crests" || !dom.board) return false;
+    if (!isCrestLevel() || !dom.board) return false;
+
     const bottom = ROWS - 1;
+
+    if (isTransportLevel()) {
+      const col = Number(currentLevel.catcherColumn ?? 2);
+      if (!isGoalCrest(board[bottom]?.[col])) return false;
+
+      const pos = { row: bottom, col, piece: board[bottom][col] };
+
+      // Flugobjekt wird vor dem Re-Render erzeugt, damit die Bewegung
+      // unabhängig vom Nachrutschen flüssig weiterläuft.
+      const transportPromise = animateTransportCrest(pos);
+
+      board[bottom][col] = null;
+      const localDropMap = collapseAndRefill();
+      renderBoard({ dropMap: localDropMap });
+
+      await transportPromise;
+      deliveredCrests++;
+      updateHud(1);
+      renderBoard();
+      await wait(110);
+      return false;
+    }
+
     const arrivals = [];
     for (let col = 0; col < COLS; col++) {
       if (isGoalCrest(board[bottom]?.[col])) arrivals.push({ row: bottom, col, piece: board[bottom][col] });
@@ -1197,14 +1376,14 @@ export const Match3Feature = (() => {
 
   function levelCompletedNow() {
     if (currentLevel.type === "collect") return collectedBlue >= Number(currentLevel.collectTarget || 0);
-    if (currentLevel.type === "deliver-crests") return deliveredCrests >= Number(currentLevel.crestTarget || 3);
+    if (isCrestLevel()) return deliveredCrests >= Number(currentLevel.crestTarget || 3);
     return score >= TARGET_SCORE;
   }
 
   function levelIdleStatus() {
-    return currentLevel.type === "deliver-crests"
-      ? "Sprenge die Steine und bringe alle 3 Wappen übers Ziel."
-      : "Tausche zwei benachbarte Bälle.";
+    if (currentLevel.type === "deliver-crests") return "Sprenge die Steine und bringe alle 3 Wappen übers Ziel.";
+    if (currentLevel.type === "transport-crests") return "Bringe 5 Wappen über den mittleren Ausgang auf das Förderband.";
+    return "Tausche zwei benachbarte Bälle.";
   }
 
 
@@ -1287,14 +1466,18 @@ export const Match3Feature = (() => {
         ? "20 blaue Bälle gesammelt!"
         : currentLevel.type === "deliver-crests"
           ? "Alle 3 Wappen im Ziel!"
-          : `${TARGET_SCORE.toLocaleString("de-DE")} Punkte erreicht!`;
+          : currentLevel.type === "transport-crests"
+            ? "5 Wappen in der Röhre!"
+            : `${TARGET_SCORE.toLocaleString("de-DE")} Punkte erreicht!`;
     }
     if (dom.victoryText) {
       dom.victoryText.textContent = currentLevel.type === "collect"
         ? `Level 2 geschafft. Deine Punkte: ${score.toLocaleString("de-DE")}.`
         : currentLevel.type === "deliver-crests"
           ? `Level 3 geschafft. Alle drei Stuttgarter-Kickers-Wappen wurden sicher über die Ziellinie gebracht.`
-          : "Die Nachrück- und Kaskadenmechanik wurde erfolgreich durchgespielt.";
+          : currentLevel.type === "transport-crests"
+            ? `Level 4 geschafft. Fünf Wappen wurden über das Förderband in die Sammelröhre transportiert.`
+            : "Die Nachrück- und Kaskadenmechanik wurde erfolgreich durchgespielt.";
     }
     dom.victory?.classList.remove("hidden");
     renderBoard();
@@ -2056,6 +2239,8 @@ export const Match3Feature = (() => {
     score = 0;
     collectedBlue = 0;
     deliveredCrests = 0;
+    spawnedCrests = isTransportLevel() ? Math.min(2, Number(currentLevel.crestTarget || 5)) : 0;
+    nextTransportSourceIndex = 0;
     releasedCrestColumns.clear();
     deliveredCrestColumns.clear();
     busy = false;
@@ -2072,7 +2257,7 @@ export const Match3Feature = (() => {
     if (dom.playTitle) dom.playTitle.textContent = `Level ${currentLevel.id}`;
     if (dom.board) dom.board.setAttribute("aria-label", `Match Arena Spielfeld ${ROWS} mal ${COLS}`);
     updateHud(1);
-    setStatus(currentLevel.type === "deliver-crests" ? "Sprenge die 3 Steine und bringe alle Wappen übers Ziel." : "Tausche zwei benachbarte Bälle.");
+    setStatus(levelIdleStatus());
     renderBoard();
     showScreen("match3Play");
     if (currentLevel.id === 1) {
@@ -2085,6 +2270,7 @@ export const Match3Feature = (() => {
   function startLevel1() { startLevel(LEVEL_1); }
   function startLevel2() { startLevel(LEVEL_2); }
   function startLevel3() { startLevel(LEVEL_3); }
+  function startLevel4() { startLevel(LEVEL_4); }
 
   function bindEvents() {
     dom.homeButton?.addEventListener("click", () => {
@@ -2095,6 +2281,7 @@ export const Match3Feature = (() => {
     dom.level1?.addEventListener("click", startLevel1);
     dom.level2?.addEventListener("click", startLevel2);
     dom.level3?.addEventListener("click", startLevel3);
+    dom.level4?.addEventListener("click", startLevel4);
     dom.playBack?.addEventListener("click", () => {
       level1TutorialRunId++;
       if (dom.level1Tutorial) {
@@ -2118,5 +2305,5 @@ export const Match3Feature = (() => {
     initialized = true;
   }
 
-  return { init, refreshAccess, startLevel1, startLevel2, startLevel3 };
+  return { init, refreshAccess, startLevel1, startLevel2, startLevel3, startLevel4 };
 })();
