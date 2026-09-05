@@ -26,6 +26,7 @@ const BALLS = [
 const PIECE_SEPARATOR = "|";
 const COLOR_BOMB = "color-bomb";
 const AREA_BOMB = "area-bomb";
+const BIG_BANG = "big-bang";
 const COLOR_BOMB_IMAGE = "assets/ui/color-bomb.png";
 const AREA_BOMB_IMAGE = "assets/ui/bomb-ball.png";
 const STONE = "stone";
@@ -1262,6 +1263,14 @@ export const Match3Feature = (() => {
   }
 
   function specialSwapPlan(from, to, fromPiece, toPiece) {
+    // Farbbombe + normale Bombe = globaler Urknall.
+    // Die Positionen beziehen sich auf das Brett NACH dem sichtbaren Tausch.
+    if (isColorBomb(fromPiece) && isAreaBomb(toPiece)) {
+      return { type: BIG_BANG, colorBombPos: to, areaBombPos: from };
+    }
+    if (isAreaBomb(fromPiece) && isColorBomb(toPiece)) {
+      return { type: BIG_BANG, colorBombPos: from, areaBombPos: to };
+    }
     if (isColorBomb(fromPiece) && baseColor(toPiece)) {
       return { type: COLOR_BOMB, specialPos: to, partnerPos: from, color: baseColor(toPiece) };
     }
@@ -1456,20 +1465,212 @@ export const Match3Feature = (() => {
     img.style.transform = "scale(1.4)";
   }
 
-  async function resolveSpecialSwap(plan) {
-    const removal = specialSwapRemoval(plan);
-    setStatus(plan.type === COLOR_BOMB ? "Farbbombe!" : "Bombe!");
+  function randomExistingBallColor() {
+    const colors = new Set();
+    for (let row = 0; row < ROWS; row++) {
+      for (let col = 0; col < COLS; col++) {
+        const color = baseColor(board[row]?.[col]);
+        if (color) colors.add(color);
+      }
+    }
+    const available = [...colors];
+    return available.length ? available[Math.floor(Math.random() * available.length)] : null;
+  }
 
-    if (plan.type === AREA_BOMB) {
-      await animateAreaBombCharge(plan.specialPos);
+  function addRemovalCell(removalMap, row, col) {
+    if (row < 0 || row >= ROWS || col < 0 || col >= COLS) return;
+    if (!board[row]?.[col] || isRemovalProtectedCell(row, col)) return;
+    removalMap.set(`${row}:${col}`, { row, col });
+  }
+
+  async function animateColorBombChain(position, color, { bigBang = false } = {}) {
+    const tile = tileAt(position);
+    const img = tile?.querySelector("img");
+    if (!tile || !img || !dom.board) return;
+    tile.classList.add("is-color-bomb-triggering");
+
+    const tileBox = tile.getBoundingClientRect();
+    const boardBox = dom.board.getBoundingClientRect();
+    const centerX = tileBox.left - boardBox.left + tileBox.width / 2;
+    const centerY = tileBox.top - boardBox.top + tileBox.height / 2;
+
+    const ring = document.createElement("span");
+    ring.className = bigBang ? "match3-colorbomb-ring is-bigbang" : "match3-colorbomb-ring";
+    ring.style.left = `${centerX}px`;
+    ring.style.top = `${centerY}px`;
+    dom.board.appendChild(ring);
+
+    const pulse = animationFinished(img.animate([
+      { transform: "scale(1)", filter: "brightness(1) saturate(1)", opacity: 1, offset: 0 },
+      { transform: `scale(${bigBang ? 1.32 : 1.18})`, filter: "brightness(1.65) saturate(1.35)", opacity: 1, offset: .45 },
+      { transform: `scale(${bigBang ? 1.48 : 1.28})`, filter: "brightness(2.6) saturate(.7)", opacity: .2, offset: .82 },
+      { transform: `scale(${bigBang ? 1.55 : 1.34})`, filter: "brightness(3)", opacity: 0, offset: 1 }
+    ], { duration: bigBang ? 520 : 390, easing: "cubic-bezier(.18,.72,.18,1)", fill: "forwards" }));
+
+    const ringAnim = animationFinished(ring.animate([
+      { transform: "translate(-50%,-50%) scale(.25) rotate(0deg)", opacity: 0, offset: 0 },
+      { transform: "translate(-50%,-50%) scale(.62) rotate(45deg)", opacity: 1, offset: .28 },
+      { transform: `translate(-50%,-50%) scale(${bigBang ? 2.7 : 1.9}) rotate(155deg)`, opacity: 0, offset: 1 }
+    ], { duration: bigBang ? 600 : 440, easing: "cubic-bezier(.12,.75,.2,1)", fill: "forwards" })).finally(() => ring.remove());
+
+    await Promise.all([pulse, ringAnim]);
+    img.style.opacity = "0";
+    if (color) tile.dataset.chainColor = color;
+  }
+
+  async function animateBigBangBoardFx() {
+    if (!dom.board) return;
+    const flash = document.createElement("span");
+    flash.className = "match3-bigbang-flash";
+    const ring = document.createElement("span");
+    ring.className = "match3-bigbang-ring";
+    dom.board.append(flash, ring);
+
+    const shake = animationFinished(dom.board.animate([
+      { transform: "translate3d(0,0,0)", offset: 0 },
+      { transform: "translate3d(-5px,2px,0)", offset: .14 },
+      { transform: "translate3d(6px,-3px,0)", offset: .28 },
+      { transform: "translate3d(-5px,-2px,0)", offset: .43 },
+      { transform: "translate3d(4px,3px,0)", offset: .57 },
+      { transform: "translate3d(-3px,1px,0)", offset: .72 },
+      { transform: "translate3d(2px,-1px,0)", offset: .86 },
+      { transform: "translate3d(0,0,0)", offset: 1 }
+    ], { duration: 430, easing: "ease-out" }));
+
+    const flashAnim = animationFinished(flash.animate([
+      { opacity: 0, transform: "scale(.7)", offset: 0 },
+      { opacity: .98, transform: "scale(1)", offset: .18 },
+      { opacity: .56, transform: "scale(1.04)", offset: .42 },
+      { opacity: 0, transform: "scale(1.08)", offset: 1 }
+    ], { duration: 520, easing: "ease-out", fill: "forwards" })).finally(() => flash.remove());
+
+    const ringAnim = animationFinished(ring.animate([
+      { opacity: 0, transform: "translate(-50%,-50%) scale(.08)", offset: 0 },
+      { opacity: 1, transform: "translate(-50%,-50%) scale(.35)", offset: .16 },
+      { opacity: .65, transform: "translate(-50%,-50%) scale(1.1)", offset: .48 },
+      { opacity: 0, transform: "translate(-50%,-50%) scale(1.75)", offset: 1 }
+    ], { duration: 620, easing: "cubic-bezier(.12,.72,.18,1)", fill: "forwards" })).finally(() => ring.remove());
+
+    await Promise.all([shake, flashAnim, ringAnim]);
+  }
+
+  async function resolveAreaBombChain(startPos, partnerPos = null) {
+    const removalMap = new Map();
+    const areaQueue = [{ ...startPos }];
+    const colorQueue = [];
+    const processedArea = new Set();
+    const processedColor = new Set();
+
+    while (areaQueue.length) {
+      const pos = areaQueue.shift();
+      const id = cellId(pos);
+      if (processedArea.has(id) || !isAreaBomb(board[pos.row]?.[pos.col])) continue;
+      processedArea.add(id);
+
+      if (processedArea.size > 1) {
+        setStatus("Kettenreaktion – nächste Bombe zündet!");
+        await wait(85);
+      }
+      await animateAreaBombCharge(pos);
+      addRemovalCell(removalMap, pos.row, pos.col);
+
+      for (let row = pos.row - 1; row <= pos.row + 1; row++) {
+        for (let col = pos.col - 1; col <= pos.col + 1; col++) {
+          if (row < 0 || row >= ROWS || col < 0 || col >= COLS) continue;
+          const piece = board[row]?.[col];
+          if (!piece || isRemovalProtectedCell(row, col)) continue;
+          addRemovalCell(removalMap, row, col);
+          if (isAreaBomb(piece) && !processedArea.has(`${row}:${col}`)) {
+            areaQueue.push({ row, col });
+          } else if (isColorBomb(piece) && !processedColor.has(`${row}:${col}`)) {
+            colorQueue.push({ row, col });
+          }
+        }
+      }
     }
 
-    const dropMap = await removeAndDrop(
-      removal,
-      1,
-      [],
-      plan.type === AREA_BOMB ? { stagger: 0, areaBombPos: plan.specialPos, skipInitialRender: true } : {}
-    );
+    if (partnerPos) addRemovalCell(removalMap, partnerPos.row, partnerPos.col);
+
+    while (colorQueue.length) {
+      const pos = colorQueue.shift();
+      const id = cellId(pos);
+      if (processedColor.has(id) || !isColorBomb(board[pos.row]?.[pos.col])) continue;
+      processedColor.add(id);
+      const color = randomExistingBallColor();
+      setStatus("Farbbombe in der Explosion – Zufallsfarbe wird entfernt!");
+      await wait(80);
+      await animateColorBombChain(pos, color);
+      addRemovalCell(removalMap, pos.row, pos.col);
+      if (color) {
+        for (let row = 0; row < ROWS; row++) {
+          for (let col = 0; col < COLS; col++) {
+            if (baseColor(board[row]?.[col]) === color) addRemovalCell(removalMap, row, col);
+          }
+        }
+      }
+    }
+
+    const removal = [...removalMap.values()];
+    const dropMap = await removeAndDrop(removal, 1, [], { stagger: 0, skipInitialRender: true });
+    const matches = findMatches(board);
+    if (matches.length) await resolveBoard(matches, null, dropMap);
+    else {
+      await shuffleIfNeeded();
+      updateHud(1);
+      if (levelCompletedNow()) showLevelVictory();
+      else setStatus(currentLevel.type === "deliver-crests"
+        ? "Sprenge die Steine und bringe alle 3 Wappen übers Ziel."
+        : "Tausche zwei benachbarte Bälle.");
+    }
+  }
+
+  async function resolveBigBangSwap(plan) {
+    setStatus("URKNALL – das ganze Spielfeld wird getroffen!");
+    await Promise.all([
+      animateAreaBombCharge(plan.areaBombPos),
+      animateColorBombChain(plan.colorBombPos, null, { bigBang: true })
+    ]);
+
+    const removalMap = new Map();
+    for (let row = 0; row < ROWS; row++) {
+      for (let col = 0; col < COLS; col++) {
+        // Unzerstörbare/geschützte Elemente und Wappen bleiben stehen.
+        // Hindernisse wie der aktuelle Stein werden über ihre normale Trefferregel
+        // durch die flächige Entfernung ihrer Nachbarzellen genau einmal getroffen.
+        addRemovalCell(removalMap, row, col);
+      }
+    }
+
+    const fxPromise = animateBigBangBoardFx();
+    const dropMap = await removeAndDrop([...removalMap.values()], 1, [], { stagger: 0, skipInitialRender: true });
+    await fxPromise;
+
+    const matches = findMatches(board);
+    if (matches.length) await resolveBoard(matches, null, dropMap);
+    else {
+      await shuffleIfNeeded();
+      updateHud(1);
+      if (levelCompletedNow()) showLevelVictory();
+      else setStatus(currentLevel.type === "deliver-crests"
+        ? "Sprenge die Steine und bringe alle 3 Wappen übers Ziel."
+        : "Tausche zwei benachbarte Bälle.");
+    }
+  }
+
+  async function resolveSpecialSwap(plan) {
+    if (plan.type === BIG_BANG) {
+      await resolveBigBangSwap(plan);
+      return;
+    }
+    if (plan.type === AREA_BOMB) {
+      setStatus("Bombe!");
+      await resolveAreaBombChain(plan.specialPos, plan.partnerPos);
+      return;
+    }
+
+    const removal = specialSwapRemoval(plan);
+    setStatus("Farbbombe!");
+    const dropMap = await removeAndDrop(removal, 1, []);
     const matches = findMatches(board);
     if (matches.length) await resolveBoard(matches, null, dropMap);
     else {

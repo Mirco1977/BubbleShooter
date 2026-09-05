@@ -865,3 +865,68 @@
   background: var(--energy-color, #fff);
   box-shadow: 0 0 6px color-mix(in srgb, var(--energy-color, #fff) 75%, white);
 }
+
+
+/* Spezialketten: Farbbombe im Bombenradius + globaler Urknall */
+.match3-colorbomb-ring,
+.match3-bigbang-ring,
+.match3-bigbang-flash {
+  position: absolute;
+  pointer-events: none;
+  z-index: 98;
+  transform-origin: 50% 50%;
+  will-change: transform, opacity, filter;
+}
+
+.match3-colorbomb-ring {
+  width: 118px;
+  height: 118px;
+  margin-left: -59px;
+  margin-top: -59px;
+  border-radius: 50%;
+  border: 7px solid rgba(255,255,255,.95);
+  background:
+    conic-gradient(from 0deg, #ff4b4b, #ffd94b, #63ef68, #53cfff, #8b73ff, #ff66d4, #ff4b4b);
+  -webkit-mask: radial-gradient(circle, transparent 0 53%, #000 55% 70%, transparent 72%);
+  mask: radial-gradient(circle, transparent 0 53%, #000 55% 70%, transparent 72%);
+  filter: drop-shadow(0 0 8px rgba(255,255,255,.95)) drop-shadow(0 0 17px rgba(116,205,255,.8));
+}
+.match3-colorbomb-ring.is-bigbang {
+  width: 154px;
+  height: 154px;
+  margin-left: -77px;
+  margin-top: -77px;
+  filter: drop-shadow(0 0 12px #fff) drop-shadow(0 0 30px rgba(255,126,227,.9));
+}
+
+.match3-bigbang-flash {
+  inset: -5%;
+  border-radius: 22px;
+  background:
+    radial-gradient(circle at 50% 50%, #fff 0 12%, rgba(255,246,194,.98) 13% 24%, rgba(255,126,219,.72) 25% 43%, rgba(116,166,255,.38) 44% 62%, transparent 72%);
+  mix-blend-mode: screen;
+  filter: brightness(1.25) saturate(1.25);
+}
+
+.match3-bigbang-ring {
+  left: 50%;
+  top: 50%;
+  width: 78%;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  border: 9px solid rgba(255,255,255,.94);
+  box-shadow:
+    0 0 18px rgba(255,255,255,.95),
+    0 0 42px rgba(255,98,214,.82),
+    inset 0 0 28px rgba(104,193,255,.72);
+}
+
+.match3-tile.is-color-bomb-triggering {
+  z-index: 35;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .match3-colorbomb-ring,
+  .match3-bigbang-ring,
+  .match3-bigbang-flash { display: none; }
+}
