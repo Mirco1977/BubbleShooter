@@ -56,6 +56,7 @@ export const Match3Feature = (() => {
   const deliveredCrestColumns = new Set();
   let busy = false;
   let finished = false;
+  let endgameDraining = false;
   let selected = null;
   let pointerStart = null;
   let suppressClickUntil = 0;
@@ -1182,6 +1183,76 @@ export const Match3Feature = (() => {
     return score >= TARGET_SCORE;
   }
 
+  function findNextEndgameSpecial() {
+    // Normale Bomben zuerst, danach Farbbomben. Nach jeder Auslösung wird
+    // das Brett erneut geprüft, damit auch neu entstandene Specials mitlaufen.
+    for (let row = 0; row < ROWS; row++) {
+      for (let col = 0; col < COLS; col++) {
+        if (isAreaBomb(board[row]?.[col])) return { row, col, type: AREA_BOMB };
+      }
+    }
+    for (let row = 0; row < ROWS; row++) {
+      for (let col = 0; col < COLS; col++) {
+        if (isColorBomb(board[row]?.[col])) return { row, col, type: COLOR_BOMB };
+      }
+    }
+    return null;
+  }
+
+  async function detonateEndgameColorBomb(pos) {
+    if (!isColorBomb(board[pos.row]?.[pos.col])) return;
+    const color = randomExistingBallColor();
+    setStatus("Schlussbonus – Farbbombe zündet!");
+    await animateColorBombChain(pos, color);
+
+    const removalMap = new Map();
+    addRemovalCell(removalMap, pos.row, pos.col);
+    if (color) {
+      for (let row = 0; row < ROWS; row++) {
+        for (let col = 0; col < COLS; col++) {
+          if (baseColor(board[row]?.[col]) === color) addRemovalCell(removalMap, row, col);
+        }
+      }
+    }
+
+    const dropMap = await removeAndDrop([...removalMap.values()], 1, [], { stagger: 0 });
+    const matches = findMatches(board);
+    if (matches.length) await resolveBoard(matches, null, dropMap);
+  }
+
+  async function completeLevelWithFinale() {
+    if (!levelCompletedNow() || finished || endgameDraining) return;
+
+    endgameDraining = true;
+    busy = true;
+    selected = null;
+    renderBoard();
+    setStatus("Ziel erreicht – Schlussbonus läuft!");
+    await wait(260);
+
+    // Das Spiel bleibt gesperrt und löst jedes noch vorhandene Sonderelement
+    // vollständig aus. Kettenreaktionen/Kaskaden dürfen dabei weitere Specials
+    // erzeugen; deshalb wird nach jeder Aktion erneut das gesamte Brett geprüft.
+    let safety = 0;
+    while (safety++ < 100) {
+      const special = findNextEndgameSpecial();
+      if (!special) break;
+
+      if (special.type === AREA_BOMB) {
+        setStatus("Schlussbonus – Bombe zündet!");
+        await resolveAreaBombChain({ row: special.row, col: special.col });
+      } else {
+        await detonateEndgameColorBomb({ row: special.row, col: special.col });
+      }
+      await wait(90);
+    }
+
+    // Erst jetzt wird die endgültige Punktzahl im Victory-Bereich verwendet.
+    endgameDraining = false;
+    updateHud(1);
+    showLevelVictory();
+  }
+
   function showLevelVictory() {
     finished = true;
     setStatus("Ziel erreicht!");
@@ -1253,7 +1324,7 @@ export const Match3Feature = (() => {
     updateHud(1);
 
     if (levelCompletedNow()) {
-      showLevelVictory();
+      await completeLevelWithFinale();
       // Match Arena ist weiterhin reiner Testbetrieb: bewusst KEIN Speichern.
     } else {
       setStatus(currentLevel.type === "deliver-crests"
@@ -1617,7 +1688,7 @@ export const Match3Feature = (() => {
     else {
       await shuffleIfNeeded();
       updateHud(1);
-      if (levelCompletedNow()) showLevelVictory();
+      if (levelCompletedNow()) await completeLevelWithFinale();
       else setStatus(currentLevel.type === "deliver-crests"
         ? "Sprenge die Steine und bringe alle 3 Wappen übers Ziel."
         : "Tausche zwei benachbarte Bälle.");
@@ -1650,7 +1721,7 @@ export const Match3Feature = (() => {
     else {
       await shuffleIfNeeded();
       updateHud(1);
-      if (levelCompletedNow()) showLevelVictory();
+      if (levelCompletedNow()) await completeLevelWithFinale();
       else setStatus(currentLevel.type === "deliver-crests"
         ? "Sprenge die Steine und bringe alle 3 Wappen übers Ziel."
         : "Tausche zwei benachbarte Bälle.");
@@ -1677,7 +1748,7 @@ export const Match3Feature = (() => {
       await shuffleIfNeeded();
       updateHud(1);
       if (levelCompletedNow()) {
-        showLevelVictory();
+        await completeLevelWithFinale();
       } else {
         setStatus(currentLevel.type === "deliver-crests"
           ? "Sprenge die Steine und bringe alle 3 Wappen übers Ziel."
@@ -1777,6 +1848,7 @@ export const Match3Feature = (() => {
     deliveredCrestColumns.clear();
     busy = false;
     finished = false;
+    endgameDraining = false;
     selected = null;
     dom.victory?.classList.add("hidden");
     if (dom.playTitle) dom.playTitle.textContent = `Level ${currentLevel.id}`;
