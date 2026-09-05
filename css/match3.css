@@ -1004,10 +1004,13 @@
 }
 
 
-/* Match-3 Level 4 – 5-Spalten-Wappentransport mit Förderband und Sammelröhre */
+/* Match-3 Level 4 – 5-Spalten-Wappentransport:
+   Spielfeld links, Förderband rechts nach oben, oben nach rechts in die Röhre */
 .match3-board.is-level-4 {
   margin-top: 58px;
-  margin-bottom: 128px;
+  margin-bottom: 92px;
+  transform: translateX(-46px);
+  overflow: visible;
 }
 
 .match3-board.is-level-4 .match3-tile {
@@ -1035,42 +1038,33 @@
     0 0 14px rgba(101,223,130,.18);
 }
 
+/* Das komplette Fördersystem sitzt rechts NEBEN dem Spielfeld. */
 .match3-transport-system {
   position: absolute;
-  left: calc(
-    var(--match3-pad) +
-    (var(--match3-cell) * 2) +
-    (var(--match3-gap) * 2) +
-    (var(--match3-cell) / 2)
-  );
-  top: calc(100% + 31px);
-  width: calc((var(--match3-cell) + var(--match3-gap)) * 2.25);
-  height: calc(100% + 88px);
+  left: calc(100% + 12px);
+  top: 2px;
+  width: 92px;
+  height: calc(100% - 4px);
   pointer-events: none;
   z-index: 16;
 }
 
-.match3-conveyor-horizontal {
+/* Senkrechtes Band: vom unteren Bereich bis fast ganz nach oben. */
+.match3-conveyor-vertical {
   position: absolute;
   left: 0;
-  top: 0;
-  width: 100%;
-  height: 18px;
-  border: 2px solid rgba(191,205,197,.78);
-  border-radius: 8px;
-  background:
-    repeating-linear-gradient(
-      90deg,
-      #52605a 0 11px,
-      #2f3734 11px 20px
-    );
+  top: 30px;
+  bottom: 4px;
+  width: 20px;
+  border: 2px solid rgba(191,205,197,.80);
+  border-radius: 9px;
+  background: #313b36;
   box-shadow:
-    inset 0 2px 3px rgba(255,255,255,.14),
-    0 4px 8px rgba(0,0,0,.28);
+    inset 0 0 4px rgba(255,255,255,.11),
+    0 4px 9px rgba(0,0,0,.30);
   overflow: hidden;
 }
 
-.match3-conveyor-horizontal::before,
 .match3-conveyor-vertical::before {
   content: "";
   position: absolute;
@@ -1078,8 +1072,38 @@
   border-radius: inherit;
   background:
     repeating-linear-gradient(
+      0deg,
+      rgba(255,214,90,.90) 0 9px,
+      rgba(42,48,45,.55) 9px 18px
+    );
+  animation: match3ConveyorMoveVertical 1s linear infinite;
+}
+
+/* Oben läuft das Band nach rechts bis zur Röhre. */
+.match3-conveyor-horizontal {
+  position: absolute;
+  left: 7px;
+  top: 10px;
+  width: 58px;
+  height: 20px;
+  border: 2px solid rgba(191,205,197,.80);
+  border-radius: 9px;
+  background: #313b36;
+  box-shadow:
+    inset 0 2px 3px rgba(255,255,255,.14),
+    0 4px 8px rgba(0,0,0,.28);
+  overflow: hidden;
+}
+
+.match3-conveyor-horizontal::before {
+  content: "";
+  position: absolute;
+  inset: 3px;
+  border-radius: inherit;
+  background:
+    repeating-linear-gradient(
       90deg,
-      rgba(255,214,90,.86) 0 9px,
+      rgba(255,214,90,.90) 0 9px,
       rgba(42,48,45,.55) 9px 18px
     );
   animation: match3ConveyorMove 1s linear infinite;
@@ -1090,76 +1114,60 @@
   display: none;
 }
 
+/* Umlenkrolle oben links: vertikal -> horizontal. */
 .match3-conveyor-corner {
   position: absolute;
-  right: -8px;
-  top: -3px;
-  width: 26px;
-  height: 26px;
-  border: 3px solid rgba(198,211,202,.78);
+  left: -3px;
+  top: 7px;
+  width: 27px;
+  height: 27px;
+  border: 3px solid rgba(198,211,202,.82);
   border-radius: 50%;
   background:
     radial-gradient(circle, #aeb9b2 0 20%, #4c5a53 22% 47%, #202825 49% 100%);
   box-shadow: 0 3px 7px rgba(0,0,0,.35);
   animation: match3ConveyorWheel .9s linear infinite;
+  z-index: 2;
 }
 
-.match3-conveyor-vertical {
-  position: absolute;
-  right: -4px;
-  bottom: 10px;
-  width: 18px;
-  height: calc(100% - 20px);
-  border: 2px solid rgba(191,205,197,.76);
-  border-radius: 8px;
-  background: #313b36;
-  box-shadow:
-    inset 0 0 4px rgba(255,255,255,.11),
-    0 4px 9px rgba(0,0,0,.3);
-  overflow: hidden;
-}
-
-.match3-conveyor-vertical::before {
-  background:
-    repeating-linear-gradient(
-      0deg,
-      rgba(255,214,90,.86) 0 9px,
-      rgba(42,48,45,.55) 9px 18px
-    );
-  animation-name: match3ConveyorMoveVertical;
-}
-
+/* Röhre sitzt rechts oben. Das Wappen fährt nach rechts hinein und fällt dann ab. */
 .match3-transport-tube {
   position: absolute;
-  right: -24px;
-  bottom: calc(100% - 10px);
-  width: 46px;
-  height: 116px;
+  left: 61px;
+  top: -16px;
+  width: 48px;
+  height: 128px;
   display: grid;
   justify-items: center;
+  z-index: 3;
 }
 
 .match3-transport-tube-mouth {
-  width: 42px;
-  height: 16px;
-  border: 3px solid rgba(220,235,228,.88);
-  border-bottom: 0;
-  border-radius: 14px 14px 4px 4px;
-  background: linear-gradient(180deg, #82978d, #41554b);
+  position: absolute;
+  left: -10px;
+  top: 25px;
+  width: 28px;
+  height: 24px;
+  border: 3px solid rgba(220,235,228,.90);
+  border-right: 0;
+  border-radius: 14px 3px 3px 14px;
+  background: linear-gradient(90deg, #82978d, #41554b);
   box-shadow: 0 3px 7px rgba(0,0,0,.34);
 }
 
 .match3-transport-tube-glass {
+  position: absolute;
+  left: 10px;
+  top: 0;
   width: 34px;
-  min-height: 82px;
-  padding: 5px 4px;
+  min-height: 100px;
+  padding: 6px 4px;
   display: flex;
   flex-direction: column-reverse;
   justify-content: flex-start;
   gap: 3px;
   border: 2px solid rgba(181,232,244,.72);
-  border-top: 0;
-  border-radius: 0 0 14px 14px;
+  border-radius: 13px;
   background:
     linear-gradient(90deg, rgba(172,232,245,.18), rgba(18,72,82,.44), rgba(183,237,247,.18));
   box-shadow:
@@ -1183,9 +1191,14 @@
 }
 
 .match3-transport-tube strong {
-  margin-top: 3px;
+  position: absolute;
+  top: 104px;
+  left: 7px;
+  width: 40px;
+  margin: 0;
   color: #dff8ff;
   font-size: 10px;
+  text-align: center;
   text-shadow: 0 1px 3px rgba(0,0,0,.7);
 }
 
@@ -1198,7 +1211,8 @@
 }
 
 .match3-board.is-level-4 .match3-delivery-counter {
-  top: calc(100% + 77px);
+  top: calc(100% + 56px);
+  transform: translateX(46px);
 }
 
 @keyframes match3ConveyorMove {
@@ -1223,10 +1237,25 @@
 @media (max-width: 430px) {
   .match3-board.is-level-4 {
     margin-top: 55px;
-    margin-bottom: 128px;
+    margin-bottom: 92px;
+    transform: translateX(-39px);
   }
 
   .match3-transport-system {
-    width: calc((var(--match3-cell) + var(--match3-gap)) * 2.05);
+    left: calc(100% + 9px);
+    width: 84px;
+  }
+
+  .match3-conveyor-horizontal {
+    width: 52px;
+  }
+
+  .match3-transport-tube {
+    left: 55px;
+  }
+
+  .match3-board.is-level-4 .match3-delivery-counter {
+    transform: translateX(39px);
   }
 }
+

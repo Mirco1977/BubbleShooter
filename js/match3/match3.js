@@ -1218,7 +1218,8 @@ export const Match3Feature = (() => {
     const tileBox = tile.getBoundingClientRect();
     const boardBox = dom.board.getBoundingClientRect();
     const catcher = dom.board.querySelector(".match3-transport-catcher")?.getBoundingClientRect();
-    const corner = dom.board.querySelector(".match3-conveyor-corner")?.getBoundingClientRect();
+    const vertical = dom.board.querySelector(".match3-conveyor-vertical")?.getBoundingClientRect();
+    const horizontal = dom.board.querySelector(".match3-conveyor-horizontal")?.getBoundingClientRect();
     const mouth = dom.board.querySelector(".match3-transport-tube-mouth")?.getBoundingClientRect();
 
     const clone = img.cloneNode(true);
@@ -1241,19 +1242,36 @@ export const Match3Feature = (() => {
     });
     const start = { x: tileBox.left, y: tileBox.top };
     const p1 = center(catcher);
-    const p2 = center(corner);
-    const p3 = center(mouth);
+
+    const beltBottom = vertical ? {
+      x: vertical.left + vertical.width / 2 - tileBox.width / 2,
+      y: vertical.bottom - tileBox.height - 5
+    } : p1;
+
+    const beltTop = vertical ? {
+      x: vertical.left + vertical.width / 2 - tileBox.width / 2,
+      y: vertical.top + 2
+    } : beltBottom;
+
+    const beltRight = horizontal ? {
+      x: horizontal.right - tileBox.width / 2,
+      y: horizontal.top + horizontal.height / 2 - tileBox.height / 2
+    } : beltTop;
+
+    const tubeIn = center(mouth);
 
     const keyframes = [
       { transform: "translate3d(0,0,0) scale(1)", offset: 0 },
-      { transform: `translate3d(${p1.x-start.x}px,${p1.y-start.y}px,0) scale(.92)`, offset: .18 },
-      { transform: `translate3d(${p2.x-start.x}px,${p2.y-start.y}px,0) scale(.9) rotate(6deg)`, offset: .52 },
-      { transform: `translate3d(${p3.x-start.x}px,${p3.y-start.y}px,0) scale(.82) rotate(-8deg)`, offset: .86 },
-      { transform: `translate3d(${p3.x-start.x-8}px,${p3.y-start.y+18}px,0) scale(.48) rotate(28deg)`, opacity: 0, offset: 1 }
+      { transform: `translate3d(${p1.x-start.x}px,${p1.y-start.y}px,0) scale(.94)`, offset: .12 },
+      { transform: `translate3d(${beltBottom.x-start.x}px,${beltBottom.y-start.y}px,0) scale(.90) rotate(5deg)`, offset: .28 },
+      { transform: `translate3d(${beltTop.x-start.x}px,${beltTop.y-start.y}px,0) scale(.88) rotate(-3deg)`, offset: .66 },
+      { transform: `translate3d(${beltRight.x-start.x}px,${beltRight.y-start.y}px,0) scale(.86) rotate(7deg)`, offset: .82 },
+      { transform: `translate3d(${tubeIn.x-start.x}px,${tubeIn.y-start.y}px,0) scale(.78) rotate(16deg)`, offset: .93 },
+      { transform: `translate3d(${tubeIn.x-start.x+9}px,${tubeIn.y-start.y+26}px,0) scale(.45) rotate(34deg)`, opacity: 0, offset: 1 }
     ];
 
     const anim = clone.animate(keyframes, {
-      duration: 1650,
+      duration: 1850,
       easing: "cubic-bezier(.2,.68,.22,1)",
       fill: "forwards"
     });
