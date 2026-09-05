@@ -786,3 +786,82 @@
     animation: none;
   }
 }
+
+/* Candy-artiger Bombenburst: Zündstern -> Goldkern -> rosa/weißer Energieknall -> Splitter */
+.match3-bomb-star,
+.match3-bomb-ignition,
+.match3-bomb-bloom,
+.match3-bomb-shock-ring,
+.match3-bomb-orbit-spark,
+.match3-bomb-energy-fragment {
+  position: absolute;
+  pointer-events: none;
+  transform-origin: 50% 50%;
+  will-change: transform, opacity, filter;
+}
+
+.match3-bomb-star {
+  width: 120px;
+  height: 120px;
+  background:
+    linear-gradient(90deg, transparent 46%, #fff 48%, #fff 52%, transparent 54%),
+    linear-gradient(0deg, transparent 46%, #fff 48%, #fff 52%, transparent 54%),
+    linear-gradient(45deg, transparent 48%, rgba(255,255,255,.9) 49%, rgba(255,255,255,.9) 51%, transparent 52%),
+    linear-gradient(-45deg, transparent 48%, rgba(255,255,255,.9) 49%, rgba(255,255,255,.9) 51%, transparent 52%);
+  filter: drop-shadow(0 0 5px #fff) drop-shadow(0 0 12px #ffd776);
+  border-radius: 50%;
+}
+
+.match3-bomb-orbit-spark {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: radial-gradient(circle, #fff 0 24%, #ffe28c 25% 52%, #ff8f2a 53% 72%, transparent 73%);
+  box-shadow: 0 0 7px rgba(255,208,95,.95);
+}
+
+.match3-bomb-ignition {
+  width: 145px;
+  height: 145px;
+  border-radius: 50%;
+  background:
+    radial-gradient(circle, #fff 0 18%, #fffad6 19% 31%, #ffd44f 32% 45%, #ff8d26 46% 57%, rgba(255,89,55,.6) 58% 68%, transparent 69%);
+  filter: drop-shadow(0 0 9px #fff6ad) drop-shadow(0 0 20px rgba(255,129,38,.95));
+}
+
+.match3-bomb-bloom {
+  width: 185px;
+  height: 185px;
+  border-radius: 50%;
+  background:
+    radial-gradient(circle, #fff 0 17%, rgba(255,245,255,.98) 18% 28%, rgba(255,174,230,.95) 29% 43%, rgba(245,87,197,.73) 44% 57%, rgba(169,76,220,.42) 58% 70%, transparent 71%);
+  filter: drop-shadow(0 0 12px #fff) drop-shadow(0 0 28px rgba(255,93,208,.78));
+}
+
+.match3-bomb-shock-ring {
+  width: 110px;
+  height: 110px;
+  border-radius: 50%;
+  border: 7px solid rgba(255,222,247,.92);
+  box-shadow:
+    0 0 10px rgba(255,255,255,.95),
+    0 0 24px rgba(255,92,208,.78),
+    inset 0 0 12px rgba(255,190,236,.72);
+}
+
+.match3-bomb-shard-candy {
+  position: absolute;
+  object-fit: contain;
+  pointer-events: none;
+  z-index: 94;
+  transform-origin: 50% 50%;
+  will-change: transform, opacity, filter;
+}
+
+.match3-bomb-energy-fragment {
+  width: 11px;
+  height: 19px;
+  border-radius: 70% 30% 65% 35%;
+  background: var(--energy-color, #fff);
+  box-shadow: 0 0 6px color-mix(in srgb, var(--energy-color, #fff) 75%, white);
+}
