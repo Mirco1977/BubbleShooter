@@ -7112,7 +7112,10 @@ const Shop = {
 
   dom.loginButton.addEventListener("click", () => {
     if (state.user?.id) return;
-    Backend.login();
+    Backend.login().catch((error) => {
+      console.warn("[Login] Login konnte nicht geöffnet werden:", error);
+      showToast("Login konnte nicht geöffnet werden. Bitte erneut versuchen.");
+    });
   });
 
   dom.continueButton.addEventListener("click", () => {
@@ -7724,9 +7727,21 @@ const Shop = {
     dom.betaLoginOverlay?.classList.add("hidden");
   }
 
+  let activeBetaLoginPromise = null;
+
   function openBetaLogin() {
-    return new Promise((resolve) => {
+    if (activeBetaLoginPromise) {
       dom.betaLoginOverlay?.classList.remove("hidden");
+      return activeBetaLoginPromise;
+    }
+
+    if (!dom.betaLoginOverlay) {
+      console.warn("[Login] Beta-Login-Overlay fehlt – Spielstart wird nicht blockiert.");
+      return Promise.resolve(null);
+    }
+
+    activeBetaLoginPromise = new Promise((resolve) => {
+      dom.betaLoginOverlay.classList.remove("hidden");
       showBetaLoginStep(dom.betaLoginQuestion);
       setBetaBusy(false);
 
@@ -7741,7 +7756,12 @@ const Shop = {
         dom.betaGuestReset?.removeEventListener("click", onGuestReset);
         dom.betaBelInfoButton?.removeEventListener("click", onBelInfoToggle);
       };
-      const done = (user) => { cleanup(); finishBetaLogin(user); resolve(user); };
+      const done = (user) => {
+        cleanup();
+        finishBetaLogin(user);
+        activeBetaLoginPromise = null;
+        resolve(user);
+      };
       const onBelInfoToggle = () => {
         const isHidden = dom.betaBelInfoPopup?.classList.contains("hidden");
         dom.betaBelInfoPopup?.classList.toggle("hidden", !isHidden);
@@ -7882,18 +7902,20 @@ const Shop = {
       dom.betaGuestReset?.addEventListener("click", onGuestReset);
       dom.betaBelInfoButton?.addEventListener("click", onBelInfoToggle);
     });
+
+    return activeBetaLoginPromise;
   }
 
   async function init() {
     // BETA: Existiert bereits ein lokal gespeicherter Spieler, wird er direkt verwendet.
     // Andernfalls erscheint die neue Bandenkick/Gast-Abfrage.
-    if (state.user?.id && state.user?.username) {
+    const hasSavedUser = Boolean(state.user?.id && state.user?.username);
+
+    if (hasSavedUser) {
       setActivePlayer(state.user);
     } else {
       state.user = null;
-      SaveManager.saveUser(null);
       updateUserUi();
-      await openBetaLogin();
     }
 
     if (state.user?.id) {
@@ -7923,6 +7945,16 @@ const Shop = {
       playEffect: (effectName) => Audio.playEffect(effectName)
     });
     Navigation.show("home");
+
+    // Login darf den Spielstart nie blockieren.
+    // Ohne gespeicherten Nutzer wird der Dialog nach dem vollständigen Start geöffnet.
+    if (!hasSavedUser) {
+      setTimeout(() => {
+        openBetaLogin().catch((error) => {
+          console.warn("[Login] Dialog konnte nicht geöffnet werden:", error);
+        });
+      }, 120);
+    }
   }
 
   init();
