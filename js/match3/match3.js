@@ -46,6 +46,7 @@ export const Match3Feature = (() => {
   let getProgress = () => ({ unlockedLevel: 1 });
   let saveProgress = () => {};
   let showScreen = () => {};
+  let playEffect = () => {};
   let initialized = false;
 
   let board = [];
@@ -63,6 +64,14 @@ export const Match3Feature = (() => {
   let level1TutorialRunId = 0;
 
   const dom = {};
+
+  function playMatch3Sound(name) {
+    try {
+      playEffect(name);
+    } catch (error) {
+      console.warn("[Match3] Sound konnte nicht abgespielt werden:", name, error);
+    }
+  }
 
   function cacheDom() {
     dom.homeButton = document.getElementById("openMatch3Button");
@@ -1221,6 +1230,7 @@ export const Match3Feature = (() => {
     if (!isColorBomb(board[pos.row]?.[pos.col])) return;
     const color = randomExistingBallColor();
     setStatus("Schlussbonus – Farbbombe zündet!");
+    playMatch3Sound("thunder");
     await animateColorBombChain(pos, color);
 
     const removalMap = new Map();
@@ -1332,6 +1342,7 @@ export const Match3Feature = (() => {
         setStatus(cascade > 1 ? `Kaskade ×${cascade}!` : `${removal.length} Bälle getroffen.`);
       }
 
+      playMatch3Sound("hit");
       lastDropMap = await removeAndDrop(removal, cascade, creations);
       matches = findMatches(board);
       cascade++;
@@ -1784,6 +1795,7 @@ export const Match3Feature = (() => {
         setStatus("Kettenreaktion – nächste Bombe zündet!");
         await wait(85);
       }
+      playMatch3Sound("bomb");
       await animateAreaBombCharge(pos);
       addRemovalCell(removalMap, pos.row, pos.col);
 
@@ -1812,6 +1824,7 @@ export const Match3Feature = (() => {
       const color = randomExistingBallColor();
       setStatus("Farbbombe in der Explosion – Zufallsfarbe wird entfernt!");
       await wait(80);
+      playMatch3Sound("thunder");
       await animateColorBombChain(pos, color);
       addRemovalCell(removalMap, pos.row, pos.col);
       if (color) {
@@ -1839,6 +1852,9 @@ export const Match3Feature = (() => {
     setStatus(plan.doubleColorBomb
       ? "DOPPEL-FARBBOMBE – das ganze Spielfeld wird getroffen!"
       : "URKNALL – das ganze Spielfeld wird getroffen!");
+
+    // Jede Kombination mit mindestens einer Farbbombe nutzt den Blitz-Sound.
+    playMatch3Sound("thunder");
 
     if (plan.doubleColorBomb) {
       await Promise.all([
@@ -1889,6 +1905,7 @@ export const Match3Feature = (() => {
 
     const removal = specialSwapRemoval(plan);
     setStatus("Farbbombe!");
+    playMatch3Sound("thunder");
     await animateColorBombChain(plan.specialPos, plan.color);
     const dropMap = await removeAndDrop(removal, 1, [], { stagger: 0, skipInitialRender: true });
     const matches = findMatches(board);
@@ -2040,6 +2057,7 @@ export const Match3Feature = (() => {
     if (typeof options.getProgress === "function") getProgress = options.getProgress;
     if (typeof options.saveProgress === "function") saveProgress = options.saveProgress;
     if (typeof options.showScreen === "function") showScreen = options.showScreen;
+    if (typeof options.playEffect === "function") playEffect = options.playEffect;
     cacheDom();
     bindEvents();
     refreshAccess();

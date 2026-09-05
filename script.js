@@ -10,7 +10,7 @@
   import { applyAlbumLevelConfig } from "./js/config/albumLevel.js";
   import { Level1Tutorial } from "./js/tutorial/level1Tutorial.js";
   import { Level6LoadoutGuide } from "./js/tutorial/level6LoadoutGuide.js";
-  import { Match3Feature } from "./js/match3/match3.js?v=20260905-match3-level1-starttutorial-v16";
+  import { Match3Feature } from "./js/match3/match3.js?v=20260905-match3-audio-bomb-thunder-hit-v17";
   import { saveLevelResult, flushPendingLevelResults, getRanking as getSupabaseRanking, setActivePlayer, betaRegisterBandenkickUser, betaGetGuestStatus, betaRegisterGuest, betaLoginGuest, betaSetLegacyGuestPin, betaRefreshBandenkickUser, betaResetPlayerProgress } from "./js/api/bandenkickSupabase.js?v=20260830-reset-progress-fix";
   import { evaluateLogin, approveCurrentDevice, getPrimaryDevice, readAccountSecurity, maskEmail, createTestEmailCode } from "./js/api/accountSecurity.js?v=20260829-1";
 
@@ -7919,7 +7919,8 @@ const Shop = {
     Match3Feature.init({
       getProgress: () => state.progress,
       saveProgress: (progress) => SaveManager.saveProgress(progress),
-      showScreen: (screenName) => Navigation.show(screenName)
+      showScreen: (screenName) => Navigation.show(screenName),
+      playEffect: (effectName) => Audio.playEffect(effectName)
     });
     Navigation.show("home");
   }
