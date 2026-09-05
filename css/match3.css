@@ -657,3 +657,132 @@
       drop-shadow(0 0 11px rgba(255,255,255,.52));
   }
 }
+
+
+/* Match-3 obstacle hint sequence */
+/*
+ * Allgemeiner Hinweis für Hindernisse, die den Weg blockieren oder entfernt
+ * werden müssen. Die Sequenz läuft bewusst nicht permanent: rund alle 5 s
+ * erscheint kurz eine animierte Kontur und lenkt den Blick aufs Hindernis.
+ */
+.match3-tile.is-obstacle {
+  position: relative;
+  overflow: visible;
+  isolation: isolate;
+}
+
+.match3-tile.is-obstacle::before,
+.match3-tile.is-obstacle::after {
+  content: "";
+  position: absolute;
+  pointer-events: none;
+  border-radius: 15px;
+  opacity: 0;
+  z-index: 8;
+}
+
+/* weiche pulsierende Außenkontur */
+.match3-tile.is-obstacle::before {
+  inset: -4px;
+  border: 2px solid rgba(255, 235, 105, 0);
+  box-shadow:
+    0 0 0 0 rgba(255, 226, 72, 0),
+    0 0 0 rgba(255,255,255,0);
+  animation: match3ObstacleHintPulse 5s ease-in-out infinite;
+}
+
+/* umlaufender Lichtimpuls – wirkt wie eine kurze Sequenz um den Stein */
+.match3-tile.is-obstacle::after {
+  inset: -6px;
+  padding: 2px;
+  background: conic-gradient(
+    from 0deg,
+    rgba(255,255,255,0) 0deg,
+    rgba(255,255,255,0) 246deg,
+    rgba(255,235,105,.12) 274deg,
+    rgba(255,250,205,.98) 306deg,
+    rgba(255,206,50,.92) 329deg,
+    rgba(255,255,255,0) 360deg
+  );
+  -webkit-mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  animation: match3ObstacleHintSweep 5s linear infinite;
+}
+
+@keyframes match3ObstacleHintPulse {
+  0%, 72% {
+    opacity: 0;
+    transform: scale(.98);
+    border-color: rgba(255,235,105,0);
+    box-shadow: 0 0 0 0 rgba(255,226,72,0);
+  }
+  76% {
+    opacity: .35;
+    transform: scale(1);
+  }
+  81% {
+    opacity: 1;
+    transform: scale(1.07);
+    border-color: rgba(255,240,135,.96);
+    box-shadow:
+      0 0 0 3px rgba(255,218,52,.22),
+      0 0 13px rgba(255,230,95,.72);
+  }
+  86% {
+    opacity: .62;
+    transform: scale(1.015);
+  }
+  91% {
+    opacity: 1;
+    transform: scale(1.055);
+    border-color: rgba(255,248,185,.9);
+    box-shadow:
+      0 0 0 2px rgba(255,218,52,.18),
+      0 0 10px rgba(255,230,95,.58);
+  }
+  98%, 100% {
+    opacity: 0;
+    transform: scale(1.01);
+    border-color: rgba(255,235,105,0);
+    box-shadow: 0 0 0 7px rgba(255,226,72,0);
+  }
+}
+
+@keyframes match3ObstacleHintSweep {
+  0%, 72% {
+    opacity: 0;
+    transform: rotate(0deg) scale(.99);
+  }
+  75% {
+    opacity: 0;
+    transform: rotate(0deg) scale(1);
+  }
+  79% {
+    opacity: 1;
+  }
+  96% {
+    opacity: .9;
+    transform: rotate(360deg) scale(1.04);
+  }
+  100% {
+    opacity: 0;
+    transform: rotate(410deg) scale(1.04);
+  }
+}
+
+/* Beim tatsächlichen Zerspringen darf der Hinweis nicht weiterlaufen. */
+.match3-tile.is-obstacle.is-stone-breaking::before,
+.match3-tile.is-obstacle.is-stone-breaking::after {
+  animation: none;
+  opacity: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .match3-tile.is-obstacle::before,
+  .match3-tile.is-obstacle::after {
+    animation: none;
+  }
+}

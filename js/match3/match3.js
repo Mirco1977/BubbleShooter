@@ -867,7 +867,13 @@ export const Match3Feature = (() => {
         if (invalidSet.has(`${row}:${col}`)) tile.classList.add("is-invalid");
         if (createdSet.has(`${row}:${col}`)) tile.classList.add("is-created-special");
         if (isProtectedCell(row, col)) tile.classList.add("is-protected");
-        if (isStone(key)) tile.classList.add("is-stone");
+        if (isStone(key)) {
+          tile.classList.add("is-stone");
+          // Generische Kennzeichnung für Hindernisse, die im Level entfernt
+          // oder überwunden werden müssen. Zukünftige Hindernisse bekommen
+          // dieselbe Klasse und damit automatisch die Hinweis-Sequenz.
+          tile.classList.add("is-obstacle");
+        }
         if (isGoalCrest(key)) tile.classList.add("is-goal-crest");
 
         if (key) {
