@@ -38,7 +38,7 @@
   <link rel="stylesheet" href="style.css?v=20260830-login-hero-belinfo">
   <link rel="stylesheet" href="css/worldMap2.css?v=20260827-1">
   <link rel="stylesheet" href="css/loader.css?v=20260827-1">
-  <link rel="stylesheet" href="css/match3.css?v=20260905-match3-alllevels-unified-visualfix-v15">
+  <link rel="stylesheet" href="css/match3.css?v=20260905-match3-level1-starttutorial-v16">
 </head>
 
 <body>
@@ -175,7 +175,7 @@
             draggable="false">
         </button>
 
-        <!-- MATCH-3 SONDERBEREICH: erst ab freigeschaltetem Hauptlevel 150 sichtbar -->
+        <!-- MATCH-3 SONDERBEREICH: erst ab freigeschaltetem Hauptlevel 195 sichtbar -->
         <button id="openMatch3Button" class="menu-card has-image match3-menu-card hidden" type="button" hidden>
           <div class="menu-card-text">
             <strong>Match Arena</strong>
@@ -210,7 +210,7 @@
           <span class="eyebrow">SONDERBEREICH</span>
           <h2 id="match3MapTitle">Match Arena</h2>
         </div>
-        <span>Level 150+</span>
+        <span>Level 195+</span>
       </div>
 
       <section class="match3-map-card">
@@ -274,6 +274,28 @@
           <span class="eyebrow">LEVEL GESCHAFFT</span>
           <h3 id="match3VictoryTitle">Ziel erreicht!</h3>
           <p id="match3VictoryText">Das Level wurde erfolgreich abgeschlossen.</p>
+        </div>
+        <div id="match3Level1Tutorial" class="match3-level1-tutorial hidden" aria-hidden="true">
+          <div class="match3-tutorial-card" role="dialog" aria-modal="true" aria-labelledby="match3TutorialTitle">
+            <div class="match3-tutorial-glow" aria-hidden="true"></div>
+            <span class="eyebrow match3-tutorial-kicker">SO FUNKTIONIERT MATCH 3</span>
+            <div class="match3-tutorial-medal" aria-hidden="true">★</div>
+            <h3 id="match3TutorialTitle">Bilde 3 gleiche Bälle</h3>
+            <p id="match3TutorialText" class="match3-tutorial-text">Tausche zwei benachbarte Bälle.</p>
+            <div class="match3-tutorial-demo" aria-hidden="true">
+              <div class="match3-tutorial-cell demo-r1c1"><img src="assets/balls/bk-arena-balls/red.png" alt=""></div>
+              <div class="match3-tutorial-cell demo-r1c2 demo-swap-a"><img src="assets/balls/bk-arena-balls/green.png" alt=""></div>
+              <div class="match3-tutorial-cell demo-r1c3"><img src="assets/balls/bk-arena-balls/red.png" alt=""></div>
+              <div class="match3-tutorial-cell demo-r2c1"><img src="assets/balls/bk-arena-balls/blue.png" alt=""></div>
+              <div class="match3-tutorial-cell demo-r2c2 demo-swap-b"><img src="assets/balls/bk-arena-balls/red.png" alt=""></div>
+              <div class="match3-tutorial-cell demo-r2c3"><img src="assets/balls/bk-arena-balls/yellow.png" alt=""></div>
+              <div class="match3-tutorial-swipe" aria-hidden="true">↕</div>
+            </div>
+            <div class="match3-tutorial-step">
+              <span class="match3-tutorial-dot is-active"></span><span class="match3-tutorial-dot"></span><span class="match3-tutorial-dot"></span>
+            </div>
+            <strong id="match3TutorialCaption" class="match3-tutorial-caption">Tausche den grünen und roten Ball.</strong>
+          </div>
         </div>
       </section>
     </section>
@@ -1296,7 +1318,7 @@
 </div>
 
 <script src="js/loader.js?v=20260827-1" defer></script>
-<script type="module" src="./script.js?v=20260905-match3-alllevels-unified-visualfix-v15"></script>
+<script type="module" src="./script.js?v=20260905-match3-level1-starttutorial-v16"></script>
 <script type="module" src="./js/main.js?v=20260827-1"></script>
 <script type="module" src="./js/worldmap/worldMap2.js?v=20260827-1"></script>
 

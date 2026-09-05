@@ -14,7 +14,7 @@ let ROWS = LEVEL_1.rows;
 let COLS = LEVEL_1.cols;
 let TARGET_SCORE = LEVEL_1.targetScore;
 const POINTS_PER_BALL = 100;
-const ACCESS_LEVEL = 150;
+const ACCESS_LEVEL = 195;
 
 const BALLS = [
   { key: "red", image: "assets/balls/bk-arena-balls/red.png" },
@@ -60,6 +60,7 @@ export const Match3Feature = (() => {
   let selected = null;
   let pointerStart = null;
   let suppressClickUntil = 0;
+  let level1TutorialRunId = 0;
 
   const dom = {};
 
@@ -80,6 +81,9 @@ export const Match3Feature = (() => {
     dom.victory = document.getElementById("match3Victory");
     dom.victoryTitle = document.getElementById("match3VictoryTitle");
     dom.victoryText = document.getElementById("match3VictoryText");
+    dom.level1Tutorial = document.getElementById("match3Level1Tutorial");
+    dom.tutorialText = document.getElementById("match3TutorialText");
+    dom.tutorialCaption = document.getElementById("match3TutorialCaption");
   }
 
   function hasAccess() {
@@ -1977,7 +1981,7 @@ export const Match3Feature = (() => {
     renderBoard();
   }
 
-  function startLevel(config) {
+\n  function setTutorialStep(step, text, caption) {\n    if (!dom.level1Tutorial) return;\n    dom.level1Tutorial.dataset.step = String(step);\n    if (dom.tutorialText) dom.tutorialText.textContent = text;\n    if (dom.tutorialCaption) dom.tutorialCaption.textContent = caption;\n    const dots = dom.level1Tutorial.querySelectorAll(".match3-tutorial-dot");\n    dots.forEach((dot, index) => dot.classList.toggle("is-active", index === step - 1));\n  }\n\n  async function playLevel1Tutorial() {\n    if (!dom.level1Tutorial || currentLevel.id !== 1) return;\n    const runId = ++level1TutorialRunId;\n    busy = true;\n    renderBoard();\n    dom.level1Tutorial.classList.remove("hidden", "is-leaving");\n    dom.level1Tutorial.setAttribute("aria-hidden", "false");\n    setTutorialStep(1, "Tausche zwei benachbarte Bälle.", "Tausche den grünen und roten Ball.");\n    await wait(900);\n    if (runId !== level1TutorialRunId || currentLevel.id !== 1) return;\n    dom.level1Tutorial.classList.add("is-swapping");\n    await wait(950);\n    if (runId !== level1TutorialRunId || currentLevel.id !== 1) return;\n    dom.level1Tutorial.classList.remove("is-swapping");\n    dom.level1Tutorial.classList.add("is-matched");\n    setTutorialStep(2, "Drei gleiche Bälle in einer Reihe bilden ein Match.", "3 gleiche Bälle werden entfernt.");\n    await wait(1150);\n    if (runId !== level1TutorialRunId || currentLevel.id !== 1) return;\n    dom.level1Tutorial.classList.remove("is-matched");\n    dom.level1Tutorial.classList.add("is-dropping");\n    setTutorialStep(3, "Die Bälle verschwinden und neue rutschen nach.", "Jetzt bist du dran!");\n    await wait(1100);\n    if (runId !== level1TutorialRunId || currentLevel.id !== 1) return;\n    dom.level1Tutorial.classList.add("is-leaving");\n    await wait(420);\n    if (runId !== level1TutorialRunId || currentLevel.id !== 1) return;\n    dom.level1Tutorial.classList.add("hidden");\n    dom.level1Tutorial.classList.remove("is-leaving", "is-dropping", "is-matched", "is-swapping");\n    dom.level1Tutorial.setAttribute("aria-hidden", "true");\n    busy = false;\n    setStatus("Jetzt bist du dran – bilde 3 gleiche Bälle.");\n    renderBoard();\n  }\n\n  function startLevel(config) {
     if (!hasAccess()) {
       showScreen("home");
       return;
@@ -1998,8 +2002,16 @@ export const Match3Feature = (() => {
     if (dom.board) dom.board.setAttribute("aria-label", `Match Arena Spielfeld ${ROWS} mal ${COLS}`);
     updateHud(1);
     setStatus(currentLevel.type === "deliver-crests" ? "Sprenge die 3 Steine und bringe alle Wappen übers Ziel." : "Tausche zwei benachbarte Bälle.");
+    if (dom.level1Tutorial) {
+      dom.level1Tutorial.classList.add("hidden");
+      dom.level1Tutorial.classList.remove("is-leaving", "is-dropping", "is-matched", "is-swapping");
+      dom.level1Tutorial.setAttribute("aria-hidden", "true");
+    }
     renderBoard();
     showScreen("match3Play");
+    if (currentLevel.id === 1) {
+      setTimeout(() => { if (currentLevel.id === 1 && !finished) playLevel1Tutorial(); }, 120);
+    }
   }
 
   function startLevel1() { startLevel(LEVEL_1); }
@@ -2015,7 +2027,12 @@ export const Match3Feature = (() => {
     dom.level1?.addEventListener("click", startLevel1);
     dom.level2?.addEventListener("click", startLevel2);
     dom.level3?.addEventListener("click", startLevel3);
-    dom.playBack?.addEventListener("click", () => showScreen("match3Map"));
+    dom.playBack?.addEventListener("click", () => {
+      level1TutorialRunId++;
+      if (dom.level1Tutorial) { dom.level1Tutorial.classList.add("hidden"); dom.level1Tutorial.setAttribute("aria-hidden", "true"); }
+      busy = false;
+      showScreen("match3Map");
+    });
   }
 
   function init(options = {}) {
