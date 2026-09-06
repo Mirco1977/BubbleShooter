@@ -165,6 +165,9 @@ export const Match3Feature = (() => {
     }
 
     if (dom.board) {
+      if (currentLevel.type !== "quad-crests") {
+        dom.board.classList.remove("is-level-5");
+      }
       dom.board.style.setProperty("--match3-cols", String(COLS));
       dom.board.style.setProperty("--match3-rows", String(ROWS));
       dom.board.dataset.cols = String(COLS);
@@ -866,18 +869,48 @@ export const Match3Feature = (() => {
     return [...map.values()];
   }
 
+  function level5WouldSwapBeValid(cardBoard, from, to) {
+    if (!cardBoard) return false;
+    if (
+      from.row < 0 || from.row >= 4 || from.col < 0 || from.col >= 3 ||
+      to.row < 0 || to.row >= 4 || to.col < 0 || to.col >= 3
+    ) return false;
+    if (Math.abs(from.row - to.row) + Math.abs(from.col - to.col) !== 1) return false;
+
+    const a = cardBoard[from.row]?.[from.col];
+    const b = cardBoard[to.row]?.[to.col];
+
+    // Steine sind niemals tauschbar.
+    if (!isMovablePiece(a) || !isMovablePiece(b)) return false;
+
+    // Bomben dürfen wie im restlichen Match-3 direkt mit einem Nachbarn
+    // getauscht und dadurch ausgelöst werden.
+    if (isAreaBomb(a) || isAreaBomb(b)) return true;
+
+    const test = cardBoard.map(row => row.slice());
+    [test[from.row][from.col], test[to.row][to.col]] =
+      [test[to.row][to.col], test[from.row][from.col]];
+
+    const aIsCrest = isGoalCrest(a);
+    const bIsCrest = isGoalCrest(b);
+
+    // Beim Wappen gilt exakt die bestehende Regel:
+    // Der Partnerball muss DURCH diesen Tausch selbst Teil eines Matches werden.
+    if (aIsCrest || bIsCrest) {
+      const partnerNewPos = aIsCrest ? from : to;
+      return level5PartnerMakesMatch(test, partnerNewPos);
+    }
+
+    return level5FindMatches(test).length > 0;
+  }
+
   function level5HasMove(cardBoard) {
     for (let row = 0; row < 4; row++) {
       for (let col = 0; col < 3; col++) {
-        const from = cardBoard[row]?.[col];
-        if (!isMovablePiece(from)) continue;
-        for (const [dr, dc] of [[0,1],[1,0]]) {
-          const rr = row + dr, cc = col + dc;
-          if (rr >= 4 || cc >= 3 || !isMovablePiece(cardBoard[rr]?.[cc])) continue;
-          const test = cardBoard.map(r => r.slice());
-          [test[row][col], test[rr][cc]] = [test[rr][cc], test[row][col]];
-          if (level5FindMatches(test).length) return true;
-          if (isAreaBomb(from) || isAreaBomb(cardBoard[rr]?.[cc])) return true;
+        for (const [dr, dc] of [[0, 1], [1, 0]]) {
+          const to = { row: row + dr, col: col + dc };
+          if (to.row >= 4 || to.col >= 3) continue;
+          if (level5WouldSwapBeValid(cardBoard, { row, col }, to)) return true;
         }
       }
     }
@@ -1272,14 +1305,14 @@ export const Match3Feature = (() => {
       return;
     }
 
-    const matches = level5FindMatches(cardBoard);
-    const crestMoved = isGoalCrest(a) || isGoalCrest(b);
-
-    let valid = matches.length > 0;
-    if (crestMoved) {
-      const partnerNewPos = isGoalCrest(a) ? from : to;
-      valid = level5PartnerMakesMatch(cardBoard, partnerNewPos);
-    }
+    // Prüfe den Zug nach exakt derselben Regel wie die Deadlock-Erkennung.
+    // Da das Board bereits getauscht ist, stellen wir für die gemeinsame
+    // Prüffunktion kurz den Zustand VOR dem Tausch her.
+    [cardBoard[from.row][from.col], cardBoard[to.row][to.col]] =
+      [cardBoard[to.row][to.col], cardBoard[from.row][from.col]];
+    const valid = level5WouldSwapBeValid(cardBoard, from, to);
+    [cardBoard[from.row][from.col], cardBoard[to.row][to.col]] =
+      [cardBoard[to.row][to.col], cardBoard[from.row][from.col]];
 
     if (!valid) {
       [cardBoard[from.row][from.col], cardBoard[to.row][to.col]] =
@@ -1607,9 +1640,14 @@ export const Match3Feature = (() => {
     const invalidSet = new Set(invalid.map((p) => `${p.row}:${p.col}`));
     const createdSet = new Set(createdSpecial.map((p) => `${p.row}:${p.col}`));
 
+    // Gemeinsames Board wird von allen Match-3-Leveln benutzt.
+    // Deshalb vor jedem normalen Render ALLE level-spezifischen Klassen
+    // sauber entfernen. Sonst bleibt z.B. "is-level-5" nach einem Levelwechsel
+    // aktiv und zerstört das Grid von Level 1-4.
+    dom.board.classList.remove("is-level-5");
     dom.board.classList.toggle("is-busy", busy);
-    dom.board.classList.toggle("is-level-3", isCrestLevel());
-    dom.board.classList.toggle("is-level-4", isTransportLevel());
+    dom.board.classList.toggle("is-level-3", currentLevel.type === "deliver-crests");
+    dom.board.classList.toggle("is-level-4", currentLevel.type === "transport-crests");
     dom.board.style.setProperty("--match3-cols", String(COLS));
     dom.board.style.setProperty("--match3-rows", String(ROWS));
     dom.board.innerHTML = "";
