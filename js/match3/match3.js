@@ -921,7 +921,8 @@ export const Match3Feature = (() => {
       removed.has("0:2") ||
       removed.has("1:1")
     ) {
-      cardBoard[0][1] = makeGoalCrest(cardIndex);
+      const releasedCrest = makeGoalCrest(cardIndex);
+      cardBoard[0][1] = releasedCrest;
       level5Released.add(cardIndex);
       return true;
     }
@@ -929,14 +930,34 @@ export const Match3Feature = (() => {
   }
 
   function level5Collapse(cardBoard) {
+    // Steine sind feste Blocker und dürfen durch Gravitation niemals fallen.
+    // Jeder Bereich zwischen zwei Steinen wird separat kollabiert.
     for (let col = 0; col < 3; col++) {
-      const remaining = [];
-      for (let row = 3; row >= 0; row--) {
-        if (cardBoard[row][col]) remaining.push(cardBoard[row][col]);
+      const fixedRows = [];
+      for (let row = 0; row < 4; row++) {
+        if (isStone(cardBoard[row]?.[col])) fixedRows.push(row);
       }
-      for (let row = 3, i = 0; row >= 0; row--, i++) {
-        cardBoard[row][col] = i < remaining.length ? remaining[i] : randomBall();
+
+      const collapseSegment = (startRow, endRow) => {
+        if (startRow > endRow) return;
+
+        const remaining = [];
+        for (let row = endRow; row >= startRow; row--) {
+          const piece = cardBoard[row]?.[col];
+          if (piece && !isStone(piece)) remaining.push(piece);
+        }
+
+        for (let row = endRow, i = 0; row >= startRow; row--, i++) {
+          cardBoard[row][col] = i < remaining.length ? remaining[i] : randomBall();
+        }
+      };
+
+      let segmentStart = 0;
+      for (const stoneRow of fixedRows) {
+        collapseSegment(segmentStart, stoneRow - 1);
+        segmentStart = stoneRow + 1;
       }
+      collapseSegment(segmentStart, 3);
     }
   }
 
