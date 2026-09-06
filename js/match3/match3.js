@@ -870,22 +870,12 @@ export const Match3Feature = (() => {
       system.className = "match3-transport-system";
       system.setAttribute("aria-hidden", "true");
       system.innerHTML = `
-        <div class="match3-conveyor-horizontal">
-          <span></span><span></span><span></span><span></span><span></span>
-        </div>
-        <div class="match3-conveyor-corner"></div>
-        <div class="match3-conveyor-vertical">
-          <span></span><span></span><span></span><span></span><span></span>
-        </div>
         <div class="match3-transport-tube">
-          <div class="match3-transport-tube-mouth"></div>
-          <div class="match3-transport-tube-glass">
-            ${Array.from({ length: Number(currentLevel.crestTarget || 5) }, (_, i) =>
-              `<i class="${i < deliveredCrests ? "is-filled" : ""}"></i>`).join("")}
-          </div>
-          <strong>${deliveredCrests}/${Number(currentLevel.crestTarget || 5)}</strong>
-        </div>
-      `;
+          <div class="match3-transport-tube-cap"></div><div class="match3-transport-tube-mouth"></div>
+          <div class="match3-transport-tube-glass"><div class="match3-transport-water"></div>
+            <div class="match3-transport-crests">${Array.from({ length: deliveredCrests }, () => `<img src="${GOAL_CREST_IMAGE}" alt="">`).join("")}</div>
+          </div><strong>${deliveredCrests}/${Number(currentLevel.crestTarget || 5)}</strong>
+        </div>`;
       dom.board.appendChild(system);
     } else {
       for (const col of currentLevel.stoneColumns || []) {
@@ -1211,75 +1201,27 @@ export const Match3Feature = (() => {
   }
 
   async function animateTransportCrest(pos) {
-    const tile = tileAt(pos);
-    const img = tile?.querySelector("img");
-    if (!tile || !img || !dom.board) return;
-
-    const tileBox = tile.getBoundingClientRect();
-    const boardBox = dom.board.getBoundingClientRect();
-    const catcher = dom.board.querySelector(".match3-transport-catcher")?.getBoundingClientRect();
-    const vertical = dom.board.querySelector(".match3-conveyor-vertical")?.getBoundingClientRect();
-    const horizontal = dom.board.querySelector(".match3-conveyor-horizontal")?.getBoundingClientRect();
-    const mouth = dom.board.querySelector(".match3-transport-tube-mouth")?.getBoundingClientRect();
-
-    const clone = img.cloneNode(true);
-    clone.className = "match3-transport-flying-crest";
-    Object.assign(clone.style, {
-      position: "fixed",
-      left: `${tileBox.left}px`,
-      top: `${tileBox.top}px`,
-      width: `${tileBox.width}px`,
-      height: `${tileBox.height}px`,
-      zIndex: "9999",
-      pointerEvents: "none",
-      margin: "0"
-    });
-    document.body.appendChild(clone);
-
-    const center = (rect) => ({
-      x: rect ? rect.left + rect.width / 2 - tileBox.width / 2 : tileBox.left,
-      y: rect ? rect.top + rect.height / 2 - tileBox.height / 2 : tileBox.top
-    });
-    const start = { x: tileBox.left, y: tileBox.top };
-    const p1 = center(catcher);
-
-    const beltBottom = vertical ? {
-      x: vertical.left + vertical.width / 2 - tileBox.width / 2,
-      y: vertical.bottom - tileBox.height - 5
-    } : p1;
-
-    const beltTop = vertical ? {
-      x: vertical.left + vertical.width / 2 - tileBox.width / 2,
-      y: vertical.top + 2
-    } : beltBottom;
-
-    const beltRight = horizontal ? {
-      x: horizontal.right - tileBox.width / 2,
-      y: horizontal.top + horizontal.height / 2 - tileBox.height / 2
-    } : beltTop;
-
-    const tubeIn = center(mouth);
-
-    const keyframes = [
-      { transform: "translate3d(0,0,0) scale(1)", offset: 0 },
-      { transform: `translate3d(${p1.x-start.x}px,${p1.y-start.y}px,0) scale(.94)`, offset: .12 },
-      { transform: `translate3d(${beltBottom.x-start.x}px,${beltBottom.y-start.y}px,0) scale(.90) rotate(5deg)`, offset: .28 },
-      { transform: `translate3d(${beltTop.x-start.x}px,${beltTop.y-start.y}px,0) scale(.88) rotate(-3deg)`, offset: .66 },
-      { transform: `translate3d(${beltRight.x-start.x}px,${beltRight.y-start.y}px,0) scale(.86) rotate(7deg)`, offset: .82 },
-      { transform: `translate3d(${tubeIn.x-start.x}px,${tubeIn.y-start.y}px,0) scale(.78) rotate(16deg)`, offset: .93 },
-      { transform: `translate3d(${tubeIn.x-start.x+9}px,${tubeIn.y-start.y+26}px,0) scale(.45) rotate(34deg)`, opacity: 0, offset: 1 }
-    ];
-
-    const anim = clone.animate(keyframes, {
-      duration: 1850,
-      easing: "cubic-bezier(.2,.68,.22,1)",
-      fill: "forwards"
-    });
-
-    await wait(330);
-    spawnNextTransportCrest();
-    await animationFinished(anim);
-    clone.remove();
+    const tile=tileAt(pos), img=tile?.querySelector("img"); if(!tile||!img||!dom.board)return;
+    const tileBox=tile.getBoundingClientRect(), boardBox=dom.board.getBoundingClientRect();
+    const catcherEl=dom.board.querySelector(".match3-transport-catcher"), tubeEl=dom.board.querySelector(".match3-transport-tube"), mouthEl=dom.board.querySelector(".match3-transport-tube-mouth");
+    const catcher=catcherEl?.getBoundingClientRect(), tube=tubeEl?.getBoundingClientRect(), mouth=mouthEl?.getBoundingClientRect();
+    const flashAt=(rect,extra="")=>{if(!rect)return;const f=document.createElement("div");f.className=`match3-transport-flash ${extra}`;Object.assign(f.style,{position:"fixed",left:`${rect.left+rect.width/2}px`,top:`${rect.top+rect.height/2}px`});document.body.appendChild(f);setTimeout(()=>f.remove(),520);};
+    flashAt(catcher,"is-basket");
+    const clone=img.cloneNode(true); clone.className="match3-transport-flying-crest";
+    Object.assign(clone.style,{position:"fixed",left:`${tileBox.left}px`,top:`${tileBox.top}px`,width:`${tileBox.width}px`,height:`${tileBox.height}px`,zIndex:"9999",pointerEvents:"none",margin:"0"});document.body.appendChild(clone);
+    const center=r=>({x:r?r.left+r.width/2-tileBox.width/2:tileBox.left,y:r?r.top+r.height/2-tileBox.height/2:tileBox.top});
+    const start={x:tileBox.left,y:tileBox.top}, pBasket=center(catcher), rightX=boardBox.right+Math.max(22,tileBox.width*.42);
+    const pLow={x:rightX,y:boardBox.bottom-tileBox.height*.35}, pHigh={x:rightX,y:Math.max(8,(tube?.top??boardBox.top)+tileBox.height*.18)}, pMouth=center(mouth);
+    const anim=clone.animate([
+      {transform:"translate3d(0,0,0) scale(1)",opacity:1,offset:0},
+      {transform:`translate3d(${pBasket.x-start.x}px,${pBasket.y-start.y}px,0) scale(1.08)`,offset:.14},
+      {transform:`translate3d(${pLow.x-start.x}px,${pLow.y-start.y}px,0) scale(.98) rotate(8deg)`,offset:.36},
+      {transform:`translate3d(${pHigh.x-start.x}px,${pHigh.y-start.y}px,0) scale(.94) rotate(-8deg)`,offset:.72},
+      {transform:`translate3d(${pMouth.x-start.x}px,${pMouth.y-start.y}px,0) scale(1.06) rotate(4deg)`,offset:.88},
+      {transform:`translate3d(${pMouth.x-start.x}px,${pMouth.y-start.y+54}px,0) scale(.82) rotate(12deg)`,opacity:.96,offset:.97},
+      {transform:`translate3d(${pMouth.x-start.x}px,${pMouth.y-start.y+68}px,0) scale(.72) rotate(16deg)`,opacity:0,offset:1}
+    ],{duration:2050,easing:"cubic-bezier(.22,.68,.2,1)",fill:"forwards"});
+    await wait(260);spawnNextTransportCrest();await wait(1480);flashAt(mouth,"is-tube");tubeEl?.classList.add("is-receiving");await animationFinished(anim);tubeEl?.classList.remove("is-receiving");clone.remove();
   }
 
   async function collectBottomCrests() {
