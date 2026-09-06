@@ -1491,3 +1491,34 @@
     gap: 2px !important;
   }
 }
+
+
+/* Level 5 – Touchsteuerung + mehr Abstand zwischen den Kartenreihen */
+.match3-board.is-level-5 .match3-mini-tile {
+  touch-action: none !important;
+  -webkit-user-select: none;
+  user-select: none;
+  cursor: pointer;
+}
+
+.match3-board.is-level-5 .match3-mini-tile img,
+.match3-board.is-level-5 .match3-mini-crest-ring {
+  pointer-events: none !important;
+}
+
+/* Auffangkorb oben und Wappenhalter unten bekommen klar sichtbaren Freiraum. */
+.match3-board.is-level-5 > .match3-quad-grid {
+  row-gap: clamp(116px, 17vw, 142px) !important;
+}
+
+@media (max-width: 430px) {
+  .match3-board.is-level-5 > .match3-quad-grid {
+    row-gap: 112px !important;
+  }
+}
+
+@media (max-width: 360px) {
+  .match3-board.is-level-5 > .match3-quad-grid {
+    row-gap: 106px !important;
+  }
+}

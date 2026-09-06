@@ -80,6 +80,8 @@ export const Match3Feature = (() => {
   let level5Released = new Set();
   let level5Selected = null;
   let level5BusyCard = -1;
+  let level5PointerStart = null;
+  let level5SuppressClickUntil = 0;
   const releasedCrestColumns = new Set();
   const deliveredCrestColumns = new Set();
   let busy = false;
@@ -1179,6 +1181,75 @@ export const Match3Feature = (() => {
     await level5ResolveCard(cardIndex, to);
   }
 
+  function handleLevel5TileSelection(cardIndex, row, col) {
+    if (busy || finished || level5Delivered.has(cardIndex)) return;
+    const cardBoard = level5Boards[cardIndex];
+    if (!cardBoard || !isMovablePiece(cardBoard[row]?.[col])) return;
+
+    const current = { row, col };
+    if (!level5Selected || level5Selected.cardIndex !== cardIndex) {
+      level5Selected = { cardIndex, ...current };
+      renderLevel5Board();
+      return;
+    }
+
+    const selected = level5Selected;
+    if (selected.row === row && selected.col === col) {
+      level5Selected = null;
+      renderLevel5Board();
+      return;
+    }
+
+    const adjacent = Math.abs(selected.row - row) + Math.abs(selected.col - col) === 1;
+    if (!adjacent) {
+      level5Selected = { cardIndex, ...current };
+      renderLevel5Board();
+      return;
+    }
+
+    level5Selected = null;
+    attemptLevel5Swap(
+      cardIndex,
+      { row: selected.row, col: selected.col },
+      current
+    );
+  }
+
+  function handleLevel5Swipe(cardIndex, row, col, dx, dy) {
+    if (busy || finished || level5Delivered.has(cardIndex)) return false;
+
+    const minSwipe = 18;
+    if (Math.max(Math.abs(dx), Math.abs(dy)) < minSwipe) return false;
+
+    let targetRow = row;
+    let targetCol = col;
+
+    if (Math.abs(dx) > Math.abs(dy)) {
+      targetCol += dx > 0 ? 1 : -1;
+    } else {
+      targetRow += dy > 0 ? 1 : -1;
+    }
+
+    if (targetRow < 0 || targetRow >= 4 || targetCol < 0 || targetCol >= 3) return false;
+
+    const cardBoard = level5Boards[cardIndex];
+    if (!cardBoard) return false;
+
+    // Ein Stein ist ein Hindernis und darf weder Ausgangs- noch Zielfeld eines Tauschs sein.
+    if (!isMovablePiece(cardBoard[row]?.[col]) || !isMovablePiece(cardBoard[targetRow]?.[targetCol])) {
+      return false;
+    }
+
+    level5Selected = null;
+    level5SuppressClickUntil = Date.now() + 420;
+    attemptLevel5Swap(
+      cardIndex,
+      { row, col },
+      { row: targetRow, col: targetCol }
+    );
+    return true;
+  }
+
   function renderLevel5Board() {
     if (!dom.board || !isQuadCrestLevel()) return 0;
 
@@ -1232,22 +1303,44 @@ export const Match3Feature = (() => {
             tile.appendChild(img);
           }
 
-          tile.addEventListener("click", () => {
-            if (busy || finished || level5Delivered.has(cardIndex) || !isMovablePiece(cardBoard[row]?.[col])) return;
-            const current={row,col};
-            if (!level5Selected || level5Selected.cardIndex !== cardIndex) {
-              level5Selected={cardIndex,...current}; renderLevel5Board(); return;
+          tile.addEventListener("pointerdown", (event) => {
+            if (busy || finished || level5Delivered.has(cardIndex)) return;
+            if (!isMovablePiece(cardBoard[row]?.[col])) return;
+
+            level5PointerStart = {
+              pointerId: event.pointerId,
+              cardIndex,
+              row,
+              col,
+              x: event.clientX,
+              y: event.clientY
+            };
+
+            try { tile.setPointerCapture(event.pointerId); } catch (_) {}
+          });
+
+          tile.addEventListener("pointerup", (event) => {
+            const start = level5PointerStart;
+            if (!start || start.pointerId !== event.pointerId) return;
+            level5PointerStart = null;
+
+            const dx = event.clientX - start.x;
+            const dy = event.clientY - start.y;
+            handleLevel5Swipe(start.cardIndex, start.row, start.col, dx, dy);
+
+            try { tile.releasePointerCapture(event.pointerId); } catch (_) {}
+          });
+
+          tile.addEventListener("pointercancel", () => {
+            level5PointerStart = null;
+          });
+
+          tile.addEventListener("click", (event) => {
+            if (Date.now() < level5SuppressClickUntil) {
+              event.preventDefault();
+              return;
             }
-            const selected=level5Selected;
-            if (selected.row===row && selected.col===col) {
-              level5Selected=null; renderLevel5Board(); return;
-            }
-            const adjacent = Math.abs(selected.row-row)+Math.abs(selected.col-col)===1;
-            if (!adjacent) {
-              level5Selected={cardIndex,...current}; renderLevel5Board(); return;
-            }
-            level5Selected=null;
-            attemptLevel5Swap(cardIndex,{row:selected.row,col:selected.col},current);
+            handleLevel5TileSelection(cardIndex, row, col);
           });
 
           if (level5Selected?.cardIndex===cardIndex &&
@@ -2699,6 +2792,8 @@ export const Match3Feature = (() => {
       level5Released = new Set();
       level5Selected = null;
       level5BusyCard = -1;
+      level5PointerStart = null;
+      level5SuppressClickUntil = 0;
     } else {
       board = createPlayableBoard();
     }
