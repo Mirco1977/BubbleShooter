@@ -1030,37 +1030,40 @@
 
 
 /* =========================================================
-   Match-3 Level 5 – vier 3×4 Karten im 2×2-Raster
+   Match-3 Level 5 – vier 3×4 Karten im sauberen 2×2-Raster
    ========================================================= */
 .match3-board.is-level-5 {
   width: 100%;
   max-width: 680px;
-  margin: 66px auto 88px;
-  padding: 0;
+  margin: 68px auto 92px;
+  padding: 0 6px;
   overflow: visible;
   background: transparent;
   border: 0;
   box-shadow: none;
   transform: none;
+  box-sizing: border-box;
 }
 
 .match3-quad-grid {
   width: 100%;
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  column-gap: clamp(18px, 5vw, 34px);
-  row-gap: clamp(82px, 12vw, 105px);
+  column-gap: clamp(14px, 4vw, 28px);
+  row-gap: clamp(82px, 12vw, 104px);
   align-items: start;
+  box-sizing: border-box;
 }
 
 .match3-mini-card {
-  --mini-gap: 5px;
-  --mini-cell: clamp(42px, 11.2vw, 62px);
   position: relative;
-  width: calc(var(--mini-cell) * 3 + var(--mini-gap) * 2 + 18px);
+  width: 100%;
+  min-width: 0;
+  max-width: 190px;
   justify-self: center;
-  padding: 9px;
-  border-radius: 22px;
+  padding: 7px;
+  border-radius: 20px;
+  box-sizing: border-box;
   background:
     linear-gradient(180deg, rgba(53,173,84,.96), rgba(17,112,54,.98));
   border: 2px solid rgba(112,226,128,.5);
@@ -1078,21 +1081,22 @@
 }
 
 .match3-mini-board {
+  width: 100%;
   display: grid;
-  grid-template-columns: repeat(3, var(--mini-cell));
-  grid-template-rows: repeat(4, var(--mini-cell));
-  gap: var(--mini-gap);
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 4px;
 }
 
 .match3-mini-tile {
   position: relative;
-  width: var(--mini-cell);
-  height: var(--mini-cell);
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  min-width: 0;
   display: grid;
   place-items: center;
   padding: 0;
   border: 0;
-  border-radius: 13px;
+  border-radius: 12px;
   background: rgba(7,91,39,.38);
   box-shadow:
     inset 0 1px 2px rgba(255,255,255,.12),
@@ -1100,11 +1104,12 @@
     0 2px 4px rgba(0,0,0,.18);
   overflow: visible;
   touch-action: manipulation;
+  box-sizing: border-box;
 }
 
 .match3-mini-tile img {
-  width: 92%;
-  height: 92%;
+  width: 88%;
+  height: 88%;
   object-fit: contain;
   position: relative;
   z-index: 2;
@@ -1114,9 +1119,9 @@
 .match3-mini-tile.is-obstacle::before {
   content: "";
   position: absolute;
-  inset: -4px;
+  inset: -3px;
   border: 2px solid rgba(255,225,105,0);
-  border-radius: 15px;
+  border-radius: 14px;
   animation: match3ObstacleHintPulse 5s ease-in-out infinite;
   pointer-events: none;
 }
@@ -1132,14 +1137,14 @@
 .match3-mini-holder {
   position: absolute;
   left: 50%;
-  top: -58px;
-  width: clamp(50px, 13vw, 66px);
-  height: clamp(54px, 14vw, 70px);
+  top: -54px;
+  width: clamp(46px, 11.5vw, 60px);
+  height: clamp(50px, 12.5vw, 64px);
   transform: translateX(-50%);
   z-index: 7;
   display: grid;
   place-items: center;
-  border-radius: 18px 18px 13px 13px;
+  border-radius: 16px 16px 12px 12px;
   background: linear-gradient(180deg,#365d6c,#173944);
   border: 2px solid rgba(180,218,231,.45);
   box-shadow: 0 5px 10px rgba(0,0,0,.28), inset 0 1px 3px rgba(255,255,255,.15);
@@ -1148,11 +1153,12 @@
 .match3-mini-holder::after {
   content: "";
   position: absolute;
-  bottom: -10px;
-  width: 0; height: 0;
-  border-left: 10px solid transparent;
-  border-right: 10px solid transparent;
-  border-top: 11px solid #173944;
+  bottom: -9px;
+  width: 0;
+  height: 0;
+  border-left: 9px solid transparent;
+  border-right: 9px solid transparent;
+  border-top: 10px solid #173944;
 }
 
 .match3-mini-holder img {
@@ -1164,22 +1170,22 @@
 
 .match3-mini-holder .match3-crest-holder-lock {
   position: absolute;
-  right: 0;
+  right: -1px;
   bottom: -2px;
   color: #ffd44e;
-  font-size: 15px;
+  font-size: 14px;
   text-shadow: 0 2px 3px rgba(0,0,0,.55);
 }
 
 .match3-mini-holder .match3-holder-check {
-  width: 38px;
-  height: 38px;
+  width: 34px;
+  height: 34px;
   display: grid;
   place-items: center;
   border-radius: 50%;
   background: #2db05c;
   color: #fff;
-  font-size: 27px;
+  font-size: 24px;
   font-weight: 900;
   box-shadow: 0 0 10px rgba(65,226,112,.4);
 }
@@ -1187,14 +1193,14 @@
 .match3-mini-catcher {
   position: absolute;
   left: 50%;
-  bottom: -57px;
-  width: clamp(53px, 13vw, 69px);
-  height: clamp(50px, 13vw, 65px);
+  bottom: -53px;
+  width: clamp(48px, 12vw, 62px);
+  height: clamp(46px, 11.5vw, 58px);
   transform: translateX(-50%);
   z-index: 6;
   border: 3px solid rgba(188,215,201,.85);
   border-top: 7px solid #dfe8e3;
-  border-radius: 8px 8px 25px 25px;
+  border-radius: 8px 8px 23px 23px;
   background:
     linear-gradient(90deg,rgba(255,255,255,.1),transparent 25% 75%,rgba(255,255,255,.1)),
     linear-gradient(180deg,#17673b,#0b492a 75%,#07371f);
@@ -1206,7 +1212,9 @@
 .match3-mini-catcher::before {
   content: "";
   position: absolute;
-  left: -6px; right: -6px; top: -10px;
+  left: -6px;
+  right: -6px;
+  top: -10px;
   height: 10px;
   border-radius: 50%;
   background: linear-gradient(180deg,#f1f6f3,#8ea39a);
@@ -1226,8 +1234,8 @@
 
 .match3-mini-crest-ring {
   position: absolute;
-  width: 96%;
-  height: 96%;
+  width: 94%;
+  height: 94%;
   border: 1.5px solid rgba(255,255,255,.95);
   border-radius: 50%;
   box-shadow: 0 0 6px rgba(255,255,255,.6);
@@ -1237,13 +1245,13 @@
 }
 
 .match3-mini-tile.is-goal-crest img {
-  width: 96%;
-  height: 96%;
+  width: 94%;
+  height: 94%;
   animation: match3MiniCrestImagePulse 1.2s ease-in-out infinite;
 }
 
 .match3-level5-counter {
-  margin-top: clamp(78px, 12vw, 100px);
+  margin-top: clamp(78px, 12vw, 98px);
   text-align: center;
   color: #fff;
   font-size: clamp(16px, 4vw, 22px);
@@ -1255,22 +1263,96 @@
   0%,100% { transform: scale(.96); opacity: .62; }
   50% { transform: scale(1.10); opacity: 1; box-shadow: 0 0 11px rgba(255,255,255,.85); }
 }
+
 @keyframes match3MiniCrestImagePulse {
   0%,100% { transform: scale(1); }
   50% { transform: scale(1.11); }
 }
 
-@media (max-width: 390px) {
-  .match3-board.is-level-5 { margin-top: 62px; }
+@media (max-width: 430px) {
+  .match3-board.is-level-5 {
+    padding: 0 4px;
+    margin-top: 64px;
+    margin-bottom: 88px;
+  }
+
   .match3-quad-grid {
     column-gap: 12px;
-    row-gap: 78px;
+    row-gap: 76px;
   }
+
   .match3-mini-card {
-    --mini-cell: clamp(39px, 10.7vw, 45px);
-    --mini-gap: 4px;
-    padding: 7px;
-    border-radius: 18px;
+    max-width: none;
+    padding: 6px;
+    border-radius: 17px;
   }
-  .match3-mini-tile { border-radius: 11px; }
+
+  .match3-mini-board {
+    gap: 3px;
+  }
+
+  .match3-mini-tile {
+    border-radius: 10px;
+  }
+
+  .match3-mini-holder {
+    top: -49px;
+    width: 45px;
+    height: 49px;
+  }
+
+  .match3-mini-catcher {
+    bottom: -48px;
+    width: 47px;
+    height: 44px;
+  }
+}
+
+@media (max-width: 360px) {
+  .match3-quad-grid {
+    column-gap: 8px;
+  }
+
+  .match3-mini-card {
+    padding: 5px;
+  }
+
+  .match3-mini-board {
+    gap: 2px;
+  }
+}
+
+
+
+/* Level 5 – rote Hintergrundkarte umfasst das komplette 2×2-Level */
+#match3Play:has(.match3-board.is-level-5) .match3-game-card,
+#match3Play:has(.match3-board.is-level-5) .match3-play-card,
+#match3Play:has(.match3-board.is-level-5) .match3-level-card {
+  height: auto !important;
+  min-height: 0 !important;
+  overflow: visible;
+  padding-bottom: clamp(105px, 18vw, 145px) !important;
+}
+
+/* Falls der rote Hauptcontainer direkt der Screen-Inhalt ist */
+#match3Play:has(.match3-board.is-level-5) .match3-game-panel {
+  height: auto !important;
+  min-height: max-content;
+  overflow: visible;
+  padding-bottom: clamp(105px, 18vw, 145px);
+}
+
+#match3Play:has(.match3-board.is-level-5) .match3-level5-counter {
+  position: relative;
+  z-index: 2;
+  margin-bottom: 0;
+}
+
+@media (max-width: 430px) {
+  #match3Play:has(.match3-board.is-level-5) .match3-game-card,
+  #match3Play:has(.match3-board.is-level-5) .match3-play-card,
+  #match3Play:has(.match3-board.is-level-5) .match3-level-card,
+  #match3Play:has(.match3-board.is-level-5) .match3-game-panel {
+    padding-bottom: 118px !important;
+  }
 }
