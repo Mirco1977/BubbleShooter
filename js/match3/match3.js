@@ -1050,6 +1050,113 @@ export const Match3Feature = (() => {
     ], {duration:520,easing:"cubic-bezier(.2,.72,.2,1)",fill:"forwards"}));
   }
 
+  function level5AnyMoveAvailable() {
+    for (let cardIndex = 0; cardIndex < level5Boards.length; cardIndex++) {
+      if (level5Delivered.has(cardIndex)) continue;
+      const cardBoard = level5Boards[cardIndex];
+      if (cardBoard && level5HasMove(cardBoard)) return true;
+    }
+    return false;
+  }
+
+  function level5MovableShufflePositions(cardBoard) {
+    const positions = [];
+    for (let row = 0; row < 4; row++) {
+      for (let col = 0; col < 3; col++) {
+        const piece = cardBoard[row]?.[col];
+
+        // Wappen und Steine sind positionsfest.
+        // Alles andere bleibt innerhalb genau dieser Mini-Spielfläche.
+        if (!piece || isStone(piece) || isGoalCrest(piece)) continue;
+        positions.push({ row, col });
+      }
+    }
+    return positions;
+  }
+
+  function shuffleArrayCopy(items) {
+    const copy = items.slice();
+    for (let i = copy.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [copy[i], copy[j]] = [copy[j], copy[i]];
+    }
+    return copy;
+  }
+
+  function level5ShuffleSingleBoardPreservingPieces(cardBoard) {
+    const positions = level5MovableShufflePositions(cardBoard);
+    if (positions.length < 2) return false;
+
+    // Exakt die vorhandenen Elemente dieser Mini-Karte sichern.
+    // Keine neuen Farben, keine neuen Bälle, kein Austausch mit anderen Karten.
+    const originalPieces = positions.map(({ row, col }) => cardBoard[row][col]);
+
+    for (let attempt = 0; attempt < 1500; attempt++) {
+      const shuffledPieces = shuffleArrayCopy(originalPieces);
+
+      positions.forEach(({ row, col }, index) => {
+        cardBoard[row][col] = shuffledPieces[index];
+      });
+
+      // Kein Gratis-Match nach dem Mischen, aber wieder mindestens ein gültiger Zug.
+      if (!level5FindMatches(cardBoard).length && level5HasMove(cardBoard)) {
+        return true;
+      }
+    }
+
+    // Nie Elemente erfinden: notfalls Originalzustand wiederherstellen.
+    positions.forEach(({ row, col }, index) => {
+      cardBoard[row][col] = originalPieces[index];
+    });
+    return false;
+  }
+
+  function showLevel5ShuffleOverlay() {
+    if (!dom.board) return null;
+
+    const overlay = document.createElement("div");
+    overlay.className = "match3-level5-shuffle-overlay";
+    overlay.innerHTML = `
+      <div class="match3-level5-shuffle-card">
+        <strong>Kein Zug möglich</strong>
+        <span>Bälle werden gemischt</span>
+        <div class="match3-level5-shuffle-dots" aria-hidden="true">
+          <i></i><i></i><i></i>
+        </div>
+      </div>
+    `;
+    dom.board.appendChild(overlay);
+    return overlay;
+  }
+
+  async function level5ShuffleIfGloballyDeadlocked() {
+    if (!isQuadCrestLevel() || finished || level5Delivered.size >= 4) return false;
+
+    // Wenn auch nur EINE aktive Mini-Karte noch einen Zug hat: absolut kein Shuffle.
+    if (level5AnyMoveAvailable()) return false;
+
+    busy = true;
+    setStatus("Kein Zug möglich – Bälle werden gemischt.");
+    const overlay = showLevel5ShuffleOverlay();
+
+    await wait(900);
+
+    // Jede der vier Mini-Spielflächen wird streng separat gemischt.
+    for (let cardIndex = 0; cardIndex < level5Boards.length; cardIndex++) {
+      if (level5Delivered.has(cardIndex)) continue;
+      const cardBoard = level5Boards[cardIndex];
+      if (!cardBoard) continue;
+      level5ShuffleSingleBoardPreservingPieces(cardBoard);
+    }
+
+    renderLevel5Board();
+    await wait(650);
+
+    overlay?.remove();
+    setStatus("Bringe alle 4 Wappen in die Auffangkörbe.");
+    return true;
+  }
+
   async function level5ResolveCard(cardIndex, initialSwapTo = null) {
     const cardBoard = level5Boards[cardIndex];
     if (!cardBoard) return;
@@ -1099,23 +1206,10 @@ export const Match3Feature = (() => {
       await wait(180);
     }
 
-    if (!level5HasMove(cardBoard) && !level5Delivered.has(cardIndex)) {
-      const crest = [];
-      const balls = [];
-      for (let r=0;r<4;r++) for(let c=0;c<3;c++) {
-        if (isGoalCrest(cardBoard[r][c]) || isStone(cardBoard[r][c]) || isAreaBomb(cardBoard[r][c])) continue;
-        balls.push(cardBoard[r][c]);
-      }
-      for (let i=balls.length-1;i>0;i--) {
-        const j=Math.floor(Math.random()*(i+1)); [balls[i],balls[j]]=[balls[j],balls[i]];
-      }
-      let k=0;
-      for (let r=0;r<4;r++) for(let c=0;c<3;c++) {
-        if (isGoalCrest(cardBoard[r][c]) || isStone(cardBoard[r][c]) || isAreaBomb(cardBoard[r][c])) continue;
-        cardBoard[r][c]=balls[k++];
-      }
-      renderLevel5Board();
-    }
+    // Kein stilles Mischen einzelner Mini-Karten mehr.
+    // Nur wenn auf dem KOMPLETTEN Level 5 nirgendwo ein gültiger Zug möglich ist,
+    // darf eine sichtbare Shuffle-Sequenz starten.
+    await level5ShuffleIfGloballyDeadlocked();
 
     level5BusyCard = -1;
     busy = false;

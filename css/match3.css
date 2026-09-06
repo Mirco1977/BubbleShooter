@@ -1522,3 +1522,75 @@
     row-gap: 106px !important;
   }
 }
+
+
+/* Level 5 – sichtbare Deadlock-/Shuffle-Sequenz */
+.match3-board.is-level-5 {
+  position: relative;
+}
+
+.match3-level5-shuffle-overlay {
+  position: absolute;
+  inset: -8px;
+  z-index: 90;
+  display: grid;
+  place-items: center;
+  padding: 18px;
+  border-radius: 24px;
+  background: rgba(5, 10, 12, .44);
+  backdrop-filter: blur(2px);
+  -webkit-backdrop-filter: blur(2px);
+  pointer-events: all;
+  animation: match3Level5ShuffleFade .2s ease-out both;
+}
+
+.match3-level5-shuffle-card {
+  width: min(86%, 300px);
+  padding: 16px 20px 15px;
+  border: 2px solid rgba(255,220,91,.78);
+  border-radius: 20px;
+  background: linear-gradient(180deg, rgba(38,112,57,.98), rgba(12,67,34,.98));
+  box-shadow: 0 12px 30px rgba(0,0,0,.38), inset 0 1px 0 rgba(255,255,255,.15);
+  text-align: center;
+}
+
+.match3-level5-shuffle-card strong {
+  display: block;
+  color: #ffe06a;
+  font-size: clamp(18px, 4.8vw, 24px);
+}
+
+.match3-level5-shuffle-card span {
+  display: block;
+  margin-top: 5px;
+  color: #fff;
+  font-size: clamp(13px, 3.6vw, 17px);
+  font-weight: 700;
+}
+
+.match3-level5-shuffle-dots {
+  display: flex;
+  justify-content: center;
+  gap: 7px;
+  margin-top: 11px;
+}
+
+.match3-level5-shuffle-dots i {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #fff2a3;
+  animation: match3Level5ShuffleDot .7s ease-in-out infinite alternate;
+}
+.match3-level5-shuffle-dots i:nth-child(2){animation-delay:.12s}
+.match3-level5-shuffle-dots i:nth-child(3){animation-delay:.24s}
+
+@keyframes match3Level5ShuffleFade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes match3Level5ShuffleDot {
+  from { transform: translateY(0) scale(.85); opacity: .45; }
+  to { transform: translateY(-4px) scale(1.15); opacity: 1; }
+}
