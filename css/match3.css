@@ -1356,3 +1356,138 @@
     padding-bottom: 118px !important;
   }
 }
+
+
+/* =========================================================
+   Level 5 HARD-FIX:
+   normale .match3-board Grid-Regeln vollständig deaktivieren
+   ========================================================= */
+.match3-board.is-level-5 {
+  display: block !important;
+  grid-template-columns: none !important;
+  grid-template-rows: none !important;
+  gap: 0 !important;
+  align-items: initial !important;
+  justify-items: initial !important;
+  place-items: initial !important;
+
+  width: 100% !important;
+  max-width: 680px !important;
+  min-width: 0 !important;
+  height: auto !important;
+  aspect-ratio: auto !important;
+
+  margin: 68px auto 92px !important;
+  padding: 0 8px !important;
+  box-sizing: border-box !important;
+
+  overflow: visible !important;
+  background: transparent !important;
+  border: 0 !important;
+  box-shadow: none !important;
+  transform: none !important;
+}
+
+/* 2×2-Hauptraster nutzt wirklich die gesamte Board-Breite */
+.match3-board.is-level-5 > .match3-quad-grid {
+  display: grid !important;
+  width: 100% !important;
+  min-width: 0 !important;
+  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  grid-auto-rows: auto !important;
+  column-gap: clamp(18px, 4.5vw, 30px) !important;
+  row-gap: clamp(86px, 13vw, 108px) !important;
+  align-items: start !important;
+  justify-items: stretch !important;
+  box-sizing: border-box !important;
+}
+
+/* Jede Mini-Karte bleibt innerhalb ihrer eigenen Hälfte */
+.match3-board.is-level-5 .match3-mini-card {
+  width: 100% !important;
+  max-width: 190px !important;
+  min-width: 0 !important;
+  justify-self: center !important;
+  box-sizing: border-box !important;
+}
+
+/* Das 3×4-Spielfeld selbst ist ein eigenes Grid */
+.match3-board.is-level-5 .match3-mini-board {
+  display: grid !important;
+  width: 100% !important;
+  min-width: 0 !important;
+  grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+  grid-template-rows: repeat(4, auto) !important;
+  gap: 4px !important;
+  box-sizing: border-box !important;
+}
+
+.match3-board.is-level-5 .match3-mini-tile {
+  width: 100% !important;
+  min-width: 0 !important;
+  height: auto !important;
+  aspect-ratio: 1 / 1 !important;
+  box-sizing: border-box !important;
+}
+
+/* Zähler immer unter BEIDEN Kartenreihen */
+.match3-board.is-level-5 > .match3-level5-counter {
+  display: block !important;
+  width: 100% !important;
+  margin: clamp(80px, 13vw, 102px) 0 0 !important;
+  position: relative !important;
+  inset: auto !important;
+  transform: none !important;
+  text-align: center !important;
+}
+
+/* Die rote Karte soll das komplette 2×2-Level umfassen */
+#match3Play:has(.match3-board.is-level-5) .match3-game-card {
+  height: auto !important;
+  min-height: 0 !important;
+  overflow: visible !important;
+  padding-bottom: clamp(110px, 18vw, 150px) !important;
+}
+
+/* Sicherstellen, dass keine feste Höhe aus älteren Match3-Regeln greift */
+#match3Play:has(.match3-board.is-level-5) .match3-game-card,
+#match3Play:has(.match3-board.is-level-5) .match3-game-panel,
+#match3Play:has(.match3-board.is-level-5) .match3-play-card,
+#match3Play:has(.match3-board.is-level-5) .match3-level-card {
+  max-height: none !important;
+}
+
+@media (max-width: 430px) {
+  .match3-board.is-level-5 {
+    margin-top: 64px !important;
+    margin-bottom: 88px !important;
+    padding-inline: 5px !important;
+  }
+
+  .match3-board.is-level-5 > .match3-quad-grid {
+    column-gap: 12px !important;
+    row-gap: 80px !important;
+  }
+
+  .match3-board.is-level-5 .match3-mini-card {
+    max-width: none !important;
+  }
+
+  .match3-board.is-level-5 .match3-mini-board {
+    gap: 3px !important;
+  }
+
+  #match3Play:has(.match3-board.is-level-5) .match3-game-card {
+    padding-bottom: 125px !important;
+  }
+}
+
+@media (max-width: 360px) {
+  .match3-board.is-level-5 > .match3-quad-grid {
+    column-gap: 8px !important;
+  }
+
+  .match3-board.is-level-5 .match3-mini-board {
+    gap: 2px !important;
+  }
+}
