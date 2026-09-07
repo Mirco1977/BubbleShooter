@@ -773,49 +773,85 @@ export const Match3Feature = (() => {
 
 
   function renderCrestLevelDecor() {
-    if (!dom.board || !isCrestLevel()) return;
+    if (!dom.board || currentLevel.type !== "deliver-crests") return;
 
     const sourceCols = currentLevel.stoneColumns || [];
+
     for (const col of sourceCols) {
       const holder = document.createElement("div");
       holder.className = "match3-crest-holder";
       holder.style.setProperty("--slot-col", String(col));
+
       const stoneStillThere = isStone(board[0]?.[col]);
       const released = releasedCrestColumns.has(col);
       const delivered = deliveredCrestColumns.has(col);
+
       holder.classList.toggle("is-locked", stoneStillThere);
       holder.classList.toggle("is-released", released && !delivered);
       holder.classList.toggle("is-delivered", delivered);
+
       if (stoneStillThere) {
-        const img = document.createElement("img"); img.src = GOAL_CREST_IMAGE; img.alt = ""; holder.appendChild(img);
-        const lock = document.createElement("span"); lock.className = "match3-crest-holder-lock"; lock.textContent = "▼"; holder.appendChild(lock);
-      } else if (delivered) holder.innerHTML = '<span class="match3-holder-check">✓</span>';
+        const img = document.createElement("img");
+        img.src = GOAL_CREST_IMAGE;
+        img.alt = "";
+        holder.appendChild(img);
+
+        const lock = document.createElement("span");
+        lock.className = "match3-crest-holder-lock";
+        lock.textContent = "▼";
+        holder.appendChild(lock);
+      } else if (delivered) {
+        holder.innerHTML = '<span class="match3-holder-check">✓</span>';
+      }
+
       dom.board.appendChild(holder);
     }
 
-    const finish = document.createElement("div"); finish.className = "match3-finish-line"; finish.setAttribute("aria-hidden", "true");
-    const openCols = [...(currentLevel.stoneColumns || [])].sort((a,b)=>a-b);
-    let segmentStart=0;
+    const finish = document.createElement("div");
+    finish.className = "match3-finish-line";
+    finish.setAttribute("aria-hidden", "true");
+
+    const openCols = [...(currentLevel.stoneColumns || [])].sort((a, b) => a - b);
+
+    let segmentStart = 0;
     for (const openCol of openCols) {
       if (openCol > segmentStart) {
-        const segment=document.createElement("span"); segment.className="match3-finish-segment";
-        segment.style.left=`calc(${segmentStart} * (var(--match3-cell) + var(--match3-gap)))`;
-        segment.style.width=`calc(${openCol-segmentStart} * var(--match3-cell) + ${Math.max(0,openCol-segmentStart-1)} * var(--match3-gap))`; finish.appendChild(segment);
+        const segment = document.createElement("span");
+        segment.className = "match3-finish-segment";
+        segment.style.left = `calc(${segmentStart} * (var(--match3-cell) + var(--match3-gap)))`;
+        segment.style.width = `calc(${openCol - segmentStart} * var(--match3-cell) + ${Math.max(0, openCol - segmentStart - 1)} * var(--match3-gap))`;
+        finish.appendChild(segment);
       }
-      segmentStart=openCol+1;
+      segmentStart = openCol + 1;
     }
-    if (segmentStart<COLS) {
-      const segment=document.createElement("span"); segment.className="match3-finish-segment";
-      segment.style.left=`calc(${segmentStart} * (var(--match3-cell) + var(--match3-gap)))`;
-      segment.style.width=`calc(${COLS-segmentStart} * var(--match3-cell) + ${Math.max(0,COLS-segmentStart-1)} * var(--match3-gap))`; finish.appendChild(segment);
+    if (segmentStart < COLS) {
+      const segment = document.createElement("span");
+      segment.className = "match3-finish-segment";
+      segment.style.left = `calc(${segmentStart} * (var(--match3-cell) + var(--match3-gap)))`;
+      segment.style.width = `calc(${COLS - segmentStart} * var(--match3-cell) + ${Math.max(0, COLS - segmentStart - 1)} * var(--match3-gap))`;
+      finish.appendChild(segment);
     }
     dom.board.appendChild(finish);
+
+
     for (const col of currentLevel.stoneColumns || []) {
-      const catcher=document.createElement("div"); catcher.className="match3-crest-catcher"; catcher.style.setProperty("--slot-col",String(col)); catcher.classList.toggle("is-filled",deliveredCrestColumns.has(col));
-      if (deliveredCrestColumns.has(col)) { const img=document.createElement("img"); img.src=GOAL_CREST_IMAGE; img.alt=""; catcher.appendChild(img); }
+      const catcher = document.createElement("div");
+      catcher.className = "match3-crest-catcher";
+      catcher.style.setProperty("--slot-col", String(col));
+      catcher.classList.toggle("is-filled", deliveredCrestColumns.has(col));
+      if (deliveredCrestColumns.has(col)) {
+        const img = document.createElement("img");
+        img.src = GOAL_CREST_IMAGE;
+        img.alt = "";
+        catcher.appendChild(img);
+      }
       dom.board.appendChild(catcher);
     }
-    const counter=document.createElement("div"); counter.className="match3-delivery-counter"; counter.textContent=`${deliveredCrests}/${Number(currentLevel.crestTarget || 3)} Wappen im Ziel`; dom.board.appendChild(counter);
+
+    const counter = document.createElement("div");
+    counter.className = "match3-delivery-counter";
+    counter.textContent = `${deliveredCrests}/${Number(currentLevel.crestTarget || 3)} Wappen im Ziel`;
+    dom.board.appendChild(counter);
   }
 
   function renderBoard({ matched = [], dropMap = null, invalid = [], createdSpecial = [] } = {}) {
@@ -825,8 +861,7 @@ export const Match3Feature = (() => {
     const createdSet = new Set(createdSpecial.map((p) => `${p.row}:${p.col}`));
 
     // Gemeinsames Board wird von allen Match-3-Leveln benutzt.
-    // Deshalb vor jedem normalen Render ALLE level-spezifischen Klassen
-    // aktiv und zerstört das Grid von Level 1-4.
+    // Normales Match-3-Board für Level 1 bis 3 rendern.
     dom.board.classList.toggle("is-busy", busy);
     dom.board.classList.toggle("is-level-3", currentLevel.type === "deliver-crests");
     dom.board.style.setProperty("--match3-cols", String(COLS));
@@ -1090,9 +1125,10 @@ export const Match3Feature = (() => {
   }
 
   async function collectBottomCrests() {
-    if (!isCrestLevel() || !dom.board) return false;
+    if (currentLevel.type !== "deliver-crests" || !dom.board) return false;
 
     const bottom = ROWS - 1;
+
 
     const arrivals = [];
     for (let col = 0; col < COLS; col++) {
