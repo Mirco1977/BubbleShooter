@@ -9,26 +9,6 @@ const LEVEL_3 = Object.freeze({
   crestTarget: 3,
   stoneColumns: [1, 3, 5]
 });
-const LEVEL_4 = Object.freeze({
-  id: 4,
-  rows: 7,
-  cols: 5,
-  type: "transport-crests",
-  crestTarget: 5,
-  stoneColumns: [1, 3],
-  sourceColumns: [1, 3],
-  catcherColumn: 2
-});
-const LEVEL_5 = Object.freeze({
-  id: 5,
-  rows: 4,
-  cols: 3,
-  type: "quad-crests",
-  crestTarget: 4,
-  stoneColumn: 1,
-  catcherColumn: 1,
-  cardCount: 4
-});
 let currentLevel = LEVEL_1;
 let ROWS = LEVEL_1.rows;
 let COLS = LEVEL_1.cols;
@@ -73,15 +53,6 @@ export const Match3Feature = (() => {
   let score = 0;
   let collectedBlue = 0;
   let deliveredCrests = 0;
-  let spawnedCrests = 0;
-  let nextTransportSourceIndex = 0;
-  let level5Boards = [];
-  let level5Delivered = new Set();
-  let level5Released = new Set();
-  let level5Selected = null;
-  let level5BusyCard = -1;
-  let level5PointerStart = null;
-  let level5SuppressClickUntil = 0;
   const releasedCrestColumns = new Set();
   const deliveredCrestColumns = new Set();
   let busy = false;
@@ -106,8 +77,6 @@ export const Match3Feature = (() => {
     dom.level1 = document.getElementById("match3Level1Button");
     dom.level2 = document.getElementById("match3Level2Button");
     dom.level3 = document.getElementById("match3Level3Button");
-    dom.level4 = document.getElementById("match3Level4Button");
-    dom.level5 = document.getElementById("match3Level5Button");
     dom.playBack = document.getElementById("match3PlayBackButton");
     dom.board = document.getElementById("match3Board");
     dom.score = document.getElementById("match3Score");
@@ -129,17 +98,7 @@ export const Match3Feature = (() => {
   }
 
   function isCrestLevel() {
-    return currentLevel.type === "deliver-crests" ||
-      currentLevel.type === "transport-crests" ||
-      currentLevel.type === "quad-crests";
-  }
-
-  function isQuadCrestLevel() {
-    return currentLevel.type === "quad-crests";
-  }
-
-  function isTransportLevel() {
-    return currentLevel.type === "transport-crests";
+    return currentLevel.type === "deliver-crests";
   }
 
   function refreshAccess() {
@@ -165,9 +124,6 @@ export const Match3Feature = (() => {
     }
 
     if (dom.board) {
-      if (currentLevel.type !== "quad-crests") {
-        dom.board.classList.remove("is-level-5");
-      }
       dom.board.style.setProperty("--match3-cols", String(COLS));
       dom.board.style.setProperty("--match3-rows", String(ROWS));
       dom.board.dataset.cols = String(COLS);
@@ -451,7 +407,7 @@ export const Match3Feature = (() => {
   }
 
   function applyLevel3StartLayout(candidate) {
-    if (!isCrestLevel() || isQuadCrestLevel()) return candidate;
+    if (!isCrestLevel()) return candidate;
     for (const col of currentLevel.stoneColumns || []) {
       if (candidate[0]?.[col] !== undefined) candidate[0][col] = STONE;
     }
@@ -816,838 +772,63 @@ export const Match3Feature = (() => {
   }
 
 
-  function level5BaseColor(piece) {
-    return baseColor(piece);
-  }
-
-  function level5FindGroups(cardBoard) {
-    const rows = 4;
-    const cols = 3;
-    const groups = [];
-
-    for (let row = 0; row < rows; row++) {
-      let start = 0;
-      while (start < cols) {
-        const color = level5BaseColor(cardBoard[row]?.[start]);
-        let end = start + 1;
-        while (end < cols && color && level5BaseColor(cardBoard[row]?.[end]) === color) end++;
-        if (color && end - start >= 3) {
-          groups.push({
-            direction: "horizontal",
-            color,
-            cells: Array.from({ length: end - start }, (_, i) => ({ row, col: start + i }))
-          });
-        }
-        start = end;
-      }
-    }
-
-    for (let col = 0; col < cols; col++) {
-      let start = 0;
-      while (start < rows) {
-        const color = level5BaseColor(cardBoard[start]?.[col]);
-        let end = start + 1;
-        while (end < rows && color && level5BaseColor(cardBoard[end]?.[col]) === color) end++;
-        if (color && end - start >= 3) {
-          groups.push({
-            direction: "vertical",
-            color,
-            cells: Array.from({ length: end - start }, (_, i) => ({ row: start + i, col }))
-          });
-        }
-        start = end;
-      }
-    }
-    return groups;
-  }
-
-  function level5FindMatches(cardBoard) {
-    const map = new Map();
-    for (const group of level5FindGroups(cardBoard)) {
-      for (const cell of group.cells) map.set(`${cell.row}:${cell.col}`, cell);
-    }
-    return [...map.values()];
-  }
-
-  function level5WouldSwapBeValid(cardBoard, from, to) {
-    if (!cardBoard) return false;
-    if (
-      from.row < 0 || from.row >= 4 || from.col < 0 || from.col >= 3 ||
-      to.row < 0 || to.row >= 4 || to.col < 0 || to.col >= 3
-    ) return false;
-    if (Math.abs(from.row - to.row) + Math.abs(from.col - to.col) !== 1) return false;
-
-    const a = cardBoard[from.row]?.[from.col];
-    const b = cardBoard[to.row]?.[to.col];
-
-    // Steine sind niemals tauschbar.
-    if (!isMovablePiece(a) || !isMovablePiece(b)) return false;
-
-    // Bomben dürfen wie im restlichen Match-3 direkt mit einem Nachbarn
-    // getauscht und dadurch ausgelöst werden.
-    if (isAreaBomb(a) || isAreaBomb(b)) return true;
-
-    const test = cardBoard.map(row => row.slice());
-    [test[from.row][from.col], test[to.row][to.col]] =
-      [test[to.row][to.col], test[from.row][from.col]];
-
-    const aIsCrest = isGoalCrest(a);
-    const bIsCrest = isGoalCrest(b);
-
-    // Beim Wappen gilt exakt die bestehende Regel:
-    // Der Partnerball muss DURCH diesen Tausch selbst Teil eines Matches werden.
-    if (aIsCrest || bIsCrest) {
-      const partnerNewPos = aIsCrest ? from : to;
-      return level5PartnerMakesMatch(test, partnerNewPos);
-    }
-
-    return level5FindMatches(test).length > 0;
-  }
-
-  function level5HasMove(cardBoard) {
-    for (let row = 0; row < 4; row++) {
-      for (let col = 0; col < 3; col++) {
-        for (const [dr, dc] of [[0, 1], [1, 0]]) {
-          const to = { row: row + dr, col: col + dc };
-          if (to.row >= 4 || to.col >= 3) continue;
-          if (level5WouldSwapBeValid(cardBoard, { row, col }, to)) return true;
-        }
-      }
-    }
-    return false;
-  }
-
-  function createLevel5CardBoard() {
-    for (let attempt = 0; attempt < 1200; attempt++) {
-      const candidate = Array.from({ length: 4 }, () =>
-        Array.from({ length: 3 }, () => randomBall())
-      );
-      candidate[0][1] = STONE;
-      if (!level5FindMatches(candidate).length && level5HasMove(candidate)) return candidate;
-    }
-    return [
-      ["red", STONE, "blue"],
-      ["yellow", "green", "red"],
-      ["blue", "yellow", "green"],
-      ["green", "red", "yellow"]
-    ];
-  }
-
-  function level5TileAt(cardIndex, row, col) {
-    return dom.board?.querySelector(
-      `.match3-mini-card[data-card="${cardIndex}"] .match3-mini-tile[data-row="${row}"][data-col="${col}"]`
-    ) || null;
-  }
-
-  function level5PartnerMakesMatch(testBoard, partnerNewPos) {
-    return level5FindMatches(testBoard).some(
-      cell => cell.row === partnerNewPos.row && cell.col === partnerNewPos.col
-    );
-  }
-
-  function level5BreakStoneFromRemoval(cardIndex, removal) {
-    const cardBoard = level5Boards[cardIndex];
-    if (!cardBoard || !isStone(cardBoard[0]?.[1])) return false;
-    const removed = new Set(removal.map(p => `${p.row}:${p.col}`));
-    if (
-      removed.has("0:0") ||
-      removed.has("0:2") ||
-      removed.has("1:1")
-    ) {
-      const releasedCrest = makeGoalCrest(cardIndex);
-      cardBoard[0][1] = releasedCrest;
-      level5Released.add(cardIndex);
-      return true;
-    }
-    return false;
-  }
-
-  function level5Collapse(cardBoard) {
-    // Steine sind feste Blocker und dürfen durch Gravitation niemals fallen.
-    // Jeder Bereich zwischen zwei Steinen wird separat kollabiert.
-    for (let col = 0; col < 3; col++) {
-      const fixedRows = [];
-      for (let row = 0; row < 4; row++) {
-        if (isStone(cardBoard[row]?.[col])) fixedRows.push(row);
-      }
-
-      const collapseSegment = (startRow, endRow) => {
-        if (startRow > endRow) return;
-
-        const remaining = [];
-        for (let row = endRow; row >= startRow; row--) {
-          const piece = cardBoard[row]?.[col];
-          if (piece && !isStone(piece)) remaining.push(piece);
-        }
-
-        for (let row = endRow, i = 0; row >= startRow; row--, i++) {
-          cardBoard[row][col] = i < remaining.length ? remaining[i] : randomBall();
-        }
-      };
-
-      let segmentStart = 0;
-      for (const stoneRow of fixedRows) {
-        collapseSegment(segmentStart, stoneRow - 1);
-        segmentStart = stoneRow + 1;
-      }
-      collapseSegment(segmentStart, 3);
-    }
-  }
-
-  function level5AreaBombRemoval(cardBoard, pos, partner = null) {
-    const map = new Map();
-    const queue = [{...pos}];
-    const processed = new Set();
-    while (queue.length) {
-      const bomb = queue.shift();
-      const id = `${bomb.row}:${bomb.col}`;
-      if (processed.has(id) || !isAreaBomb(cardBoard[bomb.row]?.[bomb.col])) continue;
-      processed.add(id);
-      for (let row = bomb.row - 1; row <= bomb.row + 1; row++) {
-        for (let col = bomb.col - 1; col <= bomb.col + 1; col++) {
-          if (row < 0 || row >= 4 || col < 0 || col >= 3) continue;
-          const piece = cardBoard[row]?.[col];
-          if (!piece || isGoalCrest(piece) || isStone(piece)) continue;
-          map.set(`${row}:${col}`, {row, col});
-          if (isAreaBomb(piece) && !processed.has(`${row}:${col}`)) queue.push({row,col});
-        }
-      }
-      map.set(id, bomb);
-    }
-    if (partner && !isGoalCrest(cardBoard[partner.row]?.[partner.col]) && !isStone(cardBoard[partner.row]?.[partner.col])) {
-      map.set(`${partner.row}:${partner.col}`, partner);
-    }
-    return [...map.values()];
-  }
-
-  function level5BombCreation(groups, swapTo) {
-    const horizontal = groups.filter(g => g.direction === "horizontal" && g.cells.length === 3);
-    const vertical = groups.filter(g => g.direction === "vertical" && g.cells.length >= 3 && g.cells.length <= 4);
-    for (const h of horizontal) {
-      for (const v of vertical) {
-        if (h.color !== v.color) continue;
-        const intersection = h.cells.find(c => v.cells.some(x => x.row === c.row && x.col === c.col));
-        if (!intersection) continue;
-        const union = new Map();
-        [...h.cells, ...v.cells].forEach(c => union.set(`${c.row}:${c.col}`, c));
-        if (union.size < 5) continue;
-        if (swapTo && union.has(`${swapTo.row}:${swapTo.col}`)) return {...swapTo, type: AREA_BOMB};
-        return {...intersection, type: AREA_BOMB};
-      }
-    }
-    return null;
-  }
-
-  async function animateLevel5StoneBreak(cardIndex) {
-    const tile = level5TileAt(cardIndex, 0, 1);
-    const img = tile?.querySelector("img");
-    if (!tile || !img) return;
-    playMatch3Sound("hit");
-    const pieces = [];
-    const clips = [
-      "polygon(0 0,54% 0,44% 58%,0 76%)",
-      "polygon(54% 0,100% 0,100% 66%,44% 58%)",
-      "polygon(0 76%,44% 58%,100% 66%,100% 100%,0 100%)"
-    ];
-    const box = img.getBoundingClientRect();
-    for (let i = 0; i < 3; i++) {
-      const shard = img.cloneNode(true);
-      Object.assign(shard.style, {
-        position:"fixed", left:`${box.left}px`, top:`${box.top}px`,
-        width:`${box.width}px`, height:`${box.height}px`,
-        clipPath:clips[i], zIndex:"9999", pointerEvents:"none"
-      });
-      document.body.appendChild(shard);
-      pieces.push(animationFinished(shard.animate([
-        {transform:"translate3d(0,0,0) rotate(0deg)",opacity:1},
-        {transform:`translate3d(${[-24,24,3][i]}px,${[-18,-14,28][i]}px,0) rotate(${[-38,42,18][i]}deg)`,opacity:0}
-      ], {duration:520,easing:"cubic-bezier(.15,.72,.18,1)",fill:"forwards"})).finally(()=>shard.remove()));
-    }
-    img.style.opacity = "0";
-    await Promise.all(pieces);
-  }
-
-  async function animateLevel5Delivery(cardIndex) {
-    const tile = level5TileAt(cardIndex, 3, 1);
-    const img = tile?.querySelector("img");
-    const catcher = dom.board?.querySelector(`.match3-mini-card[data-card="${cardIndex}"] .match3-mini-catcher`);
-    if (!img || !catcher) return;
-    const a = img.getBoundingClientRect();
-    const b = catcher.getBoundingClientRect();
-    const dx = b.left + b.width / 2 - (a.left + a.width / 2);
-    const dy = b.top + b.height / 2 - (a.top + a.height / 2);
-    await animationFinished(img.animate([
-      {transform:"translate3d(0,0,0) scale(1)",opacity:1},
-      {transform:`translate3d(${dx}px,${dy}px,0) scale(1.06)`,opacity:1,offset:.72},
-      {transform:`translate3d(${dx}px,${dy+8}px,0) scale(.84)`,opacity:0,offset:1}
-    ], {duration:520,easing:"cubic-bezier(.2,.72,.2,1)",fill:"forwards"}));
-  }
-
-  function level5AnyMoveAvailable() {
-    for (let cardIndex = 0; cardIndex < level5Boards.length; cardIndex++) {
-      if (level5Delivered.has(cardIndex)) continue;
-      const cardBoard = level5Boards[cardIndex];
-      if (cardBoard && level5HasMove(cardBoard)) return true;
-    }
-    return false;
-  }
-
-  function level5MovableShufflePositions(cardBoard) {
-    const positions = [];
-    for (let row = 0; row < 4; row++) {
-      for (let col = 0; col < 3; col++) {
-        const piece = cardBoard[row]?.[col];
-
-        // Wappen und Steine sind positionsfest.
-        // Alles andere bleibt innerhalb genau dieser Mini-Spielfläche.
-        if (!piece || isStone(piece) || isGoalCrest(piece)) continue;
-        positions.push({ row, col });
-      }
-    }
-    return positions;
-  }
-
-  function shuffleArrayCopy(items) {
-    const copy = items.slice();
-    for (let i = copy.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [copy[i], copy[j]] = [copy[j], copy[i]];
-    }
-    return copy;
-  }
-
-  function level5ShuffleSingleBoardPreservingPieces(cardBoard) {
-    const positions = level5MovableShufflePositions(cardBoard);
-    if (positions.length < 2) return false;
-
-    // Exakt die vorhandenen Elemente dieser Mini-Karte sichern.
-    // Keine neuen Farben, keine neuen Bälle, kein Austausch mit anderen Karten.
-    const originalPieces = positions.map(({ row, col }) => cardBoard[row][col]);
-
-    for (let attempt = 0; attempt < 1500; attempt++) {
-      const shuffledPieces = shuffleArrayCopy(originalPieces);
-
-      positions.forEach(({ row, col }, index) => {
-        cardBoard[row][col] = shuffledPieces[index];
-      });
-
-      // Kein Gratis-Match nach dem Mischen, aber wieder mindestens ein gültiger Zug.
-      if (!level5FindMatches(cardBoard).length && level5HasMove(cardBoard)) {
-        return true;
-      }
-    }
-
-    // Nie Elemente erfinden: notfalls Originalzustand wiederherstellen.
-    positions.forEach(({ row, col }, index) => {
-      cardBoard[row][col] = originalPieces[index];
-    });
-    return false;
-  }
-
-  function showLevel5ShuffleOverlay() {
-    if (!dom.board) return null;
-
-    const overlay = document.createElement("div");
-    overlay.className = "match3-level5-shuffle-overlay";
-    overlay.innerHTML = `
-      <div class="match3-level5-shuffle-card">
-        <strong>Kein Zug möglich</strong>
-        <span>Bälle werden gemischt</span>
-        <div class="match3-level5-shuffle-dots" aria-hidden="true">
-          <i></i><i></i><i></i>
-        </div>
-      </div>
-    `;
-    dom.board.appendChild(overlay);
-    return overlay;
-  }
-
-  async function level5ShuffleIfGloballyDeadlocked() {
-    if (!isQuadCrestLevel() || finished || level5Delivered.size >= 4) return false;
-
-    // Wenn auch nur EINE aktive Mini-Karte noch einen Zug hat: absolut kein Shuffle.
-    if (level5AnyMoveAvailable()) return false;
-
-    busy = true;
-    setStatus("Kein Zug möglich – Bälle werden gemischt.");
-    const overlay = showLevel5ShuffleOverlay();
-
-    await wait(900);
-
-    // Jede der vier Mini-Spielflächen wird streng separat gemischt.
-    for (let cardIndex = 0; cardIndex < level5Boards.length; cardIndex++) {
-      if (level5Delivered.has(cardIndex)) continue;
-      const cardBoard = level5Boards[cardIndex];
-      if (!cardBoard) continue;
-      level5ShuffleSingleBoardPreservingPieces(cardBoard);
-    }
-
-    renderLevel5Board();
-    await wait(650);
-
-    overlay?.remove();
-    setStatus("Bringe alle 4 Wappen in die Auffangkörbe.");
-    return true;
-  }
-
-  async function level5ResolveCard(cardIndex, initialSwapTo = null) {
-    const cardBoard = level5Boards[cardIndex];
-    if (!cardBoard) return;
-
-    let cascade = 1;
-    let swapTo = initialSwapTo;
-    while (true) {
-      const groups = level5FindGroups(cardBoard);
-      const matches = new Map();
-      groups.forEach(g => g.cells.forEach(c => matches.set(`${c.row}:${c.col}`, c)));
-      if (!matches.size) break;
-
-      const creation = level5BombCreation(groups, swapTo);
-      const removal = [...matches.values()].filter(c =>
-        !creation || c.row !== creation.row || c.col !== creation.col
-      );
-
-      const brokeStone = level5BreakStoneFromRemoval(cardIndex, removal);
-      if (brokeStone) await animateLevel5StoneBreak(cardIndex);
-
-      score += removal.length * POINTS_PER_BALL * cascade;
-      updateHud(cascade);
-      playMatch3Sound("hit");
-
-      for (const cell of removal) {
-        if (!isGoalCrest(cardBoard[cell.row]?.[cell.col]) && !isStone(cardBoard[cell.row]?.[cell.col])) {
-          cardBoard[cell.row][cell.col] = null;
-        }
-      }
-      if (creation) cardBoard[creation.row][creation.col] = makePiece(creation.type, creation.color || "red");
-      level5Collapse(cardBoard);
-      renderLevel5Board();
-      await wait(230);
-
-      cascade++;
-      swapTo = null;
-    }
-
-    if (isGoalCrest(cardBoard[3]?.[1]) && !level5Delivered.has(cardIndex)) {
-      await animateLevel5Delivery(cardIndex);
-      cardBoard[3][1] = null;
-      level5Delivered.add(cardIndex);
-      deliveredCrests = level5Delivered.size;
-      level5Collapse(cardBoard);
-      updateHud(1);
-      renderLevel5Board();
-      await wait(180);
-    }
-
-    // Kein stilles Mischen einzelner Mini-Karten mehr.
-    // Nur wenn auf dem KOMPLETTEN Level 5 nirgendwo ein gültiger Zug möglich ist,
-    // darf eine sichtbare Shuffle-Sequenz starten.
-    await level5ShuffleIfGloballyDeadlocked();
-
-    level5BusyCard = -1;
-    busy = false;
-
-    if (level5Delivered.size >= 4) {
-      finished = true;
-      setStatus("Ziel erreicht!");
-      if (dom.victoryTitle) dom.victoryTitle.textContent = "Alle 4 Wappen im Ziel!";
-      if (dom.victoryText) dom.victoryText.textContent =
-        `Level 5 geschafft. Alle vier Wappen wurden sicher in ihre Auffangkörbe gebracht. Punkte: ${score.toLocaleString("de-DE")}.`;
-      dom.victory?.classList.remove("hidden");
-      updateHud(1);
-    } else {
-      setStatus("Bringe alle 4 Wappen in die Auffangkörbe.");
-      renderLevel5Board();
-    }
-  }
-
-  async function attemptLevel5Swap(cardIndex, from, to) {
-    if (busy || finished || level5Delivered.has(cardIndex)) return;
-    const cardBoard = level5Boards[cardIndex];
-    if (!cardBoard) return;
-    const a = cardBoard[from.row]?.[from.col];
-    const b = cardBoard[to.row]?.[to.col];
-    if (!isMovablePiece(a) || !isMovablePiece(b)) return;
-
-    busy = true;
-    level5BusyCard = cardIndex;
-    level5Selected = null;
-
-    const fromTile = level5TileAt(cardIndex, from.row, from.col);
-    const toTile = level5TileAt(cardIndex, to.row, to.col);
-    const ai = fromTile?.querySelector("img"), bi = toTile?.querySelector("img");
-    if (ai && bi) {
-      const ra = fromTile.getBoundingClientRect(), rb = toTile.getBoundingClientRect();
-      const dx=rb.left-ra.left, dy=rb.top-ra.top;
-      await Promise.all([
-        animationFinished(ai.animate([{transform:"translate(0,0)"},{transform:`translate(${dx}px,${dy}px)`}],{duration:170,easing:"ease-in-out"})),
-        animationFinished(bi.animate([{transform:"translate(0,0)"},{transform:`translate(${-dx}px,${-dy}px)`}],{duration:170,easing:"ease-in-out"}))
-      ]);
-    }
-
-    [cardBoard[from.row][from.col], cardBoard[to.row][to.col]] =
-      [cardBoard[to.row][to.col], cardBoard[from.row][from.col]];
-
-    const areaFrom = isAreaBomb(a);
-    const areaTo = isAreaBomb(b);
-    if (areaFrom || areaTo) {
-      const bombPos = areaFrom ? to : from;
-      const partner = areaFrom ? from : to;
-      playMatch3Sound("bomb");
-      const removal = level5AreaBombRemoval(cardBoard, bombPos, partner);
-      level5BreakStoneFromRemoval(cardIndex, removal);
-      score += removal.length * POINTS_PER_BALL;
-      for (const cell of removal) cardBoard[cell.row][cell.col] = null;
-      level5Collapse(cardBoard);
-      renderLevel5Board();
-      await wait(300);
-      await level5ResolveCard(cardIndex);
-      return;
-    }
-
-    // Prüfe den Zug nach exakt derselben Regel wie die Deadlock-Erkennung.
-    // Da das Board bereits getauscht ist, stellen wir für die gemeinsame
-    // Prüffunktion kurz den Zustand VOR dem Tausch her.
-    [cardBoard[from.row][from.col], cardBoard[to.row][to.col]] =
-      [cardBoard[to.row][to.col], cardBoard[from.row][from.col]];
-    const valid = level5WouldSwapBeValid(cardBoard, from, to);
-    [cardBoard[from.row][from.col], cardBoard[to.row][to.col]] =
-      [cardBoard[to.row][to.col], cardBoard[from.row][from.col]];
-
-    if (!valid) {
-      [cardBoard[from.row][from.col], cardBoard[to.row][to.col]] =
-        [cardBoard[to.row][to.col], cardBoard[from.row][from.col]];
-      renderLevel5Board();
-      await wait(100);
-      busy = false;
-      level5BusyCard = -1;
-      setStatus("Kein Match – Zug zurückgesetzt.");
-      return;
-    }
-
-    renderLevel5Board();
-    await level5ResolveCard(cardIndex, to);
-  }
-
-  function handleLevel5TileSelection(cardIndex, row, col) {
-    if (busy || finished || level5Delivered.has(cardIndex)) return;
-    const cardBoard = level5Boards[cardIndex];
-    if (!cardBoard || !isMovablePiece(cardBoard[row]?.[col])) return;
-
-    const current = { row, col };
-    if (!level5Selected || level5Selected.cardIndex !== cardIndex) {
-      level5Selected = { cardIndex, ...current };
-      renderLevel5Board();
-      return;
-    }
-
-    const selected = level5Selected;
-    if (selected.row === row && selected.col === col) {
-      level5Selected = null;
-      renderLevel5Board();
-      return;
-    }
-
-    const adjacent = Math.abs(selected.row - row) + Math.abs(selected.col - col) === 1;
-    if (!adjacent) {
-      level5Selected = { cardIndex, ...current };
-      renderLevel5Board();
-      return;
-    }
-
-    level5Selected = null;
-    attemptLevel5Swap(
-      cardIndex,
-      { row: selected.row, col: selected.col },
-      current
-    );
-  }
-
-  function handleLevel5Swipe(cardIndex, row, col, dx, dy) {
-    if (busy || finished || level5Delivered.has(cardIndex)) return false;
-
-    const minSwipe = 18;
-    if (Math.max(Math.abs(dx), Math.abs(dy)) < minSwipe) return false;
-
-    let targetRow = row;
-    let targetCol = col;
-
-    if (Math.abs(dx) > Math.abs(dy)) {
-      targetCol += dx > 0 ? 1 : -1;
-    } else {
-      targetRow += dy > 0 ? 1 : -1;
-    }
-
-    if (targetRow < 0 || targetRow >= 4 || targetCol < 0 || targetCol >= 3) return false;
-
-    const cardBoard = level5Boards[cardIndex];
-    if (!cardBoard) return false;
-
-    // Ein Stein ist ein Hindernis und darf weder Ausgangs- noch Zielfeld eines Tauschs sein.
-    if (!isMovablePiece(cardBoard[row]?.[col]) || !isMovablePiece(cardBoard[targetRow]?.[targetCol])) {
-      return false;
-    }
-
-    level5Selected = null;
-    level5SuppressClickUntil = Date.now() + 420;
-    attemptLevel5Swap(
-      cardIndex,
-      { row, col },
-      { row: targetRow, col: targetCol }
-    );
-    return true;
-  }
-
-  function renderLevel5Board() {
-    if (!dom.board || !isQuadCrestLevel()) return 0;
-
-    dom.board.className = "match3-board is-level-5";
-    dom.board.style.removeProperty("--match3-cols");
-    dom.board.style.removeProperty("--match3-rows");
-    dom.board.innerHTML = "";
-
-    const grid = document.createElement("div");
-    grid.className = "match3-quad-grid";
-
-    level5Boards.forEach((cardBoard, cardIndex) => {
-      const card = document.createElement("section");
-      card.className = "match3-mini-card";
-      card.dataset.card = String(cardIndex);
-      if (level5Delivered.has(cardIndex)) card.classList.add("is-complete");
-
-      const holder = document.createElement("div");
-      holder.className = "match3-mini-holder";
-      if (level5Delivered.has(cardIndex)) {
-        holder.innerHTML = '<span class="match3-holder-check">✓</span>';
-      } else if (isStone(cardBoard[0]?.[1])) {
-        holder.innerHTML = `<img src="${GOAL_CREST_IMAGE}" alt=""><span class="match3-crest-holder-lock">▼</span>`;
-      }
-      card.appendChild(holder);
-
-      const mini = document.createElement("div");
-      mini.className = "match3-mini-board";
-
-      for (let row=0; row<4; row++) {
-        for (let col=0; col<3; col++) {
-          const piece = cardBoard[row]?.[col];
-          const tile = document.createElement("button");
-          tile.type = "button";
-          tile.className = "match3-mini-tile";
-          tile.dataset.row = String(row);
-          tile.dataset.col = String(col);
-
-          if (isStone(piece)) {
-            tile.classList.add("is-obstacle");
-            const img=document.createElement("img"); img.src=STONE_IMAGE; img.alt="Stein"; tile.appendChild(img);
-          } else if (isGoalCrest(piece)) {
-            tile.classList.add("is-goal-crest");
-            const ring=document.createElement("span"); ring.className="match3-mini-crest-ring"; tile.appendChild(ring);
-            const img=document.createElement("img"); img.src=GOAL_CREST_IMAGE; img.alt="Wappen"; tile.appendChild(img);
-          } else if (piece) {
-            const info=pieceInfo(piece);
-            const img=document.createElement("img");
-            img.src=info.special===AREA_BOMB ? AREA_BOMB_IMAGE : imageFor(info.color);
-            img.alt=info.special===AREA_BOMB ? "Bombe" : `${info.color || ""} Ball`;
-            tile.appendChild(img);
-          }
-
-          tile.addEventListener("pointerdown", (event) => {
-            if (busy || finished || level5Delivered.has(cardIndex)) return;
-            if (!isMovablePiece(cardBoard[row]?.[col])) return;
-
-            level5PointerStart = {
-              pointerId: event.pointerId,
-              cardIndex,
-              row,
-              col,
-              x: event.clientX,
-              y: event.clientY
-            };
-
-            try { tile.setPointerCapture(event.pointerId); } catch (_) {}
-          });
-
-          tile.addEventListener("pointerup", (event) => {
-            const start = level5PointerStart;
-            if (!start || start.pointerId !== event.pointerId) return;
-            level5PointerStart = null;
-
-            const dx = event.clientX - start.x;
-            const dy = event.clientY - start.y;
-            handleLevel5Swipe(start.cardIndex, start.row, start.col, dx, dy);
-
-            try { tile.releasePointerCapture(event.pointerId); } catch (_) {}
-          });
-
-          tile.addEventListener("pointercancel", () => {
-            level5PointerStart = null;
-          });
-
-          tile.addEventListener("click", (event) => {
-            if (Date.now() < level5SuppressClickUntil) {
-              event.preventDefault();
-              return;
-            }
-            handleLevel5TileSelection(cardIndex, row, col);
-          });
-
-          if (level5Selected?.cardIndex===cardIndex &&
-              level5Selected.row===row && level5Selected.col===col) tile.classList.add("is-selected");
-
-          mini.appendChild(tile);
-        }
-      }
-
-      card.appendChild(mini);
-
-      const catcher=document.createElement("div");
-      catcher.className="match3-mini-catcher";
-      if (level5Delivered.has(cardIndex)) {
-        catcher.classList.add("is-filled");
-        const img=document.createElement("img"); img.src=GOAL_CREST_IMAGE; img.alt="Wappen im Ziel"; catcher.appendChild(img);
-      }
-      card.appendChild(catcher);
-
-      grid.appendChild(card);
-    });
-
-    dom.board.appendChild(grid);
-
-    const counter=document.createElement("div");
-    counter.className="match3-level5-counter";
-    counter.textContent=`${level5Delivered.size}/4 Wappen im Ziel`;
-    dom.board.appendChild(counter);
-    return 0;
-  }
-
   function renderCrestLevelDecor() {
     if (!dom.board || !isCrestLevel()) return;
 
-    const sourceCols = currentLevel.sourceColumns || currentLevel.stoneColumns || [];
-
+    const sourceCols = currentLevel.stoneColumns || [];
     for (const col of sourceCols) {
       const holder = document.createElement("div");
       holder.className = "match3-crest-holder";
       holder.style.setProperty("--slot-col", String(col));
-
       const stoneStillThere = isStone(board[0]?.[col]);
       const released = releasedCrestColumns.has(col);
       const delivered = deliveredCrestColumns.has(col);
-
       holder.classList.toggle("is-locked", stoneStillThere);
       holder.classList.toggle("is-released", released && !delivered);
       holder.classList.toggle("is-delivered", delivered);
-
       if (stoneStillThere) {
-        const img = document.createElement("img");
-        img.src = GOAL_CREST_IMAGE;
-        img.alt = "";
-        holder.appendChild(img);
-
-        const lock = document.createElement("span");
-        lock.className = "match3-crest-holder-lock";
-        lock.textContent = "▼";
-        holder.appendChild(lock);
-      } else if (!isTransportLevel() && delivered) {
-        holder.innerHTML = '<span class="match3-holder-check">✓</span>';
-      } else if (isTransportLevel()) {
-        holder.classList.add("is-transport-source");
-        const remaining = Math.max(0, Number(currentLevel.crestTarget || 5) - spawnedCrests);
-        if (remaining > 0 && !isGoalCrest(board[0]?.[col])) {
-          const ready = document.createElement("span");
-          ready.className = "match3-transport-ready";
-          ready.textContent = "•";
-          holder.appendChild(ready);
-        }
-      }
-
+        const img = document.createElement("img"); img.src = GOAL_CREST_IMAGE; img.alt = ""; holder.appendChild(img);
+        const lock = document.createElement("span"); lock.className = "match3-crest-holder-lock"; lock.textContent = "▼"; holder.appendChild(lock);
+      } else if (delivered) holder.innerHTML = '<span class="match3-holder-check">✓</span>';
       dom.board.appendChild(holder);
     }
 
-    const finish = document.createElement("div");
-    finish.className = "match3-finish-line";
-    finish.setAttribute("aria-hidden", "true");
-
-    const openCols = isTransportLevel()
-      ? [Number(currentLevel.catcherColumn ?? 2)]
-      : [...(currentLevel.stoneColumns || [])].sort((a, b) => a - b);
-
-    let segmentStart = 0;
+    const finish = document.createElement("div"); finish.className = "match3-finish-line"; finish.setAttribute("aria-hidden", "true");
+    const openCols = [...(currentLevel.stoneColumns || [])].sort((a,b)=>a-b);
+    let segmentStart=0;
     for (const openCol of openCols) {
       if (openCol > segmentStart) {
-        const segment = document.createElement("span");
-        segment.className = "match3-finish-segment";
-        segment.style.left = `calc(${segmentStart} * (var(--match3-cell) + var(--match3-gap)))`;
-        segment.style.width = `calc(${openCol - segmentStart} * var(--match3-cell) + ${Math.max(0, openCol - segmentStart - 1)} * var(--match3-gap))`;
-        finish.appendChild(segment);
+        const segment=document.createElement("span"); segment.className="match3-finish-segment";
+        segment.style.left=`calc(${segmentStart} * (var(--match3-cell) + var(--match3-gap)))`;
+        segment.style.width=`calc(${openCol-segmentStart} * var(--match3-cell) + ${Math.max(0,openCol-segmentStart-1)} * var(--match3-gap))`; finish.appendChild(segment);
       }
-      segmentStart = openCol + 1;
+      segmentStart=openCol+1;
     }
-    if (segmentStart < COLS) {
-      const segment = document.createElement("span");
-      segment.className = "match3-finish-segment";
-      segment.style.left = `calc(${segmentStart} * (var(--match3-cell) + var(--match3-gap)))`;
-      segment.style.width = `calc(${COLS - segmentStart} * var(--match3-cell) + ${Math.max(0, COLS - segmentStart - 1)} * var(--match3-gap))`;
-      finish.appendChild(segment);
+    if (segmentStart<COLS) {
+      const segment=document.createElement("span"); segment.className="match3-finish-segment";
+      segment.style.left=`calc(${segmentStart} * (var(--match3-cell) + var(--match3-gap)))`;
+      segment.style.width=`calc(${COLS-segmentStart} * var(--match3-cell) + ${Math.max(0,COLS-segmentStart-1)} * var(--match3-gap))`; finish.appendChild(segment);
     }
     dom.board.appendChild(finish);
-
-    if (isTransportLevel()) {
-      const catcher = document.createElement("div");
-      catcher.className = "match3-crest-catcher match3-transport-catcher";
-      catcher.style.setProperty("--slot-col", String(currentLevel.catcherColumn ?? 2));
+    for (const col of currentLevel.stoneColumns || []) {
+      const catcher=document.createElement("div"); catcher.className="match3-crest-catcher"; catcher.style.setProperty("--slot-col",String(col)); catcher.classList.toggle("is-filled",deliveredCrestColumns.has(col));
+      if (deliveredCrestColumns.has(col)) { const img=document.createElement("img"); img.src=GOAL_CREST_IMAGE; img.alt=""; catcher.appendChild(img); }
       dom.board.appendChild(catcher);
-
-      const system = document.createElement("div");
-      system.className = "match3-transport-system";
-      system.setAttribute("aria-hidden", "true");
-      system.innerHTML = `
-        <div class="match3-transport-tube">
-          <div class="match3-transport-tube-cap"></div><div class="match3-transport-tube-mouth"></div>
-          <div class="match3-transport-tube-glass"><div class="match3-transport-water"></div>
-            <div class="match3-transport-crests">${Array.from({ length: deliveredCrests }, () => `<img src="${GOAL_CREST_IMAGE}" alt="">`).join("")}</div>
-          </div><strong>${deliveredCrests}/${Number(currentLevel.crestTarget || 5)}</strong>
-        </div>`;
-      dom.board.appendChild(system);
-    } else {
-      for (const col of currentLevel.stoneColumns || []) {
-        const catcher = document.createElement("div");
-        catcher.className = "match3-crest-catcher";
-        catcher.style.setProperty("--slot-col", String(col));
-        catcher.classList.toggle("is-filled", deliveredCrestColumns.has(col));
-        if (deliveredCrestColumns.has(col)) {
-          const img = document.createElement("img");
-          img.src = GOAL_CREST_IMAGE;
-          img.alt = "";
-          catcher.appendChild(img);
-        }
-        dom.board.appendChild(catcher);
-      }
     }
-
-    const counter = document.createElement("div");
-    counter.className = "match3-delivery-counter";
-    counter.textContent = isTransportLevel()
-      ? `${deliveredCrests}/${Number(currentLevel.crestTarget || 5)} Wappen in der Röhre`
-      : `${deliveredCrests}/${Number(currentLevel.crestTarget || 3)} Wappen im Ziel`;
-    dom.board.appendChild(counter);
+    const counter=document.createElement("div"); counter.className="match3-delivery-counter"; counter.textContent=`${deliveredCrests}/${Number(currentLevel.crestTarget || 3)} Wappen im Ziel`; dom.board.appendChild(counter);
   }
 
   function renderBoard({ matched = [], dropMap = null, invalid = [], createdSpecial = [] } = {}) {
     if (!dom.board) return 0;
-    if (isQuadCrestLevel()) return renderLevel5Board();
     const matchedSet = new Set(matched.map((p) => `${p.row}:${p.col}`));
     const invalidSet = new Set(invalid.map((p) => `${p.row}:${p.col}`));
     const createdSet = new Set(createdSpecial.map((p) => `${p.row}:${p.col}`));
 
     // Gemeinsames Board wird von allen Match-3-Leveln benutzt.
     // Deshalb vor jedem normalen Render ALLE level-spezifischen Klassen
-    // sauber entfernen. Sonst bleibt z.B. "is-level-5" nach einem Levelwechsel
     // aktiv und zerstört das Grid von Level 1-4.
-    dom.board.classList.remove("is-level-5");
     dom.board.classList.toggle("is-busy", busy);
     dom.board.classList.toggle("is-level-3", currentLevel.type === "deliver-crests");
-    dom.board.classList.toggle("is-level-4", currentLevel.type === "transport-crests");
     dom.board.style.setProperty("--match3-cols", String(COLS));
     dom.board.style.setProperty("--match3-rows", String(ROWS));
     dom.board.innerHTML = "";
@@ -1908,86 +1089,10 @@ export const Match3Feature = (() => {
     }
   }
 
-  function pickTransportSourceColumn() {
-    const cols = currentLevel.sourceColumns || currentLevel.stoneColumns || [];
-    if (!cols.length) return -1;
-
-    for (let offset = 0; offset < cols.length; offset++) {
-      const index = (nextTransportSourceIndex + offset) % cols.length;
-      const col = cols[index];
-      if (!isStone(board[0]?.[col])) {
-        nextTransportSourceIndex = (index + 1) % cols.length;
-        return col;
-      }
-    }
-    return -1;
-  }
-
-  function spawnNextTransportCrest() {
-    if (!isTransportLevel()) return false;
-    const target = Number(currentLevel.crestTarget || 5);
-    if (spawnedCrests >= target) return false;
-
-    const col = pickTransportSourceColumn();
-    if (col < 0) return false;
-
-    board[0][col] = makeGoalCrest(col);
-    releasedCrestColumns.add(col);
-    spawnedCrests++;
-    renderBoard();
-    return true;
-  }
-
-  async function animateTransportCrest(pos) {
-    const tile=tileAt(pos), img=tile?.querySelector("img"); if(!tile||!img||!dom.board)return;
-    const tileBox=tile.getBoundingClientRect(), boardBox=dom.board.getBoundingClientRect();
-    const catcherEl=dom.board.querySelector(".match3-transport-catcher"), tubeEl=dom.board.querySelector(".match3-transport-tube"), mouthEl=dom.board.querySelector(".match3-transport-tube-mouth");
-    const catcher=catcherEl?.getBoundingClientRect(), tube=tubeEl?.getBoundingClientRect(), mouth=mouthEl?.getBoundingClientRect();
-    const flashAt=(rect,extra="")=>{if(!rect)return;const f=document.createElement("div");f.className=`match3-transport-flash ${extra}`;Object.assign(f.style,{position:"fixed",left:`${rect.left+rect.width/2}px`,top:`${rect.top+rect.height/2}px`});document.body.appendChild(f);setTimeout(()=>f.remove(),520);};
-    flashAt(catcher,"is-basket");
-    const clone=img.cloneNode(true); clone.className="match3-transport-flying-crest";
-    Object.assign(clone.style,{position:"fixed",left:`${tileBox.left}px`,top:`${tileBox.top}px`,width:`${tileBox.width}px`,height:`${tileBox.height}px`,zIndex:"9999",pointerEvents:"none",margin:"0"});document.body.appendChild(clone);
-    const center=r=>({x:r?r.left+r.width/2-tileBox.width/2:tileBox.left,y:r?r.top+r.height/2-tileBox.height/2:tileBox.top});
-    const start={x:tileBox.left,y:tileBox.top}, pBasket=center(catcher), rightX=boardBox.right+Math.max(22,tileBox.width*.42);
-    const pLow={x:rightX,y:boardBox.bottom-tileBox.height*.35}, pHigh={x:rightX,y:Math.max(8,(tube?.top??boardBox.top)+tileBox.height*.18)}, pMouth=center(mouth);
-    const anim=clone.animate([
-      {transform:"translate3d(0,0,0) scale(1)",opacity:1,offset:0},
-      {transform:`translate3d(${pBasket.x-start.x}px,${pBasket.y-start.y}px,0) scale(1.08)`,offset:.14},
-      {transform:`translate3d(${pLow.x-start.x}px,${pLow.y-start.y}px,0) scale(.98) rotate(8deg)`,offset:.36},
-      {transform:`translate3d(${pHigh.x-start.x}px,${pHigh.y-start.y}px,0) scale(.94) rotate(-8deg)`,offset:.72},
-      {transform:`translate3d(${pMouth.x-start.x}px,${pMouth.y-start.y}px,0) scale(1.06) rotate(4deg)`,offset:.88},
-      {transform:`translate3d(${pMouth.x-start.x}px,${pMouth.y-start.y+54}px,0) scale(.82) rotate(12deg)`,opacity:.96,offset:.97},
-      {transform:`translate3d(${pMouth.x-start.x}px,${pMouth.y-start.y+68}px,0) scale(.72) rotate(16deg)`,opacity:0,offset:1}
-    ],{duration:2050,easing:"cubic-bezier(.22,.68,.2,1)",fill:"forwards"});
-    await wait(260);spawnNextTransportCrest();await wait(1480);flashAt(mouth,"is-tube");tubeEl?.classList.add("is-receiving");await animationFinished(anim);tubeEl?.classList.remove("is-receiving");clone.remove();
-  }
-
   async function collectBottomCrests() {
     if (!isCrestLevel() || !dom.board) return false;
 
     const bottom = ROWS - 1;
-
-    if (isTransportLevel()) {
-      const col = Number(currentLevel.catcherColumn ?? 2);
-      if (!isGoalCrest(board[bottom]?.[col])) return false;
-
-      const pos = { row: bottom, col, piece: board[bottom][col] };
-
-      // Flugobjekt wird vor dem Re-Render erzeugt, damit die Bewegung
-      // unabhängig vom Nachrutschen flüssig weiterläuft.
-      const transportPromise = animateTransportCrest(pos);
-
-      board[bottom][col] = null;
-      const localDropMap = collapseAndRefill();
-      renderBoard({ dropMap: localDropMap });
-
-      await transportPromise;
-      deliveredCrests++;
-      updateHud(1);
-      renderBoard();
-      await wait(110);
-      return false;
-    }
 
     const arrivals = [];
     for (let col = 0; col < COLS; col++) {
@@ -2080,8 +1185,6 @@ export const Match3Feature = (() => {
 
   function levelIdleStatus() {
     if (currentLevel.type === "deliver-crests") return "Sprenge die Steine und bringe alle 3 Wappen übers Ziel.";
-    if (currentLevel.type === "transport-crests") return "Bringe 5 Wappen über den mittleren Ausgang in die Röhre.";
-    if (currentLevel.type === "quad-crests") return "Bringe alle 4 Wappen in die Auffangkörbe.";
     return "Tausche zwei benachbarte Bälle.";
   }
 
@@ -2165,22 +1268,14 @@ export const Match3Feature = (() => {
         ? "20 blaue Bälle gesammelt!"
         : currentLevel.type === "deliver-crests"
           ? "Alle 3 Wappen im Ziel!"
-          : currentLevel.type === "transport-crests"
-            ? "5 Wappen in der Röhre!"
-            : currentLevel.type === "quad-crests"
-              ? "Alle 4 Wappen im Ziel!"
-              : `${TARGET_SCORE.toLocaleString("de-DE")} Punkte erreicht!`;
+          : `${TARGET_SCORE.toLocaleString("de-DE")} Punkte erreicht!`;
     }
     if (dom.victoryText) {
       dom.victoryText.textContent = currentLevel.type === "collect"
         ? `Level 2 geschafft. Deine Punkte: ${score.toLocaleString("de-DE")}.`
         : currentLevel.type === "deliver-crests"
           ? `Level 3 geschafft. Alle drei Stuttgarter-Kickers-Wappen wurden sicher über die Ziellinie gebracht.`
-          : currentLevel.type === "transport-crests"
-            ? `Level 4 geschafft. Fünf Wappen wurden in die Sammelröhre transportiert.`
-            : currentLevel.type === "quad-crests"
-              ? `Level 5 geschafft. Alle vier Wappen wurden in die Auffangkörbe gebracht.`
-              : "Die Nachrück- und Kaskadenmechanik wurde erfolgreich durchgespielt.";
+          : "Die Nachrück- und Kaskadenmechanik wurde erfolgreich durchgespielt.";
     }
     dom.victory?.classList.remove("hidden");
     renderBoard();
@@ -2938,23 +2033,10 @@ export const Match3Feature = (() => {
       return;
     }
     applyLevelLayout(config);
-    if (isQuadCrestLevel()) {
-      level5Boards = Array.from({ length: 4 }, () => createLevel5CardBoard());
-      board = level5Boards[0];
-      level5Delivered = new Set();
-      level5Released = new Set();
-      level5Selected = null;
-      level5BusyCard = -1;
-      level5PointerStart = null;
-      level5SuppressClickUntil = 0;
-    } else {
-      board = createPlayableBoard();
-    }
+    board = createPlayableBoard();
     score = 0;
     collectedBlue = 0;
     deliveredCrests = 0;
-    spawnedCrests = isTransportLevel() ? Math.min(2, Number(currentLevel.crestTarget || 5)) : 0;
-    nextTransportSourceIndex = 0;
     releasedCrestColumns.clear();
     deliveredCrestColumns.clear();
     busy = false;
@@ -2984,9 +2066,6 @@ export const Match3Feature = (() => {
   function startLevel1() { startLevel(LEVEL_1); }
   function startLevel2() { startLevel(LEVEL_2); }
   function startLevel3() { startLevel(LEVEL_3); }
-  function startLevel4() { startLevel(LEVEL_4); }
-  function startLevel5() { startLevel(LEVEL_5); }
-
   function bindEvents() {
     dom.homeButton?.addEventListener("click", () => {
       if (!hasAccess()) return;
@@ -2996,8 +2075,6 @@ export const Match3Feature = (() => {
     dom.level1?.addEventListener("click", startLevel1);
     dom.level2?.addEventListener("click", startLevel2);
     dom.level3?.addEventListener("click", startLevel3);
-    dom.level4?.addEventListener("click", startLevel4);
-    dom.level5?.addEventListener("click", startLevel5);
     dom.playBack?.addEventListener("click", () => {
       level1TutorialRunId++;
       if (dom.level1Tutorial) {
@@ -3021,5 +2098,5 @@ export const Match3Feature = (() => {
     initialized = true;
   }
 
-  return { init, refreshAccess, startLevel1, startLevel2, startLevel3, startLevel4, startLevel5 };
+  return { init, refreshAccess, startLevel1, startLevel2, startLevel3 };
 })();

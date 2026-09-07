@@ -1,0 +1,3025 @@
+const MAX_COLS = 9;
+const LEVEL_1 = Object.freeze({ id: 1, rows: 4, cols: 4, type: "score", targetScore: 1500 });
+const LEVEL_2 = Object.freeze({ id: 2, rows: 6, cols: 6, type: "collect", collectKey: "blue", collectTarget: 20 });
+const LEVEL_3 = Object.freeze({
+  id: 3,
+  rows: 7,
+  cols: 7,
+  type: "deliver-crests",
+  crestTarget: 3,
+  stoneColumns: [1, 3, 5]
+});
+const LEVEL_4 = Object.freeze({
+  id: 4,
+  rows: 7,
+  cols: 5,
+  type: "transport-crests",
+  crestTarget: 5,
+  stoneColumns: [1, 3],
+  sourceColumns: [1, 3],
+  catcherColumn: 2
+});
+const LEVEL_5 = Object.freeze({
+  id: 5,
+  rows: 4,
+  cols: 3,
+  type: "quad-crests",
+  crestTarget: 4,
+  stoneColumn: 1,
+  catcherColumn: 1,
+  cardCount: 4
+});
+let currentLevel = LEVEL_1;
+let ROWS = LEVEL_1.rows;
+let COLS = LEVEL_1.cols;
+let TARGET_SCORE = LEVEL_1.targetScore;
+const POINTS_PER_BALL = 100;
+const ACCESS_LEVEL = 195;
+
+const BALLS = [
+  { key: "red", image: "assets/balls/bk-arena-balls/red.png" },
+  { key: "yellow", image: "assets/balls/bk-arena-balls/yellow.png" },
+  { key: "green", image: "assets/balls/bk-arena-balls/green.png" },
+  { key: "blue", image: "assets/balls/bk-arena-balls/blue.png" }
+];
+
+const PIECE_SEPARATOR = "|";
+const COLOR_BOMB = "color-bomb";
+const AREA_BOMB = "area-bomb";
+const BIG_BANG = "big-bang";
+const COLOR_BOMB_IMAGE = "assets/ui/color-bomb.png";
+const AREA_BOMB_IMAGE = "assets/ui/bomb-ball.png";
+const STONE = "stone";
+const GOAL_CREST_PREFIX = "goal-crest@";
+const STONE_IMAGE = "assets/ui/stone.png";
+const GOAL_CREST_IMAGE = "assets/ui/stuttgarter-kickers.png";
+const LEGACY_STRIPES = new Set(["stripe-h", "stripe-v", "streif-h", "streif-v"]);
+
+// Reserviert für spätere Blocker wie Frost/Ketten. Geschützte Zellen werden
+// beim Nachrücken nicht verschoben.
+const protectedCells = new Set();
+
+const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+const cloneBoard = (board) => board.map((row) => row.slice());
+
+export const Match3Feature = (() => {
+  let getProgress = () => ({ unlockedLevel: 1 });
+  let saveProgress = () => {};
+  let showScreen = () => {};
+  let playEffect = () => {};
+  let initialized = false;
+
+  let board = [];
+  let score = 0;
+  let collectedBlue = 0;
+  let deliveredCrests = 0;
+  let spawnedCrests = 0;
+  let nextTransportSourceIndex = 0;
+  let level5Boards = [];
+  let level5Delivered = new Set();
+  let level5Released = new Set();
+  let level5Selected = null;
+  let level5BusyCard = -1;
+  let level5PointerStart = null;
+  let level5SuppressClickUntil = 0;
+  const releasedCrestColumns = new Set();
+  const deliveredCrestColumns = new Set();
+  let busy = false;
+  let finished = false;
+  let endgameDraining = false;
+  let selected = null;
+  let pointerStart = null;
+  let suppressClickUntil = 0;
+  let level1TutorialRunId = 0;
+
+  const dom = {};
+
+  function playMatch3Sound(name) {
+    try { playEffect(name); } catch (error) {
+      console.warn("[Match3] Sound konnte nicht abgespielt werden:", name, error);
+    }
+  }
+
+  function cacheDom() {
+    dom.homeButton = document.getElementById("openMatch3Button");
+    dom.mapBack = document.getElementById("match3MapBackButton");
+    dom.level1 = document.getElementById("match3Level1Button");
+    dom.level2 = document.getElementById("match3Level2Button");
+    dom.level3 = document.getElementById("match3Level3Button");
+    dom.level4 = document.getElementById("match3Level4Button");
+    dom.level5 = document.getElementById("match3Level5Button");
+    dom.playBack = document.getElementById("match3PlayBackButton");
+    dom.board = document.getElementById("match3Board");
+    dom.score = document.getElementById("match3Score");
+    dom.target = document.getElementById("match3TargetDisplay");
+    dom.goalHud = document.getElementById("match3GoalHud");
+    dom.playTitle = document.getElementById("match3PlayTitle");
+    dom.combo = document.getElementById("match3Combo");
+    dom.status = document.getElementById("match3Status");
+    dom.victory = document.getElementById("match3Victory");
+    dom.victoryTitle = document.getElementById("match3VictoryTitle");
+    dom.victoryText = document.getElementById("match3VictoryText");
+    dom.level1Tutorial = document.getElementById("match3Level1Tutorial");
+    dom.tutorialText = document.getElementById("match3TutorialText");
+    dom.tutorialCaption = document.getElementById("match3TutorialCaption");
+  }
+
+  function hasAccess() {
+    return Number(getProgress()?.unlockedLevel || 1) >= ACCESS_LEVEL;
+  }
+
+  function isCrestLevel() {
+    return currentLevel.type === "deliver-crests" ||
+      currentLevel.type === "transport-crests" ||
+      currentLevel.type === "quad-crests";
+  }
+
+  function isQuadCrestLevel() {
+    return currentLevel.type === "quad-crests";
+  }
+
+  function isTransportLevel() {
+    return currentLevel.type === "transport-crests";
+  }
+
+  function refreshAccess() {
+    if (!dom.homeButton) cacheDom();
+    if (!dom.homeButton) return false;
+    const unlocked = hasAccess();
+    dom.homeButton.hidden = !unlocked;
+    dom.homeButton.classList.toggle("hidden", !unlocked);
+    dom.homeButton.setAttribute("aria-hidden", unlocked ? "false" : "true");
+    dom.homeButton.tabIndex = unlocked ? 0 : -1;
+    return unlocked;
+  }
+
+  function applyLevelLayout(config) {
+    const rows = Math.max(1, Math.floor(Number(config?.rows) || 1));
+    const cols = Math.max(1, Math.min(MAX_COLS, Math.floor(Number(config?.cols) || 1)));
+
+    currentLevel = config || LEVEL_1;
+    ROWS = rows;
+    COLS = cols;
+    if (currentLevel.type === "score") {
+      TARGET_SCORE = Math.max(1, Math.floor(Number(config?.targetScore) || 1));
+    }
+
+    if (dom.board) {
+      if (currentLevel.type !== "quad-crests") {
+        dom.board.classList.remove("is-level-5");
+      }
+      dom.board.style.setProperty("--match3-cols", String(COLS));
+      dom.board.style.setProperty("--match3-rows", String(ROWS));
+      dom.board.dataset.cols = String(COLS);
+      dom.board.dataset.rows = String(ROWS);
+      dom.board.setAttribute("aria-rowcount", String(ROWS));
+      dom.board.setAttribute("aria-colcount", String(COLS));
+    }
+  }
+
+  function randomBall() {
+    return BALLS[Math.floor(Math.random() * BALLS.length)].key;
+  }
+
+  function isStone(piece) {
+    return piece === STONE;
+  }
+
+  function isGoalCrest(piece) {
+    return typeof piece === "string" && piece.startsWith(GOAL_CREST_PREFIX);
+  }
+
+  function crestOriginColumn(piece) {
+    return isGoalCrest(piece) ? Number(piece.slice(GOAL_CREST_PREFIX.length)) : -1;
+  }
+
+  function makeGoalCrest(col) {
+    return `${GOAL_CREST_PREFIX}${col}`;
+  }
+
+  function isMovablePiece(piece) {
+    return Boolean(piece) && !isStone(piece);
+  }
+
+  function pieceInfo(piece) {
+    if (!piece) return { color: null, special: null };
+    if (isStone(piece)) return { color: null, special: STONE };
+    if (isGoalCrest(piece)) return { color: null, special: "goal-crest" };
+    const [rawColor = "", rawSpecial = null] = String(piece).split(PIECE_SEPARATOR);
+
+    // Alte gespeicherte Streifenball-Werte bleiben kompatibel, besitzen aber
+    // keinerlei Spezialfunktion mehr und verhalten sich wie normale Farbbälle.
+    if (rawSpecial && LEGACY_STRIPES.has(rawSpecial)) {
+      return { color: rawColor || null, special: null };
+    }
+    if (rawSpecial === COLOR_BOMB || rawSpecial === AREA_BOMB) {
+      return { color: null, special: rawSpecial };
+    }
+    return { color: rawColor || null, special: null };
+  }
+
+  function baseColor(piece) {
+    const info = pieceInfo(piece);
+    return info.special ? null : info.color;
+  }
+
+  function isColorBomb(piece) {
+    return pieceInfo(piece).special === COLOR_BOMB;
+  }
+
+  function isAreaBomb(piece) {
+    return pieceInfo(piece).special === AREA_BOMB;
+  }
+
+  function makeSpecial(special) {
+    return `${PIECE_SEPARATOR}${special}`;
+  }
+
+  function normalImageFor(color) {
+    return BALLS.find((ball) => ball.key === color)?.image || BALLS[0].image;
+  }
+
+  function imageFor(piece) {
+    const { color, special } = pieceInfo(piece);
+    if (special === COLOR_BOMB) return COLOR_BOMB_IMAGE;
+    if (special === AREA_BOMB) return AREA_BOMB_IMAGE;
+    if (special === STONE) return STONE_IMAGE;
+    if (special === "goal-crest") return GOAL_CREST_IMAGE;
+    return normalImageFor(color);
+  }
+
+  function isProtectedCell(row, col) {
+    return protectedCells.has(`${row}:${col}`) || isStone(board[row]?.[col]);
+  }
+
+  // Wappen dürfen fallen, aber niemals durch Matches/Bomben entfernt werden.
+  function isRemovalProtectedCell(row, col) {
+    return isProtectedCell(row, col) || isGoalCrest(board[row]?.[col]);
+  }
+
+  function swapIn(boardToChange, a, b) {
+    const temp = boardToChange[a.row][a.col];
+    boardToChange[a.row][a.col] = boardToChange[b.row][b.col];
+    boardToChange[b.row][b.col] = temp;
+  }
+
+  function adjacent(a, b) {
+    return Math.abs(a.row - b.row) + Math.abs(a.col - b.col) === 1;
+  }
+
+  function findMatchGroups(boardToCheck) {
+    const groups = [];
+
+    for (let row = 0; row < ROWS; row++) {
+      let start = 0;
+      while (start < COLS) {
+        const color = baseColor(boardToCheck[row][start]);
+        let end = start + 1;
+        while (end < COLS && color && baseColor(boardToCheck[row][end]) === color) end++;
+        if (color && end - start >= 3) {
+          groups.push({
+            direction: "horizontal",
+            color,
+            cells: Array.from({ length: end - start }, (_, i) => ({ row, col: start + i }))
+          });
+        }
+        start = end;
+      }
+    }
+
+    for (let col = 0; col < COLS; col++) {
+      let start = 0;
+      while (start < ROWS) {
+        const color = baseColor(boardToCheck[start][col]);
+        let end = start + 1;
+        while (end < ROWS && color && baseColor(boardToCheck[end][col]) === color) end++;
+        if (color && end - start >= 3) {
+          groups.push({
+            direction: "vertical",
+            color,
+            cells: Array.from({ length: end - start }, (_, i) => ({ row: start + i, col }))
+          });
+        }
+        start = end;
+      }
+    }
+
+    return groups;
+  }
+
+  function findMatches(boardToCheck) {
+    const matched = new Map();
+    for (const group of findMatchGroups(boardToCheck)) {
+      for (const cell of group.cells) matched.set(`${cell.row}:${cell.col}`, cell);
+    }
+    return [...matched.values()];
+  }
+
+  function cellInGroup(group, pos) {
+    return Boolean(pos && group.cells.some((cell) => cell.row === pos.row && cell.col === pos.col));
+  }
+
+  function cellId(cell) {
+    return `${cell.row}:${cell.col}`;
+  }
+
+  function movedCreationCell(cells, dropMap = null) {
+    if (!dropMap) return null;
+    return cells
+      .map((cell) => {
+        const drop = dropMap.get(cellId(cell));
+        if (!drop) return null;
+        const moved = Boolean(drop.spawned || drop.fromRow !== cell.row);
+        if (!moved) return null;
+        const distance = Math.max(0, cell.row - Number(drop.fromRow));
+        return { ...cell, distance, spawned: Boolean(drop.spawned) };
+      })
+      .filter(Boolean)
+      .sort((a, b) => {
+        if (a.spawned !== b.spawned) return Number(b.spawned) - Number(a.spawned);
+        if (a.distance !== b.distance) return b.distance - a.distance;
+        return b.row - a.row || b.col - a.col;
+      })[0] || null;
+  }
+
+  function exactFiveCandidates(groups) {
+    return groups
+      .filter((group) => group.cells.length >= 5)
+      .map((group) => ({ type: COLOR_BOMB, color: group.color, cells: group.cells }));
+  }
+
+  function tlCandidates(groups) {
+    // T-/L-Flächenbomben: nur Arme mit Länge 3 oder 4.
+    // Damit bleiben klassisch 3x3 sowie zusätzlich 3x4, 4x3 und 4x4 erlaubt.
+    // Ab einer 5er-Reihe greift ausschließlich die Farbbomben-Regel.
+    const horizontal = groups.filter((group) =>
+      group.direction === "horizontal" && group.cells.length >= 3 && group.cells.length <= 4
+    );
+    const vertical = groups.filter((group) =>
+      group.direction === "vertical" && group.cells.length >= 3 && group.cells.length <= 4
+    );
+    const candidates = [];
+
+    for (const h of horizontal) {
+      for (const v of vertical) {
+        if (h.color !== v.color) continue;
+        const intersections = h.cells.filter((cell) => cellInGroup(v, cell));
+        if (intersections.length !== 1) continue;
+
+        const intersection = intersections[0];
+        const hIndex = h.cells.findIndex((cell) => cellId(cell) === cellId(intersection));
+        const vIndex = v.cells.findIndex((cell) => cellId(cell) === cellId(intersection));
+
+        const hAtEnd = hIndex === 0 || hIndex === h.cells.length - 1;
+        const vAtEnd = vIndex === 0 || vIndex === v.cells.length - 1;
+
+        // Ist der Schnittpunkt in beiden Reihen innen, entsteht ein Plus.
+        // Für T/L muss mindestens eine der beiden Reihen am Schnittpunkt enden.
+        if (!hAtEnd && !vAtEnd) continue;
+
+        const unique = new Map();
+        for (const cell of [...h.cells, ...v.cells]) unique.set(cellId(cell), cell);
+
+        // Mindestens die klassische 3+3-Form (5 eindeutige Felder).
+        if (unique.size < 5) continue;
+
+        candidates.push({
+          type: AREA_BOMB,
+          color: h.color,
+          cells: [...unique.values()]
+        });
+      }
+    }
+    return candidates;
+  }
+
+  function planSpecialCreations(groups, swapContext = null, dropMap = null) {
+    const five = exactFiveCandidates(groups);
+    const fiveCells = new Set(five.flatMap((candidate) => candidate.cells.map(cellId)));
+    const tl = tlCandidates(groups).filter((candidate) =>
+      !candidate.cells.some((cell) => fiveCells.has(cellId(cell)))
+    );
+
+    // Spielerzug: Spezialball immer exakt an der Zielposition des verschobenen Balls.
+    // Priorität: Gerade 5 vor T/L.
+    if (swapContext?.to) {
+      const target = swapContext.to;
+      const candidate = five.find((item) => item.cells.some((cell) => cellId(cell) === cellId(target)))
+        || tl.find((item) => item.cells.some((cell) => cellId(cell) === cellId(target)));
+      return candidate ? [{ ...target, type: candidate.type, color: candidate.color }] : [];
+    }
+
+    // Cascade: als Entstehungsposition den tatsächlich neu gespawnten bzw.
+    // gefallenen Ball verwenden, der die Form vervollständigt hat.
+    const creations = [];
+    const usedPositions = new Set();
+    const claimedCells = new Set();
+    for (const candidate of [...five, ...tl]) {
+      if (candidate.cells.some((cell) => claimedCells.has(cellId(cell)))) continue;
+      const pos = movedCreationCell(candidate.cells, dropMap);
+      if (!pos || usedPositions.has(cellId(pos))) continue;
+      usedPositions.add(cellId(pos));
+      candidate.cells.forEach((cell) => claimedCells.add(cellId(cell)));
+      creations.push({ row: pos.row, col: pos.col, type: candidate.type, color: candidate.color, cascadeCreated: true });
+    }
+    return creations;
+  }
+
+  function hasPossibleMove(boardToCheck) {
+    for (let row = 0; row < ROWS; row++) {
+      for (let col = 0; col < COLS; col++) {
+        const from = { row, col };
+        const candidates = [
+          { row, col: col + 1 },
+          { row: row + 1, col }
+        ].filter((p) => p.row < ROWS && p.col < COLS);
+
+        for (const to of candidates) {
+          const fromPiece = boardToCheck[from.row]?.[from.col];
+          const toPiece = boardToCheck[to.row]?.[to.col];
+          if (!isMovablePiece(fromPiece) || !isMovablePiece(toPiece)) continue;
+          if ((isColorBomb(fromPiece) && baseColor(toPiece)) ||
+              (isColorBomb(toPiece) && baseColor(fromPiece)) ||
+              isAreaBomb(fromPiece) || isAreaBomb(toPiece)) return true;
+          const test = cloneBoard(boardToCheck);
+          swapIn(test, from, to);
+          if (findMatches(test).length) return true;
+        }
+      }
+    }
+    return false;
+  }
+
+  function applyLevel3StartLayout(candidate) {
+    if (!isCrestLevel() || isQuadCrestLevel()) return candidate;
+    for (const col of currentLevel.stoneColumns || []) {
+      if (candidate[0]?.[col] !== undefined) candidate[0][col] = STONE;
+    }
+    return candidate;
+  }
+
+  function createPlayableBoard() {
+    for (let attempt = 0; attempt < 2500; attempt++) {
+      const candidate = Array.from({ length: ROWS }, () =>
+        Array.from({ length: COLS }, () => randomBall())
+      );
+      if (!findMatches(candidate).length && hasPossibleMove(candidate)) return applyLevel3StartLayout(candidate);
+    }
+
+    // Fallback für das aktuelle 4×4-Testlevel. Für spätere Layouts wird
+    // nochmals solange erzeugt, bis ein gültiges Brett vorhanden ist.
+    if (ROWS === 4 && COLS === 4) {
+      return [
+        ["red", "yellow", "green", "blue"],
+        ["yellow", "red", "blue", "green"],
+        ["green", "green", "yellow", "red"],
+        ["blue", "red", "green", "yellow"]
+      ];
+    }
+
+    let candidate;
+    do {
+      candidate = Array.from({ length: ROWS }, () =>
+        Array.from({ length: COLS }, () => randomBall())
+      );
+    } while (findMatches(candidate).length || !hasPossibleMove(candidate));
+    return applyLevel3StartLayout(candidate);
+  }
+
+  function setStatus(text) {
+    if (dom.status) dom.status.textContent = text;
+  }
+
+  function updateHud(combo = 1) {
+    if (dom.score) dom.score.textContent = score.toLocaleString("de-DE");
+    if (dom.combo) dom.combo.textContent = `×${combo}`;
+
+    if (currentLevel.type === "collect") {
+      const remaining = Math.max(0, Number(currentLevel.collectTarget || 0) - collectedBlue);
+      if (dom.target) {
+        dom.target.className = "match3-collect-target";
+        dom.target.innerHTML = `<img src="${imageFor(currentLevel.collectKey)}" alt="Blauer Ball"><span>${remaining}</span>`;
+      }
+      if (dom.goalHud) dom.goalHud.textContent = `${remaining} blaue Bälle`;
+    } else if (isCrestLevel()) {
+      const target = Number(currentLevel.crestTarget || 3);
+      if (dom.target) {
+        dom.target.className = "match3-crest-target";
+        dom.target.innerHTML = `<img src="${GOAL_CREST_IMAGE}" alt="Wappen"><span>${deliveredCrests}/${target}</span>`;
+      }
+      if (dom.goalHud) dom.goalHud.textContent = `Wappen ${deliveredCrests}/${target}`;
+    } else {
+      if (dom.target) {
+        dom.target.className = "";
+        dom.target.textContent = TARGET_SCORE.toLocaleString("de-DE");
+      }
+      if (dom.goalHud) dom.goalHud.textContent = `Ziel ${TARGET_SCORE.toLocaleString("de-DE")}`;
+    }
+  }
+
+  function tileAt(pos) {
+    return dom.board?.querySelector(`.match3-tile[data-row="${pos.row}"][data-col="${pos.col}"]`) || null;
+  }
+
+  function animationFinished(animation) {
+    return animation?.finished?.catch(() => {}) || Promise.resolve();
+  }
+
+  async function animateSwapVisual(from, to, duration = 190) {
+    const fromTile = tileAt(from);
+    const toTile = tileAt(to);
+    const fromImg = fromTile?.querySelector("img");
+    const toImg = toTile?.querySelector("img");
+    if (!fromTile || !toTile || !fromImg || !toImg) {
+      await wait(duration);
+      return;
+    }
+
+    const a = fromTile.getBoundingClientRect();
+    const b = toTile.getBoundingClientRect();
+    const dx = b.left - a.left;
+    const dy = b.top - a.top;
+    const easing = "cubic-bezier(.22,.72,.24,1)";
+
+    fromTile.classList.add("is-swapping");
+    toTile.classList.add("is-swapping");
+    fromImg.style.zIndex = "3";
+    toImg.style.zIndex = "2";
+
+    const first = fromImg.animate(
+      [
+        { transform: "translate3d(0,0,0) scale(1)" },
+        { transform: `translate3d(${dx}px, ${dy}px, 0) scale(1.035)` }
+      ],
+      { duration, easing, fill: "forwards" }
+    );
+    const second = toImg.animate(
+      [
+        { transform: "translate3d(0,0,0) scale(1)" },
+        { transform: `translate3d(${-dx}px, ${-dy}px, 0) scale(.985)` }
+      ],
+      { duration, easing, fill: "forwards" }
+    );
+
+    await Promise.all([animationFinished(first), animationFinished(second)]);
+  }
+
+  function startDropAnimations(dropMap) {
+    if (!dom.board || !dropMap?.size) return 0;
+    const firstTile = tileAt({ row: 0, col: 0 });
+    const secondRowTile = tileAt({ row: 1, col: 0 });
+    const pitch = firstTile && secondRowTile
+      ? secondRowTile.getBoundingClientRect().top - firstTile.getBoundingClientRect().top
+      : (firstTile?.getBoundingClientRect().height || 70) + 7;
+
+    let maxDuration = 0;
+    dropMap.forEach((movement, id) => {
+      const [row, col] = id.split(":").map(Number);
+      const tile = tileAt({ row, col });
+      const img = tile?.querySelector("img");
+      if (!img) return;
+
+      const distanceRows = Math.max(0, row - movement.fromRow);
+      if (!distanceRows) return;
+      const startY = -distanceRows * pitch;
+      const duration = Math.min(520, 235 + distanceRows * 55);
+      maxDuration = Math.max(maxDuration, duration);
+      tile.classList.add("is-dropping");
+      if (movement.spawned) tile.classList.add("is-spawned");
+
+      img.animate(
+        [
+          { transform: `translate3d(0, ${startY}px, 0) scale(${movement.spawned ? .96 : 1})`, opacity: movement.spawned ? .88 : 1, offset: 0 },
+          { transform: "translate3d(0, 5px, 0) scale(1.015)", opacity: 1, offset: .86 },
+          { transform: "translate3d(0, -2px, 0) scale(.998)", opacity: 1, offset: .95 },
+          { transform: "translate3d(0, 0, 0) scale(1)", opacity: 1, offset: 1 }
+        ],
+        { duration, easing: "cubic-bezier(.18,.7,.2,1)", fill: "both" }
+      );
+    });
+    return maxDuration;
+  }
+
+  function matchPopColor(piece) {
+    const color = baseColor(piece);
+    return {
+      red: "#ff4a3d",
+      yellow: "#ffd84a",
+      green: "#59d85a",
+      blue: "#4aa8ff",
+      purple: "#b96cff",
+      pink: "#ff75b9",
+      black: "#707782"
+    }[color] || "#ffffff";
+  }
+
+  function spawnMatchPopBurst(tile, piece, count = 16) {
+    if (!dom.board || !tile) return { particles: [], ring: null, flash: null };
+
+    const tileBox = tile.getBoundingClientRect();
+    const boardBox = dom.board.getBoundingClientRect();
+    const centerX = tileBox.left - boardBox.left + tileBox.width / 2;
+    const centerY = tileBox.top - boardBox.top + tileBox.height / 2;
+    const burstColor = matchPopColor(piece);
+    const particles = [];
+
+    // Gröbere farbige Splitter + kleine helle Glitzerpunkte.
+    // Das wirkt klarer und "knackiger" als eine gleichmäßige Staubwolke.
+    for (let i = 0; i < count; i++) {
+      const particle = document.createElement("span");
+      const isSpark = i % 4 === 0;
+      particle.className = `match3-pop-particle ${isSpark ? "is-spark" : "is-shard"}`;
+      particle.style.left = `${centerX}px`;
+      particle.style.top = `${centerY}px`;
+
+      const angle = (360 / count) * i + ((i * 17) % 23) - 11;
+      const distance = count > 30
+        ? (isSpark ? 46 + (i % 4) * 8 : 34 + (i % 6) * 7)
+        : (isSpark ? 24 + (i % 3) * 5 : 18 + (i % 5) * 4);
+      const size = isSpark ? 2.5 + (i % 2) : 4 + (i % 3);
+
+      particle.style.setProperty("--pop-color", burstColor);
+      particle.style.setProperty("--pop-size", `${size}px`);
+      particle.dataset.angle = String(angle);
+      particle.dataset.distance = String(distance);
+      dom.board.appendChild(particle);
+      particles.push(particle);
+    }
+
+    const ring = document.createElement("span");
+    ring.className = "match3-pop-ring";
+    ring.style.left = `${centerX}px`;
+    ring.style.top = `${centerY}px`;
+    ring.style.setProperty("--pop-color", burstColor);
+    dom.board.appendChild(ring);
+
+    const flash = document.createElement("span");
+    flash.className = "match3-pop-flash";
+    flash.style.left = `${centerX}px`;
+    flash.style.top = `${centerY}px`;
+    flash.style.setProperty("--pop-color", burstColor);
+    dom.board.appendChild(flash);
+
+    return { particles, ring, flash };
+  }
+
+  function spawnAreaBombImageShards(tile, img) {
+    if (!dom.board || !tile || !img) return [];
+    const tileBox = tile.getBoundingClientRect();
+    const boardBox = dom.board.getBoundingClientRect();
+    const left = tileBox.left - boardBox.left;
+    const top = tileBox.top - boardBox.top;
+    const size = Math.max(tileBox.width, tileBox.height);
+    const src = img.currentSrc || img.src;
+    const clips = [
+      "polygon(0 0,50% 0,42% 42%,0 48%)", "polygon(50% 0,100% 0,100% 42%,58% 42%)",
+      "polygon(0 48%,42% 42%,46% 72%,0 100%)", "polygon(58% 42%,100% 42%,100% 78%,62% 70%)",
+      "polygon(0 100%,46% 72%,50% 100%)", "polygon(50% 100%,62% 70%,100% 78%,100% 100%)",
+      "polygon(42% 42%,58% 42%,62% 70%,46% 72%)", "polygon(18% 18%,42% 8%,42% 42%,8% 42%)",
+      "polygon(58% 8%,84% 18%,92% 42%,58% 42%)", "polygon(10% 54%,42% 48%,42% 76%,20% 88%)",
+      "polygon(58% 48%,92% 52%,82% 88%,58% 76%)", "polygon(38% 18%,62% 18%,58% 48%,42% 48%)"
+    ];
+    return clips.map((clip, i) => {
+      const shard = document.createElement("img");
+      shard.src = src;
+      shard.alt = "";
+      Object.assign(shard.style, {
+        position: "absolute", left: `${left}px`, top: `${top}px`, width: `${tileBox.width}px`, height: `${tileBox.height}px`,
+        objectFit: "contain", pointerEvents: "none", zIndex: "40", transformOrigin: "50% 50%", clipPath: clip
+      });
+      dom.board.appendChild(shard);
+      const angle = ((360 / clips.length) * i - 12) * Math.PI / 180;
+      const distance = size * (0.72 + (i % 4) * 0.16);
+      const dx = Math.cos(angle) * distance;
+      const dy = Math.sin(angle) * distance;
+      const rot = (i % 2 ? 1 : -1) * (65 + (i % 5) * 24);
+      const anim = shard.animate([
+        { transform: "translate(0,0) scale(2.56) rotate(0deg)", opacity: 1, filter: "brightness(1.7)", offset: 0 },
+        { transform: `translate(${dx*.25}px,${dy*.25}px) scale(2.05) rotate(${rot*.25}deg)`, opacity: 1, filter: "brightness(2.15)", offset: .18 },
+        { transform: `translate(${dx}px,${dy}px) scale(.72) rotate(${rot}deg)`, opacity: .72, filter: "brightness(1.35)", offset: .68 },
+        { transform: `translate(${dx*1.28}px,${dy*1.28}px) scale(.18) rotate(${rot*1.35}deg)`, opacity: 0, filter: "brightness(1.1)", offset: 1 }
+      ], { duration: 280, easing: "cubic-bezier(.12,.72,.18,1)", fill: "forwards" });
+      return animationFinished(anim).finally(() => shard.remove());
+    });
+  }
+
+  async function animateNormalMatchPops(removal = [], options = {}) {
+    if (!dom.board || !removal?.length) return;
+
+    // Dieselbe Pop-Explosion wird für normale Matches und Spezialball-Explosionen verwendet.
+    const ordered = [...removal].sort((a, b) => a.row - b.row || a.col - b.col);
+    const stagger = Number.isFinite(options.stagger) ? options.stagger : 46;
+    const delayForCell = typeof options.delayForCell === "function" ? options.delayForCell : null;
+    const areaBombPos = options.areaBombPos || null;
+    const popDuration = 154;
+
+    const animations = ordered.map((cell, index) => (async () => {
+      const customDelay = delayForCell ? Number(delayForCell(cell, index) || 0) : 0;
+      await wait(Math.max(0, customDelay + index * stagger));
+
+      const tile = tileAt(cell);
+      const img = tile?.querySelector("img");
+      if (!tile || !img || tile.classList.contains("is-protected")) return;
+
+      tile.classList.add("is-match-popping");
+      const piece = board[cell.row]?.[cell.col];
+      const isDetonatingAreaBomb = areaBombPos && cell.row === areaBombPos.row && cell.col === areaBombPos.col;
+      if (isDetonatingAreaBomb) tile.classList.add("is-area-bomb-detonating");
+      const { particles, ring, flash } = spawnMatchPopBurst(tile, piece, isDetonatingAreaBomb ? 38 : 16);
+      const bombShardAnimations = []; // Bomben-PNG zersplittert bereits direkt in animateAreaBombCharge().
+
+      const particleAnimations = particles.map((particle, particleIndex) => {
+        const angle = Number(particle.dataset.angle || 0);
+        const distance = Number(particle.dataset.distance || 20);
+        const radians = angle * Math.PI / 180;
+        const dx = Math.cos(radians) * distance;
+        const dy = Math.sin(radians) * distance;
+        const rotate = 70 + (particleIndex % 5) * 31;
+        const particleFrames = isDetonatingAreaBomb
+          ? [
+              { transform: "translate(-50%,-50%) scale(.45) rotate(0deg)", opacity: .95, offset: 0 },
+              { transform: "translate(-50%,-50%) scale(1.35) rotate(12deg)", opacity: 1, offset: .12 },
+              { transform: `translate(calc(-50% + ${dx}px), calc(-50% + ${dy}px)) scale(.78) rotate(${rotate}deg)`, opacity: .95, offset: .62 },
+              { transform: `translate(calc(-50% + ${dx * 1.18}px), calc(-50% + ${dy * 1.18}px)) scale(.12) rotate(${rotate + 45}deg)`, opacity: 0, offset: 1 }
+            ]
+          : [
+              { transform: "translate(-50%,-50%) scale(.15) rotate(0deg)", opacity: 0, offset: 0 },
+              { transform: "translate(-50%,-50%) scale(.15) rotate(0deg)", opacity: 0, offset: .30 },
+              { transform: "translate(-50%,-50%) scale(1.25) rotate(12deg)", opacity: 1, offset: .42 },
+              { transform: `translate(calc(-50% + ${dx}px), calc(-50% + ${dy}px)) scale(.72) rotate(${rotate}deg)`, opacity: .95, offset: .72 },
+              { transform: `translate(calc(-50% + ${dx * 1.18}px), calc(-50% + ${dy * 1.18}px)) scale(.12) rotate(${rotate + 45}deg)`, opacity: 0, offset: 1 }
+            ];
+
+        return animationFinished(particle.animate(
+          particleFrames,
+          { duration: isDetonatingAreaBomb ? 231 : 190, easing: "cubic-bezier(.16,.78,.22,1)", fill: "forwards" }
+        )).finally(() => particle.remove());
+      });
+
+      const ringAnimation = ring ? animationFinished(ring.animate(
+        isDetonatingAreaBomb
+          ? [
+              { transform: "translate(-50%,-50%) scale(.48)", opacity: .95, offset: 0 },
+              { transform: "translate(-50%,-50%) scale(.82)", opacity: 1, offset: .10 },
+              { transform: "translate(-50%,-50%) scale(1.48)", opacity: 0, offset: 1 }
+            ]
+          : [
+              { transform: "translate(-50%,-50%) scale(.28)", opacity: 0, offset: 0 },
+              { transform: "translate(-50%,-50%) scale(.28)", opacity: 0, offset: .30 },
+              { transform: "translate(-50%,-50%) scale(.55)", opacity: .95, offset: .42 },
+              { transform: "translate(-50%,-50%) scale(1.42)", opacity: 0, offset: 1 }
+            ],
+        { duration: isDetonatingAreaBomb ? 209 : 176, easing: "cubic-bezier(.16,.72,.25,1)", fill: "forwards" }
+      )).finally(() => ring.remove()) : Promise.resolve();
+
+      const flashAnimation = flash ? animationFinished(flash.animate(
+        isDetonatingAreaBomb
+          ? [
+              { transform: "translate(-50%,-50%) scale(.82)", opacity: 1, offset: 0 },
+              { transform: "translate(-50%,-50%) scale(1.18)", opacity: .98, offset: .10 },
+              { transform: "translate(-50%,-50%) scale(1.48)", opacity: 0, offset: 1 }
+            ]
+          : [
+              { transform: "translate(-50%,-50%) scale(.25)", opacity: 0, offset: 0 },
+              { transform: "translate(-50%,-50%) scale(.25)", opacity: 0, offset: .30 },
+              { transform: "translate(-50%,-50%) scale(1.0)", opacity: .95, offset: .40 },
+              { transform: "translate(-50%,-50%) scale(1.38)", opacity: 0, offset: .70 },
+              { transform: "translate(-50%,-50%) scale(1.45)", opacity: 0, offset: 1 }
+            ],
+        { duration: isDetonatingAreaBomb ? 171 : 150, easing: "ease-out", fill: "forwards" }
+      )).finally(() => flash.remove()) : Promise.resolve();
+
+      const popFrames = isDetonatingAreaBomb
+        ? [
+            { transform: "scale(2.56)", opacity: 0, filter: "brightness(1.4)", offset: 0 },
+            { transform: "scale(2.56)", opacity: 0, filter: "brightness(1.4)", offset: 1 }
+          ]
+        : [
+            { transform: "scale(1)", opacity: 1, filter: "brightness(1) saturate(1)", offset: 0 },
+            { transform: "scale(1.10)", opacity: 1, filter: "brightness(1.08) saturate(1.06)", offset: .18 },
+            { transform: "scale(1.27)", opacity: 1, filter: "brightness(1.22) saturate(1.12)", offset: .34 },
+            { transform: "scale(1.43)", opacity: 1, filter: "brightness(1.72) saturate(1.2)", offset: .43 },
+            { transform: "scale(.88)", opacity: .62, filter: "brightness(2.15) saturate(.8)", offset: .56 },
+            { transform: "scale(.28)", opacity: 0, filter: "brightness(2.35) saturate(.5)", offset: .76 },
+            { transform: "scale(.12)", opacity: 0, filter: "brightness(2.35) saturate(.5)", offset: 1 }
+          ];
+
+      const pop = animationFinished(img.animate(
+        popFrames,
+        { duration: isDetonatingAreaBomb ? 226 : popDuration, easing: "cubic-bezier(.16,.74,.2,1)", fill: "forwards" }
+      ));
+
+      await Promise.all([pop, ringAnimation, flashAnimation, ...particleAnimations, ...bombShardAnimations]);
+    })());
+
+    await Promise.all(animations);
+  }
+
+
+  function level5BaseColor(piece) {
+    return baseColor(piece);
+  }
+
+  function level5FindGroups(cardBoard) {
+    const rows = 4;
+    const cols = 3;
+    const groups = [];
+
+    for (let row = 0; row < rows; row++) {
+      let start = 0;
+      while (start < cols) {
+        const color = level5BaseColor(cardBoard[row]?.[start]);
+        let end = start + 1;
+        while (end < cols && color && level5BaseColor(cardBoard[row]?.[end]) === color) end++;
+        if (color && end - start >= 3) {
+          groups.push({
+            direction: "horizontal",
+            color,
+            cells: Array.from({ length: end - start }, (_, i) => ({ row, col: start + i }))
+          });
+        }
+        start = end;
+      }
+    }
+
+    for (let col = 0; col < cols; col++) {
+      let start = 0;
+      while (start < rows) {
+        const color = level5BaseColor(cardBoard[start]?.[col]);
+        let end = start + 1;
+        while (end < rows && color && level5BaseColor(cardBoard[end]?.[col]) === color) end++;
+        if (color && end - start >= 3) {
+          groups.push({
+            direction: "vertical",
+            color,
+            cells: Array.from({ length: end - start }, (_, i) => ({ row: start + i, col }))
+          });
+        }
+        start = end;
+      }
+    }
+    return groups;
+  }
+
+  function level5FindMatches(cardBoard) {
+    const map = new Map();
+    for (const group of level5FindGroups(cardBoard)) {
+      for (const cell of group.cells) map.set(`${cell.row}:${cell.col}`, cell);
+    }
+    return [...map.values()];
+  }
+
+  function level5WouldSwapBeValid(cardBoard, from, to) {
+    if (!cardBoard) return false;
+    if (
+      from.row < 0 || from.row >= 4 || from.col < 0 || from.col >= 3 ||
+      to.row < 0 || to.row >= 4 || to.col < 0 || to.col >= 3
+    ) return false;
+    if (Math.abs(from.row - to.row) + Math.abs(from.col - to.col) !== 1) return false;
+
+    const a = cardBoard[from.row]?.[from.col];
+    const b = cardBoard[to.row]?.[to.col];
+
+    // Steine sind niemals tauschbar.
+    if (!isMovablePiece(a) || !isMovablePiece(b)) return false;
+
+    // Bomben dürfen wie im restlichen Match-3 direkt mit einem Nachbarn
+    // getauscht und dadurch ausgelöst werden.
+    if (isAreaBomb(a) || isAreaBomb(b)) return true;
+
+    const test = cardBoard.map(row => row.slice());
+    [test[from.row][from.col], test[to.row][to.col]] =
+      [test[to.row][to.col], test[from.row][from.col]];
+
+    const aIsCrest = isGoalCrest(a);
+    const bIsCrest = isGoalCrest(b);
+
+    // Beim Wappen gilt exakt die bestehende Regel:
+    // Der Partnerball muss DURCH diesen Tausch selbst Teil eines Matches werden.
+    if (aIsCrest || bIsCrest) {
+      const partnerNewPos = aIsCrest ? from : to;
+      return level5PartnerMakesMatch(test, partnerNewPos);
+    }
+
+    return level5FindMatches(test).length > 0;
+  }
+
+  function level5HasMove(cardBoard) {
+    for (let row = 0; row < 4; row++) {
+      for (let col = 0; col < 3; col++) {
+        for (const [dr, dc] of [[0, 1], [1, 0]]) {
+          const to = { row: row + dr, col: col + dc };
+          if (to.row >= 4 || to.col >= 3) continue;
+          if (level5WouldSwapBeValid(cardBoard, { row, col }, to)) return true;
+        }
+      }
+    }
+    return false;
+  }
+
+  function createLevel5CardBoard() {
+    for (let attempt = 0; attempt < 1200; attempt++) {
+      const candidate = Array.from({ length: 4 }, () =>
+        Array.from({ length: 3 }, () => randomBall())
+      );
+      candidate[0][1] = STONE;
+      if (!level5FindMatches(candidate).length && level5HasMove(candidate)) return candidate;
+    }
+    return [
+      ["red", STONE, "blue"],
+      ["yellow", "green", "red"],
+      ["blue", "yellow", "green"],
+      ["green", "red", "yellow"]
+    ];
+  }
+
+  function level5TileAt(cardIndex, row, col) {
+    return dom.board?.querySelector(
+      `.match3-mini-card[data-card="${cardIndex}"] .match3-mini-tile[data-row="${row}"][data-col="${col}"]`
+    ) || null;
+  }
+
+  function level5PartnerMakesMatch(testBoard, partnerNewPos) {
+    return level5FindMatches(testBoard).some(
+      cell => cell.row === partnerNewPos.row && cell.col === partnerNewPos.col
+    );
+  }
+
+  function level5BreakStoneFromRemoval(cardIndex, removal) {
+    const cardBoard = level5Boards[cardIndex];
+    if (!cardBoard || !isStone(cardBoard[0]?.[1])) return false;
+    const removed = new Set(removal.map(p => `${p.row}:${p.col}`));
+    if (
+      removed.has("0:0") ||
+      removed.has("0:2") ||
+      removed.has("1:1")
+    ) {
+      const releasedCrest = makeGoalCrest(cardIndex);
+      cardBoard[0][1] = releasedCrest;
+      level5Released.add(cardIndex);
+      return true;
+    }
+    return false;
+  }
+
+  function level5Collapse(cardBoard) {
+    // Steine sind feste Blocker und dürfen durch Gravitation niemals fallen.
+    // Jeder Bereich zwischen zwei Steinen wird separat kollabiert.
+    for (let col = 0; col < 3; col++) {
+      const fixedRows = [];
+      for (let row = 0; row < 4; row++) {
+        if (isStone(cardBoard[row]?.[col])) fixedRows.push(row);
+      }
+
+      const collapseSegment = (startRow, endRow) => {
+        if (startRow > endRow) return;
+
+        const remaining = [];
+        for (let row = endRow; row >= startRow; row--) {
+          const piece = cardBoard[row]?.[col];
+          if (piece && !isStone(piece)) remaining.push(piece);
+        }
+
+        for (let row = endRow, i = 0; row >= startRow; row--, i++) {
+          cardBoard[row][col] = i < remaining.length ? remaining[i] : randomBall();
+        }
+      };
+
+      let segmentStart = 0;
+      for (const stoneRow of fixedRows) {
+        collapseSegment(segmentStart, stoneRow - 1);
+        segmentStart = stoneRow + 1;
+      }
+      collapseSegment(segmentStart, 3);
+    }
+  }
+
+  function level5AreaBombRemoval(cardBoard, pos, partner = null) {
+    const map = new Map();
+    const queue = [{...pos}];
+    const processed = new Set();
+    while (queue.length) {
+      const bomb = queue.shift();
+      const id = `${bomb.row}:${bomb.col}`;
+      if (processed.has(id) || !isAreaBomb(cardBoard[bomb.row]?.[bomb.col])) continue;
+      processed.add(id);
+      for (let row = bomb.row - 1; row <= bomb.row + 1; row++) {
+        for (let col = bomb.col - 1; col <= bomb.col + 1; col++) {
+          if (row < 0 || row >= 4 || col < 0 || col >= 3) continue;
+          const piece = cardBoard[row]?.[col];
+          if (!piece || isGoalCrest(piece) || isStone(piece)) continue;
+          map.set(`${row}:${col}`, {row, col});
+          if (isAreaBomb(piece) && !processed.has(`${row}:${col}`)) queue.push({row,col});
+        }
+      }
+      map.set(id, bomb);
+    }
+    if (partner && !isGoalCrest(cardBoard[partner.row]?.[partner.col]) && !isStone(cardBoard[partner.row]?.[partner.col])) {
+      map.set(`${partner.row}:${partner.col}`, partner);
+    }
+    return [...map.values()];
+  }
+
+  function level5BombCreation(groups, swapTo) {
+    const horizontal = groups.filter(g => g.direction === "horizontal" && g.cells.length === 3);
+    const vertical = groups.filter(g => g.direction === "vertical" && g.cells.length >= 3 && g.cells.length <= 4);
+    for (const h of horizontal) {
+      for (const v of vertical) {
+        if (h.color !== v.color) continue;
+        const intersection = h.cells.find(c => v.cells.some(x => x.row === c.row && x.col === c.col));
+        if (!intersection) continue;
+        const union = new Map();
+        [...h.cells, ...v.cells].forEach(c => union.set(`${c.row}:${c.col}`, c));
+        if (union.size < 5) continue;
+        if (swapTo && union.has(`${swapTo.row}:${swapTo.col}`)) return {...swapTo, type: AREA_BOMB};
+        return {...intersection, type: AREA_BOMB};
+      }
+    }
+    return null;
+  }
+
+  async function animateLevel5StoneBreak(cardIndex) {
+    const tile = level5TileAt(cardIndex, 0, 1);
+    const img = tile?.querySelector("img");
+    if (!tile || !img) return;
+    playMatch3Sound("hit");
+    const pieces = [];
+    const clips = [
+      "polygon(0 0,54% 0,44% 58%,0 76%)",
+      "polygon(54% 0,100% 0,100% 66%,44% 58%)",
+      "polygon(0 76%,44% 58%,100% 66%,100% 100%,0 100%)"
+    ];
+    const box = img.getBoundingClientRect();
+    for (let i = 0; i < 3; i++) {
+      const shard = img.cloneNode(true);
+      Object.assign(shard.style, {
+        position:"fixed", left:`${box.left}px`, top:`${box.top}px`,
+        width:`${box.width}px`, height:`${box.height}px`,
+        clipPath:clips[i], zIndex:"9999", pointerEvents:"none"
+      });
+      document.body.appendChild(shard);
+      pieces.push(animationFinished(shard.animate([
+        {transform:"translate3d(0,0,0) rotate(0deg)",opacity:1},
+        {transform:`translate3d(${[-24,24,3][i]}px,${[-18,-14,28][i]}px,0) rotate(${[-38,42,18][i]}deg)`,opacity:0}
+      ], {duration:520,easing:"cubic-bezier(.15,.72,.18,1)",fill:"forwards"})).finally(()=>shard.remove()));
+    }
+    img.style.opacity = "0";
+    await Promise.all(pieces);
+  }
+
+  async function animateLevel5Delivery(cardIndex) {
+    const tile = level5TileAt(cardIndex, 3, 1);
+    const img = tile?.querySelector("img");
+    const catcher = dom.board?.querySelector(`.match3-mini-card[data-card="${cardIndex}"] .match3-mini-catcher`);
+    if (!img || !catcher) return;
+    const a = img.getBoundingClientRect();
+    const b = catcher.getBoundingClientRect();
+    const dx = b.left + b.width / 2 - (a.left + a.width / 2);
+    const dy = b.top + b.height / 2 - (a.top + a.height / 2);
+    await animationFinished(img.animate([
+      {transform:"translate3d(0,0,0) scale(1)",opacity:1},
+      {transform:`translate3d(${dx}px,${dy}px,0) scale(1.06)`,opacity:1,offset:.72},
+      {transform:`translate3d(${dx}px,${dy+8}px,0) scale(.84)`,opacity:0,offset:1}
+    ], {duration:520,easing:"cubic-bezier(.2,.72,.2,1)",fill:"forwards"}));
+  }
+
+  function level5AnyMoveAvailable() {
+    for (let cardIndex = 0; cardIndex < level5Boards.length; cardIndex++) {
+      if (level5Delivered.has(cardIndex)) continue;
+      const cardBoard = level5Boards[cardIndex];
+      if (cardBoard && level5HasMove(cardBoard)) return true;
+    }
+    return false;
+  }
+
+  function level5MovableShufflePositions(cardBoard) {
+    const positions = [];
+    for (let row = 0; row < 4; row++) {
+      for (let col = 0; col < 3; col++) {
+        const piece = cardBoard[row]?.[col];
+
+        // Wappen und Steine sind positionsfest.
+        // Alles andere bleibt innerhalb genau dieser Mini-Spielfläche.
+        if (!piece || isStone(piece) || isGoalCrest(piece)) continue;
+        positions.push({ row, col });
+      }
+    }
+    return positions;
+  }
+
+  function shuffleArrayCopy(items) {
+    const copy = items.slice();
+    for (let i = copy.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [copy[i], copy[j]] = [copy[j], copy[i]];
+    }
+    return copy;
+  }
+
+  function level5ShuffleSingleBoardPreservingPieces(cardBoard) {
+    const positions = level5MovableShufflePositions(cardBoard);
+    if (positions.length < 2) return false;
+
+    // Exakt die vorhandenen Elemente dieser Mini-Karte sichern.
+    // Keine neuen Farben, keine neuen Bälle, kein Austausch mit anderen Karten.
+    const originalPieces = positions.map(({ row, col }) => cardBoard[row][col]);
+
+    for (let attempt = 0; attempt < 1500; attempt++) {
+      const shuffledPieces = shuffleArrayCopy(originalPieces);
+
+      positions.forEach(({ row, col }, index) => {
+        cardBoard[row][col] = shuffledPieces[index];
+      });
+
+      // Kein Gratis-Match nach dem Mischen, aber wieder mindestens ein gültiger Zug.
+      if (!level5FindMatches(cardBoard).length && level5HasMove(cardBoard)) {
+        return true;
+      }
+    }
+
+    // Nie Elemente erfinden: notfalls Originalzustand wiederherstellen.
+    positions.forEach(({ row, col }, index) => {
+      cardBoard[row][col] = originalPieces[index];
+    });
+    return false;
+  }
+
+  function showLevel5ShuffleOverlay() {
+    if (!dom.board) return null;
+
+    const overlay = document.createElement("div");
+    overlay.className = "match3-level5-shuffle-overlay";
+    overlay.innerHTML = `
+      <div class="match3-level5-shuffle-card">
+        <strong>Kein Zug möglich</strong>
+        <span>Bälle werden gemischt</span>
+        <div class="match3-level5-shuffle-dots" aria-hidden="true">
+          <i></i><i></i><i></i>
+        </div>
+      </div>
+    `;
+    dom.board.appendChild(overlay);
+    return overlay;
+  }
+
+  async function level5ShuffleIfGloballyDeadlocked() {
+    if (!isQuadCrestLevel() || finished || level5Delivered.size >= 4) return false;
+
+    // Wenn auch nur EINE aktive Mini-Karte noch einen Zug hat: absolut kein Shuffle.
+    if (level5AnyMoveAvailable()) return false;
+
+    busy = true;
+    setStatus("Kein Zug möglich – Bälle werden gemischt.");
+    const overlay = showLevel5ShuffleOverlay();
+
+    await wait(900);
+
+    // Jede der vier Mini-Spielflächen wird streng separat gemischt.
+    for (let cardIndex = 0; cardIndex < level5Boards.length; cardIndex++) {
+      if (level5Delivered.has(cardIndex)) continue;
+      const cardBoard = level5Boards[cardIndex];
+      if (!cardBoard) continue;
+      level5ShuffleSingleBoardPreservingPieces(cardBoard);
+    }
+
+    renderLevel5Board();
+    await wait(650);
+
+    overlay?.remove();
+    setStatus("Bringe alle 4 Wappen in die Auffangkörbe.");
+    return true;
+  }
+
+  async function level5ResolveCard(cardIndex, initialSwapTo = null) {
+    const cardBoard = level5Boards[cardIndex];
+    if (!cardBoard) return;
+
+    let cascade = 1;
+    let swapTo = initialSwapTo;
+    while (true) {
+      const groups = level5FindGroups(cardBoard);
+      const matches = new Map();
+      groups.forEach(g => g.cells.forEach(c => matches.set(`${c.row}:${c.col}`, c)));
+      if (!matches.size) break;
+
+      const creation = level5BombCreation(groups, swapTo);
+      const removal = [...matches.values()].filter(c =>
+        !creation || c.row !== creation.row || c.col !== creation.col
+      );
+
+      const brokeStone = level5BreakStoneFromRemoval(cardIndex, removal);
+      if (brokeStone) await animateLevel5StoneBreak(cardIndex);
+
+      score += removal.length * POINTS_PER_BALL * cascade;
+      updateHud(cascade);
+      playMatch3Sound("hit");
+
+      for (const cell of removal) {
+        if (!isGoalCrest(cardBoard[cell.row]?.[cell.col]) && !isStone(cardBoard[cell.row]?.[cell.col])) {
+          cardBoard[cell.row][cell.col] = null;
+        }
+      }
+      if (creation) cardBoard[creation.row][creation.col] = makePiece(creation.type, creation.color || "red");
+      level5Collapse(cardBoard);
+      renderLevel5Board();
+      await wait(230);
+
+      cascade++;
+      swapTo = null;
+    }
+
+    if (isGoalCrest(cardBoard[3]?.[1]) && !level5Delivered.has(cardIndex)) {
+      await animateLevel5Delivery(cardIndex);
+      cardBoard[3][1] = null;
+      level5Delivered.add(cardIndex);
+      deliveredCrests = level5Delivered.size;
+      level5Collapse(cardBoard);
+      updateHud(1);
+      renderLevel5Board();
+      await wait(180);
+    }
+
+    // Kein stilles Mischen einzelner Mini-Karten mehr.
+    // Nur wenn auf dem KOMPLETTEN Level 5 nirgendwo ein gültiger Zug möglich ist,
+    // darf eine sichtbare Shuffle-Sequenz starten.
+    await level5ShuffleIfGloballyDeadlocked();
+
+    level5BusyCard = -1;
+    busy = false;
+
+    if (level5Delivered.size >= 4) {
+      finished = true;
+      setStatus("Ziel erreicht!");
+      if (dom.victoryTitle) dom.victoryTitle.textContent = "Alle 4 Wappen im Ziel!";
+      if (dom.victoryText) dom.victoryText.textContent =
+        `Level 5 geschafft. Alle vier Wappen wurden sicher in ihre Auffangkörbe gebracht. Punkte: ${score.toLocaleString("de-DE")}.`;
+      dom.victory?.classList.remove("hidden");
+      updateHud(1);
+    } else {
+      setStatus("Bringe alle 4 Wappen in die Auffangkörbe.");
+      renderLevel5Board();
+    }
+  }
+
+  async function attemptLevel5Swap(cardIndex, from, to) {
+    if (busy || finished || level5Delivered.has(cardIndex)) return;
+    const cardBoard = level5Boards[cardIndex];
+    if (!cardBoard) return;
+    const a = cardBoard[from.row]?.[from.col];
+    const b = cardBoard[to.row]?.[to.col];
+    if (!isMovablePiece(a) || !isMovablePiece(b)) return;
+
+    busy = true;
+    level5BusyCard = cardIndex;
+    level5Selected = null;
+
+    const fromTile = level5TileAt(cardIndex, from.row, from.col);
+    const toTile = level5TileAt(cardIndex, to.row, to.col);
+    const ai = fromTile?.querySelector("img"), bi = toTile?.querySelector("img");
+    if (ai && bi) {
+      const ra = fromTile.getBoundingClientRect(), rb = toTile.getBoundingClientRect();
+      const dx=rb.left-ra.left, dy=rb.top-ra.top;
+      await Promise.all([
+        animationFinished(ai.animate([{transform:"translate(0,0)"},{transform:`translate(${dx}px,${dy}px)`}],{duration:170,easing:"ease-in-out"})),
+        animationFinished(bi.animate([{transform:"translate(0,0)"},{transform:`translate(${-dx}px,${-dy}px)`}],{duration:170,easing:"ease-in-out"}))
+      ]);
+    }
+
+    [cardBoard[from.row][from.col], cardBoard[to.row][to.col]] =
+      [cardBoard[to.row][to.col], cardBoard[from.row][from.col]];
+
+    const areaFrom = isAreaBomb(a);
+    const areaTo = isAreaBomb(b);
+    if (areaFrom || areaTo) {
+      const bombPos = areaFrom ? to : from;
+      const partner = areaFrom ? from : to;
+      playMatch3Sound("bomb");
+      const removal = level5AreaBombRemoval(cardBoard, bombPos, partner);
+      level5BreakStoneFromRemoval(cardIndex, removal);
+      score += removal.length * POINTS_PER_BALL;
+      for (const cell of removal) cardBoard[cell.row][cell.col] = null;
+      level5Collapse(cardBoard);
+      renderLevel5Board();
+      await wait(300);
+      await level5ResolveCard(cardIndex);
+      return;
+    }
+
+    // Prüfe den Zug nach exakt derselben Regel wie die Deadlock-Erkennung.
+    // Da das Board bereits getauscht ist, stellen wir für die gemeinsame
+    // Prüffunktion kurz den Zustand VOR dem Tausch her.
+    [cardBoard[from.row][from.col], cardBoard[to.row][to.col]] =
+      [cardBoard[to.row][to.col], cardBoard[from.row][from.col]];
+    const valid = level5WouldSwapBeValid(cardBoard, from, to);
+    [cardBoard[from.row][from.col], cardBoard[to.row][to.col]] =
+      [cardBoard[to.row][to.col], cardBoard[from.row][from.col]];
+
+    if (!valid) {
+      [cardBoard[from.row][from.col], cardBoard[to.row][to.col]] =
+        [cardBoard[to.row][to.col], cardBoard[from.row][from.col]];
+      renderLevel5Board();
+      await wait(100);
+      busy = false;
+      level5BusyCard = -1;
+      setStatus("Kein Match – Zug zurückgesetzt.");
+      return;
+    }
+
+    renderLevel5Board();
+    await level5ResolveCard(cardIndex, to);
+  }
+
+  function handleLevel5TileSelection(cardIndex, row, col) {
+    if (busy || finished || level5Delivered.has(cardIndex)) return;
+    const cardBoard = level5Boards[cardIndex];
+    if (!cardBoard || !isMovablePiece(cardBoard[row]?.[col])) return;
+
+    const current = { row, col };
+    if (!level5Selected || level5Selected.cardIndex !== cardIndex) {
+      level5Selected = { cardIndex, ...current };
+      renderLevel5Board();
+      return;
+    }
+
+    const selected = level5Selected;
+    if (selected.row === row && selected.col === col) {
+      level5Selected = null;
+      renderLevel5Board();
+      return;
+    }
+
+    const adjacent = Math.abs(selected.row - row) + Math.abs(selected.col - col) === 1;
+    if (!adjacent) {
+      level5Selected = { cardIndex, ...current };
+      renderLevel5Board();
+      return;
+    }
+
+    level5Selected = null;
+    attemptLevel5Swap(
+      cardIndex,
+      { row: selected.row, col: selected.col },
+      current
+    );
+  }
+
+  function handleLevel5Swipe(cardIndex, row, col, dx, dy) {
+    if (busy || finished || level5Delivered.has(cardIndex)) return false;
+
+    const minSwipe = 18;
+    if (Math.max(Math.abs(dx), Math.abs(dy)) < minSwipe) return false;
+
+    let targetRow = row;
+    let targetCol = col;
+
+    if (Math.abs(dx) > Math.abs(dy)) {
+      targetCol += dx > 0 ? 1 : -1;
+    } else {
+      targetRow += dy > 0 ? 1 : -1;
+    }
+
+    if (targetRow < 0 || targetRow >= 4 || targetCol < 0 || targetCol >= 3) return false;
+
+    const cardBoard = level5Boards[cardIndex];
+    if (!cardBoard) return false;
+
+    // Ein Stein ist ein Hindernis und darf weder Ausgangs- noch Zielfeld eines Tauschs sein.
+    if (!isMovablePiece(cardBoard[row]?.[col]) || !isMovablePiece(cardBoard[targetRow]?.[targetCol])) {
+      return false;
+    }
+
+    level5Selected = null;
+    level5SuppressClickUntil = Date.now() + 420;
+    attemptLevel5Swap(
+      cardIndex,
+      { row, col },
+      { row: targetRow, col: targetCol }
+    );
+    return true;
+  }
+
+  function renderLevel5Board() {
+    if (!dom.board || !isQuadCrestLevel()) return 0;
+
+    dom.board.className = "match3-board is-level-5";
+    dom.board.style.removeProperty("--match3-cols");
+    dom.board.style.removeProperty("--match3-rows");
+    dom.board.innerHTML = "";
+
+    const grid = document.createElement("div");
+    grid.className = "match3-quad-grid";
+
+    level5Boards.forEach((cardBoard, cardIndex) => {
+      const card = document.createElement("section");
+      card.className = "match3-mini-card";
+      card.dataset.card = String(cardIndex);
+      if (level5Delivered.has(cardIndex)) card.classList.add("is-complete");
+
+      const holder = document.createElement("div");
+      holder.className = "match3-mini-holder";
+      if (level5Delivered.has(cardIndex)) {
+        holder.innerHTML = '<span class="match3-holder-check">✓</span>';
+      } else if (isStone(cardBoard[0]?.[1])) {
+        holder.innerHTML = `<img src="${GOAL_CREST_IMAGE}" alt=""><span class="match3-crest-holder-lock">▼</span>`;
+      }
+      card.appendChild(holder);
+
+      const mini = document.createElement("div");
+      mini.className = "match3-mini-board";
+
+      for (let row=0; row<4; row++) {
+        for (let col=0; col<3; col++) {
+          const piece = cardBoard[row]?.[col];
+          const tile = document.createElement("button");
+          tile.type = "button";
+          tile.className = "match3-mini-tile";
+          tile.dataset.row = String(row);
+          tile.dataset.col = String(col);
+
+          if (isStone(piece)) {
+            tile.classList.add("is-obstacle");
+            const img=document.createElement("img"); img.src=STONE_IMAGE; img.alt="Stein"; tile.appendChild(img);
+          } else if (isGoalCrest(piece)) {
+            tile.classList.add("is-goal-crest");
+            const ring=document.createElement("span"); ring.className="match3-mini-crest-ring"; tile.appendChild(ring);
+            const img=document.createElement("img"); img.src=GOAL_CREST_IMAGE; img.alt="Wappen"; tile.appendChild(img);
+          } else if (piece) {
+            const info=pieceInfo(piece);
+            const img=document.createElement("img");
+            img.src=info.special===AREA_BOMB ? AREA_BOMB_IMAGE : imageFor(info.color);
+            img.alt=info.special===AREA_BOMB ? "Bombe" : `${info.color || ""} Ball`;
+            tile.appendChild(img);
+          }
+
+          tile.addEventListener("pointerdown", (event) => {
+            if (busy || finished || level5Delivered.has(cardIndex)) return;
+            if (!isMovablePiece(cardBoard[row]?.[col])) return;
+
+            level5PointerStart = {
+              pointerId: event.pointerId,
+              cardIndex,
+              row,
+              col,
+              x: event.clientX,
+              y: event.clientY
+            };
+
+            try { tile.setPointerCapture(event.pointerId); } catch (_) {}
+          });
+
+          tile.addEventListener("pointerup", (event) => {
+            const start = level5PointerStart;
+            if (!start || start.pointerId !== event.pointerId) return;
+            level5PointerStart = null;
+
+            const dx = event.clientX - start.x;
+            const dy = event.clientY - start.y;
+            handleLevel5Swipe(start.cardIndex, start.row, start.col, dx, dy);
+
+            try { tile.releasePointerCapture(event.pointerId); } catch (_) {}
+          });
+
+          tile.addEventListener("pointercancel", () => {
+            level5PointerStart = null;
+          });
+
+          tile.addEventListener("click", (event) => {
+            if (Date.now() < level5SuppressClickUntil) {
+              event.preventDefault();
+              return;
+            }
+            handleLevel5TileSelection(cardIndex, row, col);
+          });
+
+          if (level5Selected?.cardIndex===cardIndex &&
+              level5Selected.row===row && level5Selected.col===col) tile.classList.add("is-selected");
+
+          mini.appendChild(tile);
+        }
+      }
+
+      card.appendChild(mini);
+
+      const catcher=document.createElement("div");
+      catcher.className="match3-mini-catcher";
+      if (level5Delivered.has(cardIndex)) {
+        catcher.classList.add("is-filled");
+        const img=document.createElement("img"); img.src=GOAL_CREST_IMAGE; img.alt="Wappen im Ziel"; catcher.appendChild(img);
+      }
+      card.appendChild(catcher);
+
+      grid.appendChild(card);
+    });
+
+    dom.board.appendChild(grid);
+
+    const counter=document.createElement("div");
+    counter.className="match3-level5-counter";
+    counter.textContent=`${level5Delivered.size}/4 Wappen im Ziel`;
+    dom.board.appendChild(counter);
+    return 0;
+  }
+
+  function renderCrestLevelDecor() {
+    if (!dom.board || !isCrestLevel()) return;
+
+    const sourceCols = currentLevel.sourceColumns || currentLevel.stoneColumns || [];
+
+    for (const col of sourceCols) {
+      const holder = document.createElement("div");
+      holder.className = "match3-crest-holder";
+      holder.style.setProperty("--slot-col", String(col));
+
+      const stoneStillThere = isStone(board[0]?.[col]);
+      const released = releasedCrestColumns.has(col);
+      const delivered = deliveredCrestColumns.has(col);
+
+      holder.classList.toggle("is-locked", stoneStillThere);
+      holder.classList.toggle("is-released", released && !delivered);
+      holder.classList.toggle("is-delivered", delivered);
+
+      if (stoneStillThere) {
+        const img = document.createElement("img");
+        img.src = GOAL_CREST_IMAGE;
+        img.alt = "";
+        holder.appendChild(img);
+
+        const lock = document.createElement("span");
+        lock.className = "match3-crest-holder-lock";
+        lock.textContent = "▼";
+        holder.appendChild(lock);
+      } else if (!isTransportLevel() && delivered) {
+        holder.innerHTML = '<span class="match3-holder-check">✓</span>';
+      } else if (isTransportLevel()) {
+        holder.classList.add("is-transport-source");
+        const remaining = Math.max(0, Number(currentLevel.crestTarget || 5) - spawnedCrests);
+        if (remaining > 0 && !isGoalCrest(board[0]?.[col])) {
+          const ready = document.createElement("span");
+          ready.className = "match3-transport-ready";
+          ready.textContent = "•";
+          holder.appendChild(ready);
+        }
+      }
+
+      dom.board.appendChild(holder);
+    }
+
+    const finish = document.createElement("div");
+    finish.className = "match3-finish-line";
+    finish.setAttribute("aria-hidden", "true");
+
+    const openCols = isTransportLevel()
+      ? [Number(currentLevel.catcherColumn ?? 2)]
+      : [...(currentLevel.stoneColumns || [])].sort((a, b) => a - b);
+
+    let segmentStart = 0;
+    for (const openCol of openCols) {
+      if (openCol > segmentStart) {
+        const segment = document.createElement("span");
+        segment.className = "match3-finish-segment";
+        segment.style.left = `calc(${segmentStart} * (var(--match3-cell) + var(--match3-gap)))`;
+        segment.style.width = `calc(${openCol - segmentStart} * var(--match3-cell) + ${Math.max(0, openCol - segmentStart - 1)} * var(--match3-gap))`;
+        finish.appendChild(segment);
+      }
+      segmentStart = openCol + 1;
+    }
+    if (segmentStart < COLS) {
+      const segment = document.createElement("span");
+      segment.className = "match3-finish-segment";
+      segment.style.left = `calc(${segmentStart} * (var(--match3-cell) + var(--match3-gap)))`;
+      segment.style.width = `calc(${COLS - segmentStart} * var(--match3-cell) + ${Math.max(0, COLS - segmentStart - 1)} * var(--match3-gap))`;
+      finish.appendChild(segment);
+    }
+    dom.board.appendChild(finish);
+
+    if (isTransportLevel()) {
+      const catcher = document.createElement("div");
+      catcher.className = "match3-crest-catcher match3-transport-catcher";
+      catcher.style.setProperty("--slot-col", String(currentLevel.catcherColumn ?? 2));
+      dom.board.appendChild(catcher);
+
+      const system = document.createElement("div");
+      system.className = "match3-transport-system";
+      system.setAttribute("aria-hidden", "true");
+      system.innerHTML = `
+        <div class="match3-transport-tube">
+          <div class="match3-transport-tube-cap"></div><div class="match3-transport-tube-mouth"></div>
+          <div class="match3-transport-tube-glass"><div class="match3-transport-water"></div>
+            <div class="match3-transport-crests">${Array.from({ length: deliveredCrests }, () => `<img src="${GOAL_CREST_IMAGE}" alt="">`).join("")}</div>
+          </div><strong>${deliveredCrests}/${Number(currentLevel.crestTarget || 5)}</strong>
+        </div>`;
+      dom.board.appendChild(system);
+    } else {
+      for (const col of currentLevel.stoneColumns || []) {
+        const catcher = document.createElement("div");
+        catcher.className = "match3-crest-catcher";
+        catcher.style.setProperty("--slot-col", String(col));
+        catcher.classList.toggle("is-filled", deliveredCrestColumns.has(col));
+        if (deliveredCrestColumns.has(col)) {
+          const img = document.createElement("img");
+          img.src = GOAL_CREST_IMAGE;
+          img.alt = "";
+          catcher.appendChild(img);
+        }
+        dom.board.appendChild(catcher);
+      }
+    }
+
+    const counter = document.createElement("div");
+    counter.className = "match3-delivery-counter";
+    counter.textContent = isTransportLevel()
+      ? `${deliveredCrests}/${Number(currentLevel.crestTarget || 5)} Wappen in der Röhre`
+      : `${deliveredCrests}/${Number(currentLevel.crestTarget || 3)} Wappen im Ziel`;
+    dom.board.appendChild(counter);
+  }
+
+  function renderBoard({ matched = [], dropMap = null, invalid = [], createdSpecial = [] } = {}) {
+    if (!dom.board) return 0;
+    if (isQuadCrestLevel()) return renderLevel5Board();
+    const matchedSet = new Set(matched.map((p) => `${p.row}:${p.col}`));
+    const invalidSet = new Set(invalid.map((p) => `${p.row}:${p.col}`));
+    const createdSet = new Set(createdSpecial.map((p) => `${p.row}:${p.col}`));
+
+    // Gemeinsames Board wird von allen Match-3-Leveln benutzt.
+    // Deshalb vor jedem normalen Render ALLE level-spezifischen Klassen
+    // sauber entfernen. Sonst bleibt z.B. "is-level-5" nach einem Levelwechsel
+    // aktiv und zerstört das Grid von Level 1-4.
+    dom.board.classList.remove("is-level-5");
+    dom.board.classList.toggle("is-busy", busy);
+    dom.board.classList.toggle("is-level-3", currentLevel.type === "deliver-crests");
+    dom.board.classList.toggle("is-level-4", currentLevel.type === "transport-crests");
+    dom.board.style.setProperty("--match3-cols", String(COLS));
+    dom.board.style.setProperty("--match3-rows", String(ROWS));
+    dom.board.innerHTML = "";
+
+    for (let row = 0; row < ROWS; row++) {
+      for (let col = 0; col < COLS; col++) {
+        const key = board[row]?.[col];
+        const tile = document.createElement("button");
+        tile.type = "button";
+        tile.className = "match3-tile";
+        tile.dataset.row = String(row);
+        tile.dataset.col = String(col);
+        tile.setAttribute("role", "gridcell");
+        const info = pieceInfo(key);
+        const label = info.special === COLOR_BOMB
+          ? "Farbbombe"
+          : info.special === AREA_BOMB
+            ? "Bombe"
+            : info.special === STONE
+              ? "Stein"
+              : info.special === "goal-crest"
+                ? "Stuttgarter Kickers Wappen"
+                : `${info.color || "Unbekannter"} Ball`;
+        tile.setAttribute("aria-label", key ? `${label}, Reihe ${row + 1}, Spalte ${col + 1}` : "Leeres Feld");
+        tile.disabled = busy || finished || !key || isStone(key);
+
+        if (selected?.row === row && selected?.col === col) tile.classList.add("is-selected");
+        if (matchedSet.has(`${row}:${col}`)) tile.classList.add("is-matched");
+        if (invalidSet.has(`${row}:${col}`)) tile.classList.add("is-invalid");
+        if (createdSet.has(`${row}:${col}`)) tile.classList.add("is-created-special");
+        if (isProtectedCell(row, col)) tile.classList.add("is-protected");
+        if (isStone(key)) {
+          tile.classList.add("is-stone");
+          // Generische Kennzeichnung für Hindernisse, die im Level entfernt
+          // oder überwunden werden müssen. Zukünftige Hindernisse bekommen
+          // dieselbe Klasse und damit automatisch die Hinweis-Sequenz.
+          tile.classList.add("is-obstacle");
+        }
+        if (isGoalCrest(key)) tile.classList.add("is-goal-crest");
+
+        if (key) {
+          const img = document.createElement("img");
+          img.src = imageFor(key);
+          img.alt = "";
+          img.draggable = false;
+          tile.appendChild(img);
+        }
+
+        tile.addEventListener("pointerdown", (event) => {
+          if (busy || finished || !isMovablePiece(board[row]?.[col])) return;
+          pointerStart = { row, col, x: event.clientX, y: event.clientY };
+        });
+
+        tile.addEventListener("pointerup", (event) => {
+          if (!pointerStart || busy || finished) return;
+          const dx = event.clientX - pointerStart.x;
+          const dy = event.clientY - pointerStart.y;
+          const start = { row: pointerStart.row, col: pointerStart.col };
+          pointerStart = null;
+          if (Math.max(Math.abs(dx), Math.abs(dy)) < 18) return;
+
+          const to = { ...start };
+          if (Math.abs(dx) > Math.abs(dy)) to.col += dx > 0 ? 1 : -1;
+          else to.row += dy > 0 ? 1 : -1;
+
+          if (to.row < 0 || to.row >= ROWS || to.col < 0 || to.col >= COLS) return;
+          suppressClickUntil = Date.now() + 350;
+          selected = null;
+          attemptSwap(start, to);
+        });
+
+        tile.addEventListener("click", () => {
+          if (Date.now() < suppressClickUntil || busy || finished || !isMovablePiece(board[row]?.[col])) return;
+          const current = { row, col };
+          if (!selected) {
+            selected = current;
+            renderBoard();
+            return;
+          }
+          if (selected.row === row && selected.col === col) {
+            selected = null;
+            renderBoard();
+            return;
+          }
+          if (!adjacent(selected, current)) {
+            selected = current;
+            renderBoard();
+            return;
+          }
+          const from = selected;
+          selected = null;
+          attemptSwap(from, current);
+        });
+
+        dom.board.appendChild(tile);
+      }
+    }
+
+    renderCrestLevelDecor();
+    return startDropAnimations(dropMap);
+  }
+
+  async function shuffleIfNeeded() {
+    if (findMatches(board).length || hasPossibleMove(board)) return;
+    setStatus("Keine Züge mehr – Bälle werden neu gemischt …");
+    await wait(350);
+
+    const movablePositions = [];
+    const values = [];
+    for (let row = 0; row < ROWS; row++) {
+      for (let col = 0; col < COLS; col++) {
+        if (!isMovablePiece(board[row]?.[col])) continue;
+        movablePositions.push({ row, col });
+        values.push(board[row][col]);
+      }
+    }
+    for (let attempt = 0; attempt < 1200; attempt++) {
+      const shuffled = values.slice();
+      for (let i = shuffled.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+      }
+      const candidate = cloneBoard(board);
+      movablePositions.forEach((pos, index) => {
+        candidate[pos.row][pos.col] = shuffled[index];
+      });
+      if (!findMatches(candidate).length && hasPossibleMove(candidate)) {
+        board = candidate;
+        renderBoard();
+        await wait(220);
+        renderBoard();
+        return;
+      }
+    }
+    if (isCrestLevel()) {
+      for (const pos of movablePositions) board[pos.row][pos.col] = randomBall();
+    } else {
+      board = createPlayableBoard();
+    }
+    renderBoard();
+    await wait(220);
+    renderBoard();
+  }
+
+  function collapseAndRefill() {
+    const dropMap = new Map();
+
+    function collapseSegment(col, startRow, endRow) {
+      if (startRow > endRow) return;
+      const remaining = [];
+      for (let row = endRow; row >= startRow; row--) {
+        if (board[row][col]) remaining.push({ key: board[row][col], fromRow: row });
+      }
+
+      let spawnIndex = 0;
+      for (let row = endRow, index = 0; row >= startRow; row--, index++) {
+        if (index < remaining.length) {
+          const item = remaining[index];
+          board[row][col] = item.key;
+          dropMap.set(`${row}:${col}`, { fromRow: item.fromRow, spawned: false });
+        } else {
+          board[row][col] = randomBall();
+          dropMap.set(`${row}:${col}`, { fromRow: startRow - 1 - spawnIndex, spawned: true });
+          spawnIndex++;
+        }
+      }
+    }
+
+    for (let col = 0; col < COLS; col++) {
+      let segmentStart = 0;
+      for (let row = 0; row <= ROWS; row++) {
+        const boundary = row === ROWS || isProtectedCell(row, col);
+        if (!boundary) continue;
+        collapseSegment(col, segmentStart, row - 1);
+        // Geschützte Zelle bleibt exakt an ihrer Position stehen.
+        segmentStart = row + 1;
+      }
+    }
+
+    return dropMap;
+  }
+
+  function breakableStonesFromRemoval(removal) {
+    if (!isCrestLevel() || !removal?.length) return [];
+    const removed = new Set(removal.map(cellId));
+    const stones = [];
+    for (let row = 0; row < ROWS; row++) {
+      for (let col = 0; col < COLS; col++) {
+        if (!isStone(board[row]?.[col])) continue;
+        const neighbors = [
+          { row, col: col - 1 },
+          { row, col: col + 1 },
+          { row: row + 1, col }
+        ].filter((p) => p.row >= 0 && p.row < ROWS && p.col >= 0 && p.col < COLS);
+        if (neighbors.some((p) => removed.has(cellId(p)))) stones.push({ row, col });
+      }
+    }
+    return stones;
+  }
+
+  async function animateStoneBreaks(stones) {
+    if (!stones.length || !dom.board) return;
+    const animations = stones.map(async (pos) => {
+      const tile = tileAt(pos);
+      const img = tile?.querySelector("img");
+      if (!tile || !img) return;
+
+      tile.classList.add("is-stone-breaking");
+      const box = tile.getBoundingClientRect();
+      const boardBox = dom.board.getBoundingClientRect();
+      const left = box.left - boardBox.left;
+      const top = box.top - boardBox.top;
+      const src = img.currentSrc || img.src;
+
+      const pieces = [
+        { clip: "polygon(0 0,58% 0,48% 54%,0 72%)", dx: -34, dy: -18, rot: -32 },
+        { clip: "polygon(58% 0,100% 0,100% 72%,48% 54%)", dx: 35, dy: -13, rot: 38 },
+        { clip: "polygon(0 72%,48% 54%,100% 72%,100% 100%,0 100%)", dx: 4, dy: 38, rot: 22 }
+      ];
+
+      const fragmentAnimations = pieces.map((part, i) => {
+        const fragment = document.createElement("img");
+        fragment.src = src;
+        fragment.alt = "";
+        fragment.className = "match3-stone-fragment";
+        Object.assign(fragment.style, {
+          left: `${left}px`, top: `${top}px`,
+          width: `${box.width}px`, height: `${box.height}px`,
+          clipPath: part.clip, WebkitClipPath: part.clip
+        });
+        dom.board.appendChild(fragment);
+        return animationFinished(fragment.animate([
+          { transform: "translate3d(0,0,0) scale(1) rotate(0deg)", opacity: 1, filter: "brightness(1)", offset: 0 },
+          { transform: `translate3d(${part.dx*.18}px,${part.dy*.12}px,0) scale(1.04) rotate(${part.rot*.15}deg)`, opacity: 1, filter: "brightness(1.45)", offset: .18 },
+          { transform: `translate3d(${part.dx}px,${part.dy}px,0) scale(.92) rotate(${part.rot}deg)`, opacity: .96, filter: "brightness(1.08)", offset: .68 },
+          { transform: `translate3d(${part.dx*1.38}px,${part.dy*1.5+12}px,0) scale(.68) rotate(${part.rot*1.65}deg)`, opacity: 0, offset: 1 }
+        ], { duration: 552+i*40.25, easing: "cubic-bezier(.16,.72,.2,1)", fill: "forwards" }))
+          .finally(() => fragment.remove());
+      });
+
+      const crack = animationFinished(img.animate([
+        { transform: "scale(1)", filter: "brightness(1)", opacity: 1, offset: 0 },
+        { transform: "scale(1.07) rotate(-1deg)", filter: "brightness(1.35)", opacity: 1, offset: .18 },
+        { transform: "scale(1.12) rotate(1deg)", filter: "brightness(1.8)", opacity: .72, offset: .28 },
+        { transform: "scale(1.12)", filter: "brightness(2)", opacity: 0, offset: .34 },
+        { transform: "scale(1.12)", opacity: 0, offset: 1 }
+      ], { duration: 575, easing: "ease-out", fill: "forwards" }));
+
+      await Promise.all([crack, ...fragmentAnimations]);
+    });
+    await Promise.all(animations);
+  }
+
+  function releaseCrestsForBrokenStones(stones) {
+    for (const stone of stones) {
+      board[stone.row][stone.col] = makeGoalCrest(stone.col);
+      releasedCrestColumns.add(stone.col);
+    }
+  }
+
+  function pickTransportSourceColumn() {
+    const cols = currentLevel.sourceColumns || currentLevel.stoneColumns || [];
+    if (!cols.length) return -1;
+
+    for (let offset = 0; offset < cols.length; offset++) {
+      const index = (nextTransportSourceIndex + offset) % cols.length;
+      const col = cols[index];
+      if (!isStone(board[0]?.[col])) {
+        nextTransportSourceIndex = (index + 1) % cols.length;
+        return col;
+      }
+    }
+    return -1;
+  }
+
+  function spawnNextTransportCrest() {
+    if (!isTransportLevel()) return false;
+    const target = Number(currentLevel.crestTarget || 5);
+    if (spawnedCrests >= target) return false;
+
+    const col = pickTransportSourceColumn();
+    if (col < 0) return false;
+
+    board[0][col] = makeGoalCrest(col);
+    releasedCrestColumns.add(col);
+    spawnedCrests++;
+    renderBoard();
+    return true;
+  }
+
+  async function animateTransportCrest(pos) {
+    const tile=tileAt(pos), img=tile?.querySelector("img"); if(!tile||!img||!dom.board)return;
+    const tileBox=tile.getBoundingClientRect(), boardBox=dom.board.getBoundingClientRect();
+    const catcherEl=dom.board.querySelector(".match3-transport-catcher"), tubeEl=dom.board.querySelector(".match3-transport-tube"), mouthEl=dom.board.querySelector(".match3-transport-tube-mouth");
+    const catcher=catcherEl?.getBoundingClientRect(), tube=tubeEl?.getBoundingClientRect(), mouth=mouthEl?.getBoundingClientRect();
+    const flashAt=(rect,extra="")=>{if(!rect)return;const f=document.createElement("div");f.className=`match3-transport-flash ${extra}`;Object.assign(f.style,{position:"fixed",left:`${rect.left+rect.width/2}px`,top:`${rect.top+rect.height/2}px`});document.body.appendChild(f);setTimeout(()=>f.remove(),520);};
+    flashAt(catcher,"is-basket");
+    const clone=img.cloneNode(true); clone.className="match3-transport-flying-crest";
+    Object.assign(clone.style,{position:"fixed",left:`${tileBox.left}px`,top:`${tileBox.top}px`,width:`${tileBox.width}px`,height:`${tileBox.height}px`,zIndex:"9999",pointerEvents:"none",margin:"0"});document.body.appendChild(clone);
+    const center=r=>({x:r?r.left+r.width/2-tileBox.width/2:tileBox.left,y:r?r.top+r.height/2-tileBox.height/2:tileBox.top});
+    const start={x:tileBox.left,y:tileBox.top}, pBasket=center(catcher), rightX=boardBox.right+Math.max(22,tileBox.width*.42);
+    const pLow={x:rightX,y:boardBox.bottom-tileBox.height*.35}, pHigh={x:rightX,y:Math.max(8,(tube?.top??boardBox.top)+tileBox.height*.18)}, pMouth=center(mouth);
+    const anim=clone.animate([
+      {transform:"translate3d(0,0,0) scale(1)",opacity:1,offset:0},
+      {transform:`translate3d(${pBasket.x-start.x}px,${pBasket.y-start.y}px,0) scale(1.08)`,offset:.14},
+      {transform:`translate3d(${pLow.x-start.x}px,${pLow.y-start.y}px,0) scale(.98) rotate(8deg)`,offset:.36},
+      {transform:`translate3d(${pHigh.x-start.x}px,${pHigh.y-start.y}px,0) scale(.94) rotate(-8deg)`,offset:.72},
+      {transform:`translate3d(${pMouth.x-start.x}px,${pMouth.y-start.y}px,0) scale(1.06) rotate(4deg)`,offset:.88},
+      {transform:`translate3d(${pMouth.x-start.x}px,${pMouth.y-start.y+54}px,0) scale(.82) rotate(12deg)`,opacity:.96,offset:.97},
+      {transform:`translate3d(${pMouth.x-start.x}px,${pMouth.y-start.y+68}px,0) scale(.72) rotate(16deg)`,opacity:0,offset:1}
+    ],{duration:2050,easing:"cubic-bezier(.22,.68,.2,1)",fill:"forwards"});
+    await wait(260);spawnNextTransportCrest();await wait(1480);flashAt(mouth,"is-tube");tubeEl?.classList.add("is-receiving");await animationFinished(anim);tubeEl?.classList.remove("is-receiving");clone.remove();
+  }
+
+  async function collectBottomCrests() {
+    if (!isCrestLevel() || !dom.board) return false;
+
+    const bottom = ROWS - 1;
+
+    if (isTransportLevel()) {
+      const col = Number(currentLevel.catcherColumn ?? 2);
+      if (!isGoalCrest(board[bottom]?.[col])) return false;
+
+      const pos = { row: bottom, col, piece: board[bottom][col] };
+
+      // Flugobjekt wird vor dem Re-Render erzeugt, damit die Bewegung
+      // unabhängig vom Nachrutschen flüssig weiterläuft.
+      const transportPromise = animateTransportCrest(pos);
+
+      board[bottom][col] = null;
+      const localDropMap = collapseAndRefill();
+      renderBoard({ dropMap: localDropMap });
+
+      await transportPromise;
+      deliveredCrests++;
+      updateHud(1);
+      renderBoard();
+      await wait(110);
+      return false;
+    }
+
+    const arrivals = [];
+    for (let col = 0; col < COLS; col++) {
+      if (isGoalCrest(board[bottom]?.[col])) arrivals.push({ row: bottom, col, piece: board[bottom][col] });
+    }
+    if (!arrivals.length) return false;
+
+    await Promise.all(arrivals.map(async (pos) => {
+      const tile = tileAt(pos);
+      const img = tile?.querySelector("img");
+      if (!img) return;
+      tile.classList.add("is-crest-delivering");
+      const anim = img.animate([
+        { transform: "translate3d(0,0,0) scale(1)", opacity: 1 },
+        { transform: "translate3d(0,12px,0) scale(1.06)", opacity: 1, offset: .35 },
+        { transform: "translate3d(0,52px,0) scale(.72)", opacity: .95, offset: .82 },
+        { transform: "translate3d(0,58px,0) scale(.58)", opacity: 0 }
+      ], { duration: 430, easing: "cubic-bezier(.2,.72,.2,1)", fill: "forwards" });
+      await animationFinished(anim);
+    }));
+
+    for (const pos of arrivals) {
+      const originCol = crestOriginColumn(pos.piece);
+      board[pos.row][pos.col] = null;
+      if (originCol >= 0 && !deliveredCrestColumns.has(originCol)) {
+        deliveredCrestColumns.add(originCol);
+        deliveredCrests++;
+      }
+    }
+    updateHud(1);
+    renderBoard();
+    await wait(110);
+    return true;
+  }
+
+  function addScoreAndCollect(removal, cascade = 1) {
+    const multiplier = Math.min(cascade, 4);
+    score += removal.length * POINTS_PER_BALL * multiplier;
+    if (currentLevel.type === "collect") {
+      for (const { row, col } of removal) {
+        if (baseColor(board[row]?.[col]) === currentLevel.collectKey) collectedBlue++;
+      }
+    }
+  }
+
+  async function removeAndDrop(removal, cascade = 1, createdSpecial = [], popOptions = {}) {
+    if (!removal.length) return new Map();
+    if (!popOptions.skipInitialRender) renderBoard({ createdSpecial });
+    if (createdSpecial.length) await wait(145);
+    const stonesToBreak = breakableStonesFromRemoval(removal);
+    await animateNormalMatchPops(removal, popOptions);
+    if (stonesToBreak.length) await animateStoneBreaks(stonesToBreak);
+    addScoreAndCollect(removal, cascade);
+    updateHud(cascade);
+
+    for (const { row, col } of removal) {
+      if (!isRemovalProtectedCell(row, col)) board[row][col] = null;
+    }
+    if (stonesToBreak.length) {
+      releaseCrestsForBrokenStones(stonesToBreak);
+      setStatus(stonesToBreak.length > 1 ? `${stonesToBreak.length} Steine gesprengt – Wappen frei!` : "Stein gesprengt – Wappen frei!");
+    }
+    // Spezialeffekte (Bombe/Farbbombe/Urknall) dürfen nach dem Treffer
+    // keinen leeren Zwischenzustand zeigen. Die getroffenen Elemente sind
+    // bereits fertig animiert; deshalb direkt kollabieren und nachfüllen.
+    // Normale 3er-Matches behalten den kurzen klassischen Pop-Nachklang.
+    const isSpecialResolution = Boolean(popOptions.skipInitialRender || popOptions.instantCollapse);
+    if (!isSpecialResolution) {
+      renderBoard({ matched: removal });
+      await wait(120);
+    }
+
+    let dropMap = collapseAndRefill();
+    let dropDuration = renderBoard({ dropMap });
+    await wait(Math.max(isSpecialResolution ? 220 : 300, dropDuration + (isSpecialResolution ? 8 : 25)));
+
+    if (await collectBottomCrests()) {
+      dropMap = collapseAndRefill();
+      dropDuration = renderBoard({ dropMap });
+      await wait(Math.max(300, dropDuration + 25));
+    }
+    return dropMap;
+  }
+
+  function levelCompletedNow() {
+    if (currentLevel.type === "collect") return collectedBlue >= Number(currentLevel.collectTarget || 0);
+    if (isCrestLevel()) return deliveredCrests >= Number(currentLevel.crestTarget || 3);
+    return score >= TARGET_SCORE;
+  }
+
+  function levelIdleStatus() {
+    if (currentLevel.type === "deliver-crests") return "Sprenge die Steine und bringe alle 3 Wappen übers Ziel.";
+    if (currentLevel.type === "transport-crests") return "Bringe 5 Wappen über den mittleren Ausgang in die Röhre.";
+    if (currentLevel.type === "quad-crests") return "Bringe alle 4 Wappen in die Auffangkörbe.";
+    return "Tausche zwei benachbarte Bälle.";
+  }
+
+
+  function findNextEndgameSpecial() {
+    // Normale Bomben zuerst, danach Farbbomben. Nach jeder Auslösung wird
+    // das Brett erneut geprüft, damit auch neu entstandene Specials mitlaufen.
+    for (let row = 0; row < ROWS; row++) {
+      for (let col = 0; col < COLS; col++) {
+        if (isAreaBomb(board[row]?.[col])) return { row, col, type: AREA_BOMB };
+      }
+    }
+    for (let row = 0; row < ROWS; row++) {
+      for (let col = 0; col < COLS; col++) {
+        if (isColorBomb(board[row]?.[col])) return { row, col, type: COLOR_BOMB };
+      }
+    }
+    return null;
+  }
+
+  async function detonateEndgameColorBomb(pos) {
+    if (!isColorBomb(board[pos.row]?.[pos.col])) return;
+    const color = randomExistingBallColor();
+    setStatus("Schlussbonus – Farbbombe zündet!");
+    playMatch3Sound("thunder");
+    await animateColorBombChain(pos, color);
+
+    const removalMap = new Map();
+    addRemovalCell(removalMap, pos.row, pos.col);
+    if (color) {
+      for (let row = 0; row < ROWS; row++) {
+        for (let col = 0; col < COLS; col++) {
+          if (baseColor(board[row]?.[col]) === color) addRemovalCell(removalMap, row, col);
+        }
+      }
+    }
+
+    const dropMap = await removeAndDrop([...removalMap.values()], 1, [], { stagger: 0 });
+    const matches = findMatches(board);
+    if (matches.length) await resolveBoard(matches, null, dropMap);
+  }
+
+  async function completeLevelWithFinale() {
+    if (!levelCompletedNow() || finished || endgameDraining) return;
+
+    endgameDraining = true;
+    busy = true;
+    selected = null;
+    renderBoard();
+    setStatus("Ziel erreicht – Schlussbonus läuft!");
+    await wait(260);
+
+    // Das Spiel bleibt gesperrt und löst jedes noch vorhandene Sonderelement
+    // vollständig aus. Kettenreaktionen/Kaskaden dürfen dabei weitere Specials
+    // erzeugen; deshalb wird nach jeder Aktion erneut das gesamte Brett geprüft.
+    let safety = 0;
+    while (safety++ < 100) {
+      const special = findNextEndgameSpecial();
+      if (!special) break;
+
+      if (special.type === AREA_BOMB) {
+        setStatus("Schlussbonus – Bombe zündet!");
+        await resolveAreaBombChain({ row: special.row, col: special.col });
+      } else {
+        await detonateEndgameColorBomb({ row: special.row, col: special.col });
+      }
+      await wait(90);
+    }
+
+    // Erst jetzt wird die endgültige Punktzahl im Victory-Bereich verwendet.
+    endgameDraining = false;
+    updateHud(1);
+    showLevelVictory();
+  }
+
+  function showLevelVictory() {
+    finished = true;
+    setStatus("Ziel erreicht!");
+    if (dom.victoryTitle) {
+      dom.victoryTitle.textContent = currentLevel.type === "collect"
+        ? "20 blaue Bälle gesammelt!"
+        : currentLevel.type === "deliver-crests"
+          ? "Alle 3 Wappen im Ziel!"
+          : currentLevel.type === "transport-crests"
+            ? "5 Wappen in der Röhre!"
+            : currentLevel.type === "quad-crests"
+              ? "Alle 4 Wappen im Ziel!"
+              : `${TARGET_SCORE.toLocaleString("de-DE")} Punkte erreicht!`;
+    }
+    if (dom.victoryText) {
+      dom.victoryText.textContent = currentLevel.type === "collect"
+        ? `Level 2 geschafft. Deine Punkte: ${score.toLocaleString("de-DE")}.`
+        : currentLevel.type === "deliver-crests"
+          ? `Level 3 geschafft. Alle drei Stuttgarter-Kickers-Wappen wurden sicher über die Ziellinie gebracht.`
+          : currentLevel.type === "transport-crests"
+            ? `Level 4 geschafft. Fünf Wappen wurden in die Sammelröhre transportiert.`
+            : currentLevel.type === "quad-crests"
+              ? `Level 5 geschafft. Alle vier Wappen wurden in die Auffangkörbe gebracht.`
+              : "Die Nachrück- und Kaskadenmechanik wurde erfolgreich durchgespielt.";
+    }
+    dom.victory?.classList.remove("hidden");
+    renderBoard();
+  }
+
+  async function resolveBoard(initialMatches, swapContext = null, initialDropMap = null) {
+    let matches = initialMatches;
+    let cascade = 1;
+    let firstCycle = true;
+    let lastDropMap = initialDropMap;
+
+    while (matches.length) {
+      const groups = findMatchGroups(board);
+      const creations = planSpecialCreations(
+        groups,
+        firstCycle ? swapContext : null,
+        lastDropMap
+      );
+      const creationSet = new Set(creations.map(cellId));
+
+      // Spezialball-Zelle wird vor dem Entfernen ersetzt und ausdrücklich geschützt.
+      for (const creation of creations) {
+        board[creation.row][creation.col] = makeSpecial(creation.type);
+      }
+
+      const removalMap = new Map();
+      for (const cell of matches) {
+        const id = cellId(cell);
+        if (!creationSet.has(id) && !isRemovalProtectedCell(cell.row, cell.col)) removalMap.set(id, cell);
+      }
+      const removal = [...removalMap.values()];
+
+      updateHud(cascade);
+      if (creations.some((creation) => creation.type === COLOR_BOMB)) {
+        setStatus(creations.some((creation) => creation.cascadeCreated)
+          ? "Kaskaden-5er – Farbbombe entstanden!"
+          : "5er-Kombi – Farbbombe erstellt!");
+      } else if (creations.some((creation) => creation.type === AREA_BOMB)) {
+        setStatus(creations.some((creation) => creation.cascadeCreated)
+          ? "Kaskaden-T/L – Bombe entstanden!"
+          : "T/L-Kombi – Bombe erstellt!");
+      } else {
+        setStatus(cascade > 1 ? `Kaskade ×${cascade}!` : `${removal.length} Bälle getroffen.`);
+      }
+
+      playMatch3Sound("hit");
+      lastDropMap = await removeAndDrop(removal, cascade, creations);
+      matches = findMatches(board);
+      cascade++;
+      firstCycle = false;
+    }
+
+    await shuffleIfNeeded();
+    updateHud(1);
+
+    if (levelCompletedNow()) {
+      await completeLevelWithFinale();
+      // Match Arena ist weiterhin reiner Testbetrieb: bewusst KEIN Speichern.
+    } else {
+      setStatus(levelIdleStatus());
+    }
+  }
+
+  function specialSwapPlan(from, to, fromPiece, toPiece) {
+    // Farbbombe + Farbbombe = globaler Einzeltreffer über das komplette Spielfeld.
+    if (isColorBomb(fromPiece) && isColorBomb(toPiece)) {
+      return { type: BIG_BANG, colorBombPos: to, secondColorBombPos: from, doubleColorBomb: true };
+    }
+
+    // Farbbombe + normale Bombe = globaler Urknall.
+    // Die Positionen beziehen sich auf das Brett NACH dem sichtbaren Tausch.
+    if (isColorBomb(fromPiece) && isAreaBomb(toPiece)) {
+      return { type: BIG_BANG, colorBombPos: to, areaBombPos: from };
+    }
+    if (isAreaBomb(fromPiece) && isColorBomb(toPiece)) {
+      return { type: BIG_BANG, colorBombPos: from, areaBombPos: to };
+    }
+    if (isColorBomb(fromPiece) && baseColor(toPiece)) {
+      return { type: COLOR_BOMB, specialPos: to, partnerPos: from, color: baseColor(toPiece) };
+    }
+    if (isColorBomb(toPiece) && baseColor(fromPiece)) {
+      return { type: COLOR_BOMB, specialPos: from, partnerPos: to, color: baseColor(fromPiece) };
+    }
+    if (isAreaBomb(fromPiece) && toPiece) {
+      return { type: AREA_BOMB, specialPos: to, partnerPos: from };
+    }
+    if (isAreaBomb(toPiece) && fromPiece) {
+      return { type: AREA_BOMB, specialPos: from, partnerPos: to };
+    }
+    return null;
+  }
+
+  function specialSwapRemoval(plan) {
+    const removalMap = new Map();
+    if (!plan) return [];
+
+    if (plan.type === COLOR_BOMB) {
+      removalMap.set(cellId(plan.specialPos), { ...plan.specialPos });
+      for (let row = 0; row < ROWS; row++) {
+        for (let col = 0; col < COLS; col++) {
+          if (baseColor(board[row]?.[col]) === plan.color && !isRemovalProtectedCell(row, col)) {
+            removalMap.set(`${row}:${col}`, { row, col });
+          }
+        }
+      }
+    } else if (plan.type === AREA_BOMB) {
+      for (let row = plan.specialPos.row - 1; row <= plan.specialPos.row + 1; row++) {
+        for (let col = plan.specialPos.col - 1; col <= plan.specialPos.col + 1; col++) {
+          if (row < 0 || row >= ROWS || col < 0 || col >= COLS || isRemovalProtectedCell(row, col)) continue;
+          if (board[row]?.[col]) removalMap.set(`${row}:${col}`, { row, col });
+        }
+      }
+      // Tauschpartner zusätzlich explizit absichern – auch wenn er bereits im 3x3 liegt.
+      if (!isRemovalProtectedCell(plan.partnerPos.row, plan.partnerPos.col) && board[plan.partnerPos.row]?.[plan.partnerPos.col]) {
+        removalMap.set(cellId(plan.partnerPos), { ...plan.partnerPos });
+      }
+    }
+    return [...removalMap.values()];
+  }
+
+  async function animateAreaBombCharge(position) {
+    const tile = tileAt(position);
+    const img = tile?.querySelector("img");
+    if (!tile || !img || !dom.board) return;
+
+    tile.classList.add("is-area-bomb-charging");
+
+    const tileBox = tile.getBoundingClientRect();
+    const boardBox = dom.board.getBoundingClientRect();
+    const left = tileBox.left - boardBox.left;
+    const top = tileBox.top - boardBox.top;
+    const centerX = left + tileBox.width / 2;
+    const centerY = top + tileBox.height / 2;
+    const src = img.currentSrc || img.src;
+    const size = Math.max(tileBox.width, tileBox.height);
+
+    const addFx = (className, z = 84) => {
+      const el = document.createElement("span");
+      el.className = className;
+      el.style.left = `${centerX}px`;
+      el.style.top = `${centerY}px`;
+      el.style.zIndex = String(z);
+      dom.board.appendChild(el);
+      return el;
+    };
+
+    // 1) Sehr kurze Zündung: kleines Zusammenziehen -> heller Sternfunke.
+    const charge = img.animate([
+      { transform: "scale(1) rotate(0deg)", opacity: 1, filter: "brightness(1) saturate(1)", offset: 0 },
+      { transform: "scale(.92) rotate(-2deg)", opacity: 1, filter: "brightness(1.15) saturate(1.08)", offset: .22 },
+      { transform: "scale(1.08) rotate(2deg)", opacity: 1, filter: "brightness(1.5) saturate(1.12)", offset: .48 },
+      { transform: "scale(1.22) rotate(-1deg)", opacity: 1, filter: "brightness(2.15) saturate(.95)", offset: .68 },
+      { transform: "scale(1.34) rotate(0deg)", opacity: .25, filter: "brightness(3.1) saturate(.5)", offset: .86 },
+      { transform: "scale(1.4)", opacity: 0, filter: "brightness(3.4) saturate(.25)", offset: 1 }
+    ], { duration: 360, easing: "cubic-bezier(.22,.7,.18,1)", fill: "forwards" });
+
+    const star = addFx("match3-bomb-star", 92);
+    const starAnim = animationFinished(star.animate([
+      { transform: "translate(-50%,-50%) scale(.15) rotate(0deg)", opacity: 0, offset: 0 },
+      { transform: "translate(-50%,-50%) scale(.55) rotate(20deg)", opacity: 1, offset: .42 },
+      { transform: "translate(-50%,-50%) scale(1.35) rotate(50deg)", opacity: 1, offset: .66 },
+      { transform: "translate(-50%,-50%) scale(1.8) rotate(80deg)", opacity: 0, offset: 1 }
+    ], { duration: 300, easing: "cubic-bezier(.16,.8,.2,1)", fill: "forwards" })).finally(() => star.remove());
+
+    // Kleine Leuchtpunkte sitzen kurz ringförmig um die Bombe und ziehen den Blick ins Zentrum.
+    const orbitSparks = Array.from({ length: 8 }, (_, i) => {
+      const spark = addFx("match3-bomb-orbit-spark", 90);
+      const a = (Math.PI * 2 * i / 8) - Math.PI / 8;
+      const r = size * .58;
+      const x = Math.cos(a) * r;
+      const y = Math.sin(a) * r;
+      return animationFinished(spark.animate([
+        { transform: `translate(calc(-50% + ${x*.75}px),calc(-50% + ${y*.75}px)) scale(.15)`, opacity: 0, offset: 0 },
+        { transform: `translate(calc(-50% + ${x}px),calc(-50% + ${y}px)) scale(1)`, opacity: 1, offset: .55 },
+        { transform: `translate(calc(-50% + ${x*.7}px),calc(-50% + ${y*.7}px)) scale(.55)`, opacity: 0, offset: 1 }
+      ], { duration: 330 + (i%2)*20, easing: "ease-out", fill: "forwards" })).finally(() => spark.remove());
+    });
+
+    await wait(205);
+
+    // 2) Gold/weißer Kernknall – kurz, hart und sehr hell.
+    const ignition = addFx("match3-bomb-ignition", 93);
+    const ignitionAnim = animationFinished(ignition.animate([
+      { transform: "translate(-50%,-50%) scale(.18)", opacity: 0, offset: 0 },
+      { transform: "translate(-50%,-50%) scale(.62)", opacity: 1, offset: .18 },
+      { transform: "translate(-50%,-50%) scale(1.18)", opacity: 1, offset: .46 },
+      { transform: "translate(-50%,-50%) scale(1.7)", opacity: .18, offset: .82 },
+      { transform: "translate(-50%,-50%) scale(1.92)", opacity: 0, offset: 1 }
+    ], { duration: 260, easing: "cubic-bezier(.1,.8,.14,1)", fill: "forwards" })).finally(() => ignition.remove());
+
+    await wait(90);
+
+    // 3) Großer rosa/weißer Energie-Burst direkt über dem Kernknall.
+    const bloom = addFx("match3-bomb-bloom", 91);
+    const bloomAnim = animationFinished(bloom.animate([
+      { transform: "translate(-50%,-50%) scale(.22)", opacity: 0, offset: 0 },
+      { transform: "translate(-50%,-50%) scale(.72)", opacity: 1, offset: .16 },
+      { transform: "translate(-50%,-50%) scale(1.28)", opacity: .98, offset: .42 },
+      { transform: "translate(-50%,-50%) scale(1.9)", opacity: .5, offset: .68 },
+      { transform: "translate(-50%,-50%) scale(2.42)", opacity: 0, offset: 1 }
+    ], { duration: 390, easing: "cubic-bezier(.08,.72,.14,1)", fill: "forwards" })).finally(() => bloom.remove());
+
+    const shock = addFx("match3-bomb-shock-ring", 88);
+    const shockAnim = animationFinished(shock.animate([
+      { transform: "translate(-50%,-50%) scale(.35)", opacity: 0, offset: 0 },
+      { transform: "translate(-50%,-50%) scale(.8)", opacity: .95, offset: .22 },
+      { transform: "translate(-50%,-50%) scale(1.75)", opacity: .5, offset: .55 },
+      { transform: "translate(-50%,-50%) scale(2.65)", opacity: 0, offset: 1 }
+    ], { duration: 430, easing: "cubic-bezier(.12,.72,.18,1)", fill: "forwards" })).finally(() => shock.remove());
+
+    // 4) Bomben-PNG zerreißt aus dem hellen Burst heraus in unregelmäßige Fragmente.
+    const shardClips = [
+      "polygon(0 0,38% 0,46% 35%,8% 48%)",
+      "polygon(38% 0,70% 0,60% 37%,46% 35%)",
+      "polygon(70% 0,100% 0,100% 45%,60% 37%)",
+      "polygon(0 0,8% 48%,42% 52%,0 78%)",
+      "polygon(8% 48%,46% 35%,60% 37%,42% 52%)",
+      "polygon(60% 37%,100% 45%,100% 76%,64% 57%)",
+      "polygon(0 78%,42% 52%,46% 78%,18% 100%,0 100%)",
+      "polygon(42% 52%,64% 57%,58% 82%,46% 78%)",
+      "polygon(64% 57%,100% 76%,100% 100%,70% 100%,58% 82%)"
+    ];
+
+    const shardAnimations = shardClips.map((clip, i) => {
+      const shard = document.createElement("img");
+      shard.src = src;
+      shard.alt = "";
+      shard.className = "match3-bomb-shard-candy";
+      Object.assign(shard.style, {
+        left: `${left}px`, top: `${top}px`, width: `${tileBox.width}px`, height: `${tileBox.height}px`,
+        clipPath: clip, WebkitClipPath: clip
+      });
+      dom.board.appendChild(shard);
+      const angle = ((360 / shardClips.length) * i + (i % 2 ? 13 : -10)) * Math.PI / 180;
+      const d = size * (1.0 + (i % 3) * .23);
+      const dx = Math.cos(angle) * d;
+      const dy = Math.sin(angle) * d;
+      const rot = (i % 2 ? 1 : -1) * (120 + (i % 4) * 42);
+      return animationFinished(shard.animate([
+        { transform: "translate3d(0,0,0) scale(1.22) rotate(0deg)", opacity: .15, filter: "brightness(2.8)", offset: 0 },
+        { transform: `translate3d(${dx*.12}px,${dy*.12}px,0) scale(1.35) rotate(${rot*.1}deg)`, opacity: 1, filter: "brightness(2.3)", offset: .12 },
+        { transform: `translate3d(${dx*.52}px,${dy*.52}px,0) scale(.9) rotate(${rot*.55}deg)`, opacity: 1, filter: "brightness(1.3)", offset: .52 },
+        { transform: `translate3d(${dx}px,${dy}px,0) scale(.34) rotate(${rot}deg)`, opacity: 0, filter: "brightness(1)", offset: 1 }
+      ], { duration: 430 + (i%3)*35, easing: "cubic-bezier(.12,.72,.18,1)", fill: "forwards" })).finally(() => shard.remove());
+    });
+
+    // Zusätzliche farbige Energie-Splitter wie im Referenzvideo.
+    const energyColors = ["#ff9d2f", "#ff5e8e", "#fff4ba", "#d875ff", "#7fe8ff"];
+    const energyFragments = Array.from({ length: 16 }, (_, i) => {
+      const frag = addFx("match3-bomb-energy-fragment", 89);
+      frag.style.setProperty("--energy-color", energyColors[i % energyColors.length]);
+      const a = ((i * 137.5) % 360) * Math.PI / 180;
+      const d = size * (.75 + (i%5)*.18);
+      const dx = Math.cos(a)*d;
+      const dy = Math.sin(a)*d;
+      return animationFinished(frag.animate([
+        { transform: "translate(-50%,-50%) scale(.25) rotate(0deg)", opacity: 0, offset: 0 },
+        { transform: "translate(-50%,-50%) scale(1.1) rotate(35deg)", opacity: 1, offset: .12 },
+        { transform: `translate(calc(-50% + ${dx}px),calc(-50% + ${dy}px)) scale(.25) rotate(${160 + i*23}deg)`, opacity: 0, offset: 1 }
+      ], { duration: 410 + (i%4)*30, easing: "cubic-bezier(.12,.72,.2,1)", fill: "forwards" })).finally(() => frag.remove());
+    });
+
+    await Promise.all([
+      animationFinished(charge), starAnim, ignitionAnim, bloomAnim, shockAnim,
+      ...orbitSparks, ...shardAnimations, ...energyFragments
+    ]);
+    charge.cancel();
+    img.style.opacity = "0";
+    img.style.transform = "scale(1.4)";
+  }
+
+  function randomExistingBallColor() {
+    const colors = new Set();
+    for (let row = 0; row < ROWS; row++) {
+      for (let col = 0; col < COLS; col++) {
+        const color = baseColor(board[row]?.[col]);
+        if (color) colors.add(color);
+      }
+    }
+    const available = [...colors];
+    return available.length ? available[Math.floor(Math.random() * available.length)] : null;
+  }
+
+  function addRemovalCell(removalMap, row, col) {
+    if (row < 0 || row >= ROWS || col < 0 || col >= COLS) return;
+    if (!board[row]?.[col] || isRemovalProtectedCell(row, col)) return;
+    removalMap.set(`${row}:${col}`, { row, col });
+  }
+
+  async function animateColorBombChain(position, color, { bigBang = false } = {}) {
+    const tile = tileAt(position);
+    const img = tile?.querySelector("img");
+    if (!tile || !img || !dom.board) return;
+    tile.classList.add("is-color-bomb-triggering");
+
+    const tileBox = tile.getBoundingClientRect();
+    const boardBox = dom.board.getBoundingClientRect();
+    const centerX = tileBox.left - boardBox.left + tileBox.width / 2;
+    const centerY = tileBox.top - boardBox.top + tileBox.height / 2;
+
+    // Alle aktuell betroffenen Farbbälle merken, bevor irgendetwas entfernt wird.
+    const targets = [];
+    if (color && !bigBang) {
+      for (let row = 0; row < ROWS; row++) {
+        for (let col = 0; col < COLS; col++) {
+          if (row === position.row && col === position.col) continue;
+          if (baseColor(board[row]?.[col]) !== color) continue;
+          const targetTile = tileAt({ row, col });
+          if (!targetTile) continue;
+          const box = targetTile.getBoundingClientRect();
+          targets.push({
+            row, col, tile: targetTile,
+            x: box.left - boardBox.left + box.width / 2,
+            y: box.top - boardBox.top + box.height / 2,
+            size: Math.max(box.width, box.height)
+          });
+        }
+      }
+    }
+
+    const ring = document.createElement("span");
+    ring.className = bigBang ? "match3-colorbomb-ring is-bigbang" : "match3-colorbomb-ring";
+    ring.style.left = `${centerX}px`;
+    ring.style.top = `${centerY}px`;
+    dom.board.appendChild(ring);
+
+    // Kurzes Aufladen: Farbbombe zieht sich minimal zusammen und wird dann extrem hell.
+    const pulse = animationFinished(img.animate([
+      { transform: "scale(1)", filter: "brightness(1) saturate(1)", opacity: 1, offset: 0 },
+      { transform: "scale(.94)", filter: "brightness(1.2) saturate(1.2)", opacity: 1, offset: .18 },
+      { transform: `scale(${bigBang ? 1.34 : 1.22})`, filter: "brightness(1.9) saturate(1.45)", opacity: 1, offset: .48 },
+      { transform: `scale(${bigBang ? 1.5 : 1.32})`, filter: "brightness(3.1) saturate(.75)", opacity: .32, offset: .82 },
+      { transform: `scale(${bigBang ? 1.58 : 1.38})`, filter: "brightness(3.5)", opacity: 0, offset: 1 }
+    ], { duration: bigBang ? 540 : 520, easing: "cubic-bezier(.18,.72,.18,1)", fill: "forwards" }));
+
+    const ringAnim = animationFinished(ring.animate([
+      { transform: "translate(-50%,-50%) scale(.18) rotate(0deg)", opacity: 0, offset: 0 },
+      { transform: "translate(-50%,-50%) scale(.58) rotate(45deg)", opacity: 1, offset: .26 },
+      { transform: `translate(-50%,-50%) scale(${bigBang ? 2.8 : 2.05}) rotate(165deg)`, opacity: 0, offset: 1 }
+    ], { duration: bigBang ? 620 : 560, easing: "cubic-bezier(.12,.75,.2,1)", fill: "forwards" })).finally(() => ring.remove());
+
+    // Referenzstil: elektrische Lichtbahnen schießen von der Farbbombe zu jedem Ziel.
+    // Die Ziele zünden leicht versetzt, damit die Sequenz lebendig statt statisch wirkt.
+    const beamAnimations = targets.map((target, index) => {
+      const dx = target.x - centerX;
+      const dy = target.y - centerY;
+      const length = Math.hypot(dx, dy);
+      const angle = Math.atan2(dy, dx) * 180 / Math.PI;
+      const delay = 165 + (index % 8) * 34 + Math.floor(index / 8) * 18;
+
+      const beamWrap = document.createElement("span");
+      Object.assign(beamWrap.style, {
+        position: "absolute",
+        left: `${centerX}px`, top: `${centerY}px`,
+        width: `${length}px`, height: "9px",
+        transformOrigin: "0 50%",
+        transform: `translateY(-50%) rotate(${angle}deg)`,
+        pointerEvents: "none", zIndex: "96",
+        overflow: "visible"
+      });
+
+      const beam = document.createElement("span");
+      Object.assign(beam.style, {
+        position: "absolute", left: "0", top: "50%",
+        width: "100%", height: "3px",
+        transformOrigin: "0 50%",
+        transform: "translateY(-50%) scaleX(.02)",
+        borderRadius: "999px",
+        background: "linear-gradient(90deg, rgba(255,255,255,1), rgba(130,235,255,.98) 45%, rgba(255,255,255,.95))",
+        boxShadow: "0 0 5px rgba(255,255,255,.95), 0 0 10px rgba(75,215,255,.9), 0 0 16px rgba(139,102,255,.65)",
+        opacity: "0"
+      });
+      beamWrap.appendChild(beam);
+
+      // Zweite dünne, leicht versetzte Bahn erzeugt den elektrischen Flattereffekt.
+      const beam2 = document.createElement("span");
+      Object.assign(beam2.style, {
+        position: "absolute", left: "0", top: "50%",
+        width: "100%", height: "2px",
+        transformOrigin: "0 50%",
+        transform: "translateY(-50%) scaleX(.02) rotate(.7deg)",
+        borderRadius: "999px",
+        background: "rgba(255,255,255,.92)",
+        boxShadow: "0 0 7px rgba(170,245,255,.95)",
+        opacity: "0"
+      });
+      beamWrap.appendChild(beam2);
+      dom.board.appendChild(beamWrap);
+
+      const targetFlash = document.createElement("span");
+      Object.assign(targetFlash.style, {
+        position: "absolute", left: `${target.x}px`, top: `${target.y}px`,
+        width: `${target.size * .68}px`, height: `${target.size * .68}px`,
+        borderRadius: "50%", transform: "translate(-50%,-50%) scale(.1)",
+        background: "radial-gradient(circle, #fff 0 18%, rgba(150,240,255,.98) 28%, rgba(97,187,255,.6) 52%, rgba(133,86,255,0) 76%)",
+        boxShadow: "0 0 10px rgba(255,255,255,.95), 0 0 20px rgba(87,221,255,.82)",
+        pointerEvents: "none", zIndex: "98", opacity: "0"
+      });
+      dom.board.appendChild(targetFlash);
+
+      const targetImg = target.tile.querySelector("img");
+      const beamAnim = beam.animate([
+        { transform: "translateY(-50%) scaleX(.02)", opacity: 0, offset: 0 },
+        { transform: "translateY(-50%) scaleX(.25)", opacity: 1, offset: .22 },
+        { transform: "translateY(-50%) scaleX(1)", opacity: 1, offset: .58 },
+        { transform: "translateY(-50%) scaleX(1)", opacity: 0, offset: 1 }
+      ], { duration: 265, delay, easing: "cubic-bezier(.12,.78,.18,1)", fill: "forwards" });
+
+      const beam2Anim = beam2.animate([
+        { transform: "translateY(-50%) scaleX(.02) rotate(-1deg)", opacity: 0, offset: 0 },
+        { transform: "translateY(-50%) scaleX(.55) rotate(1.2deg)", opacity: .95, offset: .35 },
+        { transform: "translateY(-50%) scaleX(1) rotate(-.8deg)", opacity: .9, offset: .68 },
+        { transform: "translateY(-50%) scaleX(1) rotate(.5deg)", opacity: 0, offset: 1 }
+      ], { duration: 290, delay: delay + 16, easing: "ease-out", fill: "forwards" });
+
+      const flashAnim = targetFlash.animate([
+        { transform: "translate(-50%,-50%) scale(.1)", opacity: 0, offset: 0 },
+        { transform: "translate(-50%,-50%) scale(.55)", opacity: 1, offset: .28 },
+        { transform: "translate(-50%,-50%) scale(1.45)", opacity: .95, offset: .62 },
+        { transform: "translate(-50%,-50%) scale(1.85)", opacity: 0, offset: 1 }
+      ], { duration: 300, delay: delay + 92, easing: "cubic-bezier(.12,.72,.2,1)", fill: "forwards" });
+
+      let targetAnim = Promise.resolve();
+      if (targetImg) {
+        targetAnim = animationFinished(targetImg.animate([
+          { transform: "scale(1)", filter: "brightness(1)", opacity: 1, offset: 0 },
+          { transform: "scale(1.12)", filter: "brightness(2.35) saturate(.75)", opacity: 1, offset: .42 },
+          { transform: "scale(.9)", filter: "brightness(3)", opacity: .34, offset: .78 },
+          { transform: "scale(.72)", filter: "brightness(3.2)", opacity: 0, offset: 1 }
+        ], { duration: 270, delay: delay + 86, easing: "cubic-bezier(.18,.72,.2,1)", fill: "forwards" }));
+      }
+
+      return Promise.all([
+        animationFinished(beamAnim), animationFinished(beam2Anim), animationFinished(flashAnim), targetAnim
+      ]).finally(() => {
+        beamWrap.remove();
+        targetFlash.remove();
+      });
+    });
+
+    await Promise.all([pulse, ringAnim, ...beamAnimations]);
+    img.style.opacity = "0";
+    if (color) tile.dataset.chainColor = color;
+  }
+
+  async function animateBigBangBoardFx() {
+    if (!dom.board) return;
+    const flash = document.createElement("span");
+    flash.className = "match3-bigbang-flash";
+    const ring = document.createElement("span");
+    ring.className = "match3-bigbang-ring";
+    dom.board.append(flash, ring);
+
+    const shake = animationFinished(dom.board.animate([
+      { transform: "translate3d(0,0,0)", offset: 0 },
+      { transform: "translate3d(-5px,2px,0)", offset: .14 },
+      { transform: "translate3d(6px,-3px,0)", offset: .28 },
+      { transform: "translate3d(-5px,-2px,0)", offset: .43 },
+      { transform: "translate3d(4px,3px,0)", offset: .57 },
+      { transform: "translate3d(-3px,1px,0)", offset: .72 },
+      { transform: "translate3d(2px,-1px,0)", offset: .86 },
+      { transform: "translate3d(0,0,0)", offset: 1 }
+    ], { duration: 430, easing: "ease-out" }));
+
+    const flashAnim = animationFinished(flash.animate([
+      { opacity: 0, transform: "scale(.7)", offset: 0 },
+      { opacity: .98, transform: "scale(1)", offset: .18 },
+      { opacity: .56, transform: "scale(1.04)", offset: .42 },
+      { opacity: 0, transform: "scale(1.08)", offset: 1 }
+    ], { duration: 520, easing: "ease-out", fill: "forwards" })).finally(() => flash.remove());
+
+    const ringAnim = animationFinished(ring.animate([
+      { opacity: 0, transform: "translate(-50%,-50%) scale(.08)", offset: 0 },
+      { opacity: 1, transform: "translate(-50%,-50%) scale(.35)", offset: .16 },
+      { opacity: .65, transform: "translate(-50%,-50%) scale(1.1)", offset: .48 },
+      { opacity: 0, transform: "translate(-50%,-50%) scale(1.75)", offset: 1 }
+    ], { duration: 620, easing: "cubic-bezier(.12,.72,.18,1)", fill: "forwards" })).finally(() => ring.remove());
+
+    await Promise.all([shake, flashAnim, ringAnim]);
+  }
+
+  async function resolveAreaBombChain(startPos, partnerPos = null) {
+    const removalMap = new Map();
+    const areaQueue = [{ ...startPos }];
+    const colorQueue = [];
+    const processedArea = new Set();
+    const processedColor = new Set();
+
+    while (areaQueue.length) {
+      const pos = areaQueue.shift();
+      const id = cellId(pos);
+      if (processedArea.has(id) || !isAreaBomb(board[pos.row]?.[pos.col])) continue;
+      processedArea.add(id);
+
+      if (processedArea.size > 1) {
+        setStatus("Kettenreaktion – nächste Bombe zündet!");
+        await wait(85);
+      }
+      playMatch3Sound("bomb");
+      await animateAreaBombCharge(pos);
+      addRemovalCell(removalMap, pos.row, pos.col);
+
+      for (let row = pos.row - 1; row <= pos.row + 1; row++) {
+        for (let col = pos.col - 1; col <= pos.col + 1; col++) {
+          if (row < 0 || row >= ROWS || col < 0 || col >= COLS) continue;
+          const piece = board[row]?.[col];
+          if (!piece || isRemovalProtectedCell(row, col)) continue;
+          addRemovalCell(removalMap, row, col);
+          if (isAreaBomb(piece) && !processedArea.has(`${row}:${col}`)) {
+            areaQueue.push({ row, col });
+          } else if (isColorBomb(piece) && !processedColor.has(`${row}:${col}`)) {
+            colorQueue.push({ row, col });
+          }
+        }
+      }
+    }
+
+    if (partnerPos) addRemovalCell(removalMap, partnerPos.row, partnerPos.col);
+
+    while (colorQueue.length) {
+      const pos = colorQueue.shift();
+      const id = cellId(pos);
+      if (processedColor.has(id) || !isColorBomb(board[pos.row]?.[pos.col])) continue;
+      processedColor.add(id);
+      const color = randomExistingBallColor();
+      setStatus("Farbbombe in der Explosion – Zufallsfarbe wird entfernt!");
+      await wait(80);
+      playMatch3Sound("thunder");
+      await animateColorBombChain(pos, color);
+      addRemovalCell(removalMap, pos.row, pos.col);
+      if (color) {
+        for (let row = 0; row < ROWS; row++) {
+          for (let col = 0; col < COLS; col++) {
+            if (baseColor(board[row]?.[col]) === color) addRemovalCell(removalMap, row, col);
+          }
+        }
+      }
+    }
+
+    const removal = [...removalMap.values()];
+    const dropMap = await removeAndDrop(removal, 1, [], { stagger: 0, skipInitialRender: true });
+    const matches = findMatches(board);
+    if (matches.length) await resolveBoard(matches, null, dropMap);
+    else {
+      await shuffleIfNeeded();
+      updateHud(1);
+      if (levelCompletedNow()) await completeLevelWithFinale();
+      else setStatus(levelIdleStatus());
+    }
+  }
+
+  async function resolveBigBangSwap(plan) {
+    setStatus(plan.doubleColorBomb
+      ? "DOPPEL-FARBBOMBE – das ganze Spielfeld wird getroffen!"
+      : "URKNALL – das ganze Spielfeld wird getroffen!");
+    playMatch3Sound("thunder");
+
+    if (plan.doubleColorBomb) {
+      await Promise.all([
+        animateColorBombChain(plan.colorBombPos, null, { bigBang: true }),
+        animateColorBombChain(plan.secondColorBombPos, null, { bigBang: true })
+      ]);
+    } else {
+      await Promise.all([
+        animateAreaBombCharge(plan.areaBombPos),
+        animateColorBombChain(plan.colorBombPos, null, { bigBang: true })
+      ]);
+    }
+
+    const removalMap = new Map();
+    for (let row = 0; row < ROWS; row++) {
+      for (let col = 0; col < COLS; col++) {
+        // Unzerstörbare/geschützte Elemente und Wappen bleiben stehen.
+        // Hindernisse wie der aktuelle Stein werden über ihre normale Trefferregel
+        // durch die flächige Entfernung ihrer Nachbarzellen genau einmal getroffen.
+        addRemovalCell(removalMap, row, col);
+      }
+    }
+
+    const fxPromise = animateBigBangBoardFx();
+    const dropMap = await removeAndDrop([...removalMap.values()], 1, [], { stagger: 0, skipInitialRender: true });
+    await fxPromise;
+
+    const matches = findMatches(board);
+    if (matches.length) await resolveBoard(matches, null, dropMap);
+    else {
+      await shuffleIfNeeded();
+      updateHud(1);
+      if (levelCompletedNow()) await completeLevelWithFinale();
+      else setStatus(levelIdleStatus());
+    }
+  }
+
+  async function resolveSpecialSwap(plan) {
+    if (plan.type === BIG_BANG) {
+      await resolveBigBangSwap(plan);
+      return;
+    }
+    if (plan.type === AREA_BOMB) {
+      setStatus("Bombe!");
+      await resolveAreaBombChain(plan.specialPos, plan.partnerPos);
+      return;
+    }
+
+    const removal = specialSwapRemoval(plan);
+    setStatus("Farbbombe!");
+    playMatch3Sound("thunder");
+    await animateColorBombChain(plan.specialPos, plan.color);
+    const dropMap = await removeAndDrop(removal, 1, [], { stagger: 0, skipInitialRender: true });
+    const matches = findMatches(board);
+    if (matches.length) await resolveBoard(matches, null, dropMap);
+    else {
+      await shuffleIfNeeded();
+      updateHud(1);
+      if (levelCompletedNow()) {
+        await completeLevelWithFinale();
+      } else {
+        setStatus(levelIdleStatus());
+      }
+    }
+  }
+
+  async function attemptSwap(from, to) {
+    if (busy || finished || !adjacent(from, to)) return;
+    if (!isMovablePiece(board[from.row]?.[from.col]) || !isMovablePiece(board[to.row]?.[to.col])) {
+      setStatus("Steine können nicht direkt getauscht werden.");
+      return;
+    }
+    busy = true;
+    selected = null;
+    renderBoard();
+    setStatus("Zug wird geprüft …");
+
+    const fromPiece = board[from.row]?.[from.col];
+    const toPiece = board[to.row]?.[to.col];
+    const crestSwap = isGoalCrest(fromPiece) || isGoalCrest(toPiece);
+
+    // Sichtbarer Tausch beider Nachbarfelder.
+    await animateSwapVisual(from, to, 190);
+    swapIn(board, from, to);
+    renderBoard();
+
+    // Wappen dürfen in alle vier Richtungen getauscht werden, bleiben aber
+    // ein normales Zugziel: Der Partnerball muss an seiner neuen Position
+    // selbst Teil eines gültigen Matches sein. Sonst wird der Tausch zurückgesetzt.
+    if (crestSwap) {
+      const partnerPos = isGoalCrest(fromPiece) ? from : to;
+      const crestMatches = findMatches(board);
+      const partnerCreatesMatch = crestMatches.some((cell) =>
+        cell.row === partnerPos.row && cell.col === partnerPos.col
+      );
+
+      if (!partnerCreatesMatch) {
+        setStatus("Kein Match durch den Partnerball – Zug zurückgesetzt.");
+        await wait(45);
+        await animateSwapVisual(from, to, 155);
+        swapIn(board, from, to);
+        renderBoard({ invalid: [from, to] });
+        await wait(120);
+        busy = false;
+        renderBoard();
+        setStatus("Tausche das Wappen nur, wenn der Partnerball ein Match bildet.");
+        return;
+      }
+
+      await resolveBoard(crestMatches, { from, to });
+      busy = false;
+      renderBoard();
+      return;
+    }
+
+    const specialPlan = specialSwapPlan(from, to, fromPiece, toPiece);
+    if (specialPlan) {
+      await resolveSpecialSwap(specialPlan);
+      busy = false;
+      renderBoard();
+      return;
+    }
+
+    const matches = findMatches(board);
+    if (!matches.length) {
+      setStatus("Kein Match – Zug zurückgesetzt.");
+      // Ungültiger Zug: die vertauschten Bälle gleiten direkt wieder zurück.
+      await wait(45);
+      await animateSwapVisual(from, to, 155);
+      swapIn(board, from, to);
+      renderBoard({ invalid: [from, to] });
+      await wait(120);
+      busy = false;
+      renderBoard();
+      setStatus("Tausche zwei benachbarte Bälle.");
+      return;
+    }
+
+    await resolveBoard(matches, { from, to });
+    busy = false;
+    renderBoard();
+  }
+
+
+  function setTutorialStep(step, text, caption) {
+    if (!dom.level1Tutorial) return;
+    dom.level1Tutorial.dataset.step = String(step);
+    if (dom.tutorialText) dom.tutorialText.textContent = text;
+    if (dom.tutorialCaption) dom.tutorialCaption.textContent = caption;
+    dom.level1Tutorial.querySelectorAll(".match3-tutorial-dot").forEach((dot, index) => {
+      dot.classList.toggle("is-active", index === step - 1);
+    });
+  }
+
+  async function playLevel1Tutorial() {
+    if (!dom.level1Tutorial || currentLevel.id !== 1) return;
+    const runId = ++level1TutorialRunId;
+    busy = true;
+    selected = null;
+    renderBoard();
+
+    dom.level1Tutorial.classList.remove("hidden", "is-leaving", "is-swapping", "is-matched", "is-dropping");
+    dom.level1Tutorial.setAttribute("aria-hidden", "false");
+    setTutorialStep(1, "Tausche zwei benachbarte Bälle.", "Tausche den grünen und roten Ball.");
+
+    await wait(900);
+    if (runId !== level1TutorialRunId || currentLevel.id !== 1) return;
+    dom.level1Tutorial.classList.add("is-swapping");
+
+    await wait(900);
+    if (runId !== level1TutorialRunId || currentLevel.id !== 1) return;
+    dom.level1Tutorial.classList.remove("is-swapping");
+    dom.level1Tutorial.classList.add("is-matched");
+    setTutorialStep(2, "Drei gleiche Bälle in einer Reihe bilden ein Match.", "3 gleiche Bälle werden entfernt.");
+
+    await wait(1050);
+    if (runId !== level1TutorialRunId || currentLevel.id !== 1) return;
+    dom.level1Tutorial.classList.remove("is-matched");
+    dom.level1Tutorial.classList.add("is-dropping");
+    setTutorialStep(3, "Die Bälle verschwinden und neue rutschen nach.", "Jetzt bist du dran!");
+
+    await wait(1000);
+    if (runId !== level1TutorialRunId || currentLevel.id !== 1) return;
+    dom.level1Tutorial.classList.add("is-leaving");
+    await wait(360);
+    if (runId !== level1TutorialRunId || currentLevel.id !== 1) return;
+
+    dom.level1Tutorial.classList.add("hidden");
+    dom.level1Tutorial.classList.remove("is-leaving", "is-swapping", "is-matched", "is-dropping");
+    dom.level1Tutorial.setAttribute("aria-hidden", "true");
+    busy = false;
+    setStatus("Jetzt bist du dran – bilde 3 gleiche Bälle.");
+    renderBoard();
+  }
+
+  function startLevel(config) {
+    if (!hasAccess()) {
+      showScreen("home");
+      return;
+    }
+    applyLevelLayout(config);
+    if (isQuadCrestLevel()) {
+      level5Boards = Array.from({ length: 4 }, () => createLevel5CardBoard());
+      board = level5Boards[0];
+      level5Delivered = new Set();
+      level5Released = new Set();
+      level5Selected = null;
+      level5BusyCard = -1;
+      level5PointerStart = null;
+      level5SuppressClickUntil = 0;
+    } else {
+      board = createPlayableBoard();
+    }
+    score = 0;
+    collectedBlue = 0;
+    deliveredCrests = 0;
+    spawnedCrests = isTransportLevel() ? Math.min(2, Number(currentLevel.crestTarget || 5)) : 0;
+    nextTransportSourceIndex = 0;
+    releasedCrestColumns.clear();
+    deliveredCrestColumns.clear();
+    busy = false;
+    finished = false;
+    endgameDraining = false;
+    selected = null;
+    dom.victory?.classList.add("hidden");
+    level1TutorialRunId++;
+    if (dom.level1Tutorial) {
+      dom.level1Tutorial.classList.add("hidden");
+      dom.level1Tutorial.classList.remove("is-leaving", "is-swapping", "is-matched", "is-dropping");
+      dom.level1Tutorial.setAttribute("aria-hidden", "true");
+    }
+    if (dom.playTitle) dom.playTitle.textContent = `Level ${currentLevel.id}`;
+    if (dom.board) dom.board.setAttribute("aria-label", `Match Arena Spielfeld ${ROWS} mal ${COLS}`);
+    updateHud(1);
+    setStatus(levelIdleStatus());
+    renderBoard();
+    showScreen("match3Play");
+    if (currentLevel.id === 1) {
+      setTimeout(() => {
+        if (currentLevel.id === 1 && !finished) playLevel1Tutorial();
+      }, 120);
+    }
+  }
+
+  function startLevel1() { startLevel(LEVEL_1); }
+  function startLevel2() { startLevel(LEVEL_2); }
+  function startLevel3() { startLevel(LEVEL_3); }
+  function startLevel4() { startLevel(LEVEL_4); }
+  function startLevel5() { startLevel(LEVEL_5); }
+
+  function bindEvents() {
+    dom.homeButton?.addEventListener("click", () => {
+      if (!hasAccess()) return;
+      showScreen("match3Map");
+    });
+    dom.mapBack?.addEventListener("click", () => showScreen("home"));
+    dom.level1?.addEventListener("click", startLevel1);
+    dom.level2?.addEventListener("click", startLevel2);
+    dom.level3?.addEventListener("click", startLevel3);
+    dom.level4?.addEventListener("click", startLevel4);
+    dom.level5?.addEventListener("click", startLevel5);
+    dom.playBack?.addEventListener("click", () => {
+      level1TutorialRunId++;
+      if (dom.level1Tutorial) {
+        dom.level1Tutorial.classList.add("hidden");
+        dom.level1Tutorial.setAttribute("aria-hidden", "true");
+      }
+      busy = false;
+      showScreen("match3Map");
+    });
+  }
+
+  function init(options = {}) {
+    if (initialized) return;
+    if (typeof options.getProgress === "function") getProgress = options.getProgress;
+    if (typeof options.saveProgress === "function") saveProgress = options.saveProgress;
+    if (typeof options.showScreen === "function") showScreen = options.showScreen;
+    if (typeof options.playEffect === "function") playEffect = options.playEffect;
+    cacheDom();
+    bindEvents();
+    refreshAccess();
+    initialized = true;
+  }
+
+  return { init, refreshAccess, startLevel1, startLevel2, startLevel3, startLevel4, startLevel5 };
+})();

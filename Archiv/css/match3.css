@@ -1,0 +1,1596 @@
+/* =========================================================
+   MATCH ARENA – versteckter Match-3-Prototyp ab Level 195
+   ========================================================= */
+
+.match3-menu-card {
+  position: relative;
+}
+
+.match3-menu-balls {
+  width: 104px;
+  height: 100px;
+  position: relative;
+  justify-self: end;
+}
+
+.match3-menu-balls img {
+  position: absolute;
+  width: 62px;
+  height: 62px;
+  object-fit: contain;
+  filter: drop-shadow(0 6px 7px rgba(0,0,0,.46));
+}
+
+.match3-menu-balls img:nth-child(1) { left: 0; top: 2px; transform: rotate(-9deg); }
+.match3-menu-balls img:nth-child(2) { right: 0; top: 4px; transform: rotate(10deg); }
+.match3-menu-balls img:nth-child(3) { left: 23px; bottom: 0; z-index: 2; }
+
+.match3-map-card,
+.match3-game-card {
+  border: 1px solid rgba(255, 212, 92, .34);
+  border-radius: 22px;
+  background: linear-gradient(155deg, rgba(91,0,0,.98), rgba(18,22,31,.98));
+  box-shadow: 0 16px 38px rgba(0,0,0,.28);
+}
+
+.match3-map-card { padding: 20px; }
+.match3-map-intro { margin-bottom: 18px; }
+.match3-map-intro h3 { margin: 5px 0 8px; font-size: 24px; }
+.match3-map-intro p { margin: 0; color: var(--muted); line-height: 1.5; }
+
+.match3-level-node {
+  width: 100%;
+  min-height: 92px;
+  padding: 14px;
+  display: grid;
+  grid-template-columns: 58px minmax(0,1fr) 24px;
+  gap: 12px;
+  align-items: center;
+  text-align: left;
+  color: #fff;
+  border: 1px solid rgba(255,212,92,.5);
+  border-radius: 18px;
+  background: linear-gradient(135deg, #860000, #292f3b);
+}
+
+.match3-level-number {
+  width: 54px;
+  height: 54px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  font-size: 24px;
+  font-weight: 900;
+  color: #241900;
+  background: linear-gradient(145deg, #ffe789, #d2a929);
+  box-shadow: 0 4px 12px rgba(0,0,0,.32);
+}
+
+.match3-level-copy strong,
+.match3-level-copy small { display: block; }
+.match3-level-copy strong { margin-bottom: 5px; font-size: 17px; }
+.match3-level-copy small { color: rgba(255,255,255,.72); font-size: 13px; }
+.match3-level-arrow { font-size: 34px; color: #ffdf66; }
+
+.match3-play-toolbar > span:last-child { white-space: nowrap; }
+.match3-game-card { padding: 16px 14px 20px; }
+
+.match3-hud {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0,1fr));
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.match3-hud > div {
+  min-width: 0;
+  padding: 10px 5px;
+  text-align: center;
+  border: 1px solid rgba(255,212,92,.25);
+  border-radius: 13px;
+  background: rgba(0,0,0,.2);
+}
+
+.match3-hud span,
+.match3-hud strong { display: block; }
+.match3-hud span { margin-bottom: 4px; font-size: 10px; letter-spacing: .08em; color: rgba(255,255,255,.58); }
+.match3-hud strong { font-size: 18px; }
+
+.match3-status {
+  min-height: 24px;
+  margin: 2px 0 12px;
+  text-align: center;
+  color: #ffdf66;
+  font-weight: 700;
+  font-size: 14px;
+}
+
+.match3-board {
+  /*
+   * Ein einziges Größenraster für ALLE Match-3-Level.
+   * Die Größe orientiert sich an der maximalen Breite von 9 Feldern.
+   * Weniger Spalten verändern weder Kachel- noch Ballgröße – das Brett wird
+   * lediglich schmaler und bleibt durch margin:auto sauber zentriert.
+   */
+  --match3-cols: 4;
+  --match3-rows: 4;
+  --match3-cell: clamp(34px, 9.15vw, 42px);
+  --match3-gap: 3px;
+  --match3-pad: 7px;
+
+  width: max-content;
+  max-width: 100%;
+  margin: 0 auto;
+  padding: var(--match3-pad);
+  display: grid;
+  grid-template-columns: repeat(var(--match3-cols), var(--match3-cell));
+  grid-template-rows: repeat(var(--match3-rows), var(--match3-cell));
+  gap: var(--match3-gap);
+  justify-content: center;
+  border: 1px solid rgba(205,255,205,.30);
+  border-radius: 16px;
+  /* Grüner Sportrasen: Mähstreifen + feine Grasstruktur, rein per CSS. */
+  background:
+    radial-gradient(ellipse at 16% 22%, rgba(255,255,255,.070) 0 1px, transparent 1.6px),
+    radial-gradient(ellipse at 74% 62%, rgba(5,65,19,.13) 0 1px, transparent 1.7px),
+    repeating-linear-gradient(
+      88deg,
+      rgba(255,255,255,.018) 0 1px,
+      rgba(0,0,0,.022) 1px 3px,
+      transparent 3px 6px
+    ),
+    repeating-linear-gradient(
+      0deg,
+      rgba(76,167,78,.26) 0 42px,
+      rgba(34,125,52,.26) 42px 84px
+    ),
+    linear-gradient(180deg, #3b9a4f 0%, #2f8845 52%, #27783b 100%);
+  background-size: 13px 17px, 19px 23px, auto, auto, auto;
+  background-position: center;
+  box-shadow:
+    inset 0 0 22px rgba(0,0,0,.22),
+    inset 0 1px 0 rgba(255,255,255,.08),
+    0 10px 24px rgba(0,0,0,.25);
+  touch-action: none;
+  user-select: none;
+  position: relative;
+  overflow: visible;
+}
+
+.match3-tile {
+  width: var(--match3-cell);
+  height: var(--match3-cell);
+  min-width: var(--match3-cell);
+  min-height: var(--match3-cell);
+  padding: 2px;
+  position: relative;
+  display: grid;
+  place-items: center;
+  border: 1px solid rgba(255,255,255,.105);
+  border-radius: 7px;
+  /* Nur die einzelnen Rasterfelder werden leicht dunkler grün – der Rasen bleibt unverändert. */
+  background:
+    linear-gradient(145deg, rgba(18,103,48,.46), rgba(10,77,36,.38));
+  box-shadow:
+    inset 1px 1px 0 rgba(255,255,255,.035),
+    inset -1px -1px 0 rgba(0,0,0,.24);
+  opacity: 1 !important;
+  touch-action: none;
+  transition: transform .15s ease, box-shadow .15s ease, background .15s ease;
+  overflow: visible;
+}
+
+.match3-tile img {
+  /* Ballgröße bleibt in jedem Level identisch, egal ob 4, 6, 8 oder 9 Spalten. */
+  width: calc(var(--match3-cell) - 5px);
+  height: calc(var(--match3-cell) - 5px);
+  max-width: none;
+  max-height: none;
+  object-fit: contain;
+  pointer-events: none;
+  position: relative;
+  will-change: transform, opacity;
+  transform: translateZ(0);
+  backface-visibility: hidden;
+  filter: drop-shadow(0 3px 4px rgba(0,0,0,.34));
+}
+
+.match3-tile.is-selected {
+  transform: scale(1.06);
+  background: rgba(255,223,102,.12);
+  box-shadow: 0 0 0 2px #ffdf66 inset, 0 0 14px rgba(255,223,102,.5);
+}
+
+.match3-tile.is-matched img { animation: match3Pop .28s cubic-bezier(.2,.7,.2,1) both; }
+.match3-tile.is-swapping { z-index: 5; }
+.match3-tile.is-dropping { z-index: 3; }
+.match3-tile.is-invalid { animation: match3Invalid .16s ease; }
+.match3-board.is-busy { cursor: wait; }
+
+.match3-victory {
+  margin-top: 16px;
+  padding: 18px;
+  text-align: center;
+  border: 1px solid rgba(255,212,92,.55);
+  border-radius: 18px;
+  background: linear-gradient(145deg, rgba(36,94,43,.96), rgba(16,27,22,.98));
+  box-shadow: 0 10px 24px rgba(0,0,0,.28);
+}
+
+.match3-victory h3 { margin: 5px 0 7px; font-size: 22px; }
+.match3-victory p { margin: 0 0 14px; color: rgba(255,255,255,.78); line-height: 1.45; }
+
+@keyframes match3Pop {
+  0% { transform: scale(1); opacity: 1; }
+  55% { transform: scale(1.22); opacity: .9; }
+  100% { transform: scale(.1); opacity: 0; }
+}
+
+@keyframes match3Invalid {
+  0%,100% { transform: scale(1); }
+  50% { transform: scale(.975); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .match3-tile,
+  .match3-tile img { animation-duration: .01ms !important; transition-duration: .01ms !important; }
+}
+
+@media (max-width: 430px) {
+  .match3-map-card { padding: 15px; }
+  .match3-play-toolbar > span:last-child { font-size: 11px; }
+}
+
+/* Levelauswahl mit mehreren Testleveln */
+.match3-level-list {
+  display: grid;
+  gap: 12px;
+}
+
+/* Sammelziel: Ball-PNG + rückwärts laufende Restmenge */
+.match3-collect-target {
+  min-height: 28px;
+  display: inline-flex !important;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+.match3-collect-target img {
+  width: 25px;
+  height: 25px;
+  object-fit: contain;
+  filter: drop-shadow(0 2px 3px rgba(0,0,0,.35));
+}
+
+.match3-collect-target span {
+  display: inline-block;
+  font-size: 18px;
+  font-weight: 900;
+  line-height: 1;
+}
+
+
+.match3-tile.is-created-special {
+  animation: match3SpecialCreate .38s cubic-bezier(.16,.8,.22,1) both;
+}
+
+.match3-tile.is-protected {
+  box-shadow: inset 0 0 0 2px rgba(180,225,255,.7), inset 0 0 14px rgba(130,205,255,.28);
+}
+
+@keyframes match3SpecialCreate {
+  0% { transform: scale(.72) rotate(-7deg); filter: brightness(1.7); }
+  58% { transform: scale(1.16) rotate(3deg); filter: brightness(1.28); }
+  100% { transform: scale(1) rotate(0); filter: brightness(1); }
+}
+
+
+/* =========================================================
+   Normale Match-Reihen v6: kompakter Candy-artiger Burst
+   ========================================================= */
+.match3-tile.is-match-popping {
+  z-index: 12;
+}
+
+.match3-pop-particle,
+.match3-pop-ring,
+.match3-pop-flash {
+  position: absolute;
+  pointer-events: none;
+  transform: translate(-50%,-50%);
+  will-change: transform, opacity;
+}
+
+.match3-pop-particle {
+  z-index: 20;
+  width: var(--pop-size, 5px);
+  height: var(--pop-size, 5px);
+}
+
+.match3-pop-particle.is-shard {
+  border-radius: 38% 62% 55% 45%;
+  background: var(--pop-color, #fff);
+  box-shadow:
+    inset 0 0 0 1px rgba(255,255,255,.46),
+    0 0 4px var(--pop-color, #fff);
+}
+
+.match3-pop-particle.is-spark {
+  border-radius: 50%;
+  background: rgba(255,255,255,.98);
+  box-shadow:
+    0 0 4px rgba(255,255,255,1),
+    0 0 8px var(--pop-color, #fff);
+}
+
+.match3-pop-ring {
+  z-index: 18;
+  width: calc(var(--match3-cell) * .78);
+  height: calc(var(--match3-cell) * .78);
+  border-radius: 50%;
+  border: 3px solid rgba(255,255,255,.88);
+  box-shadow:
+    0 0 5px rgba(255,255,255,.9),
+    0 0 9px var(--pop-color, #fff);
+}
+
+.match3-pop-flash {
+  z-index: 19;
+  width: calc(var(--match3-cell) * .86);
+  height: calc(var(--match3-cell) * .86);
+  border-radius: 50%;
+  background:
+    radial-gradient(circle,
+      rgba(255,255,255,.98) 0 17%,
+      rgba(255,255,255,.72) 18% 32%,
+      color-mix(in srgb, var(--pop-color, #fff) 72%, transparent) 33% 54%,
+      transparent 72%);
+  filter: blur(.2px);
+}
+
+/* T/L-Bombe: kurze Fokusphase vor der eigentlichen 3x3-Explosion. */
+.match3-tile.is-area-bomb-charging,
+.match3-tile.is-area-bomb-detonating {
+  z-index: 42;
+}
+
+.match3-tile.is-area-bomb-charging img,
+.match3-tile.is-area-bomb-detonating img {
+  transform-origin: 50% 50%;
+  filter: drop-shadow(0 0 7px rgba(255,255,255,.65)) drop-shadow(0 0 14px rgba(255,188,68,.5));
+}
+
+
+/* =========================================================
+   LEVEL 3 – Wappen ins Ziel
+   ========================================================= */
+
+.match3-crest-target {
+  min-height: 28px;
+  display: inline-flex !important;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+.match3-crest-target img {
+  width: 25px;
+  height: 25px;
+  object-fit: contain;
+  filter: drop-shadow(0 2px 3px rgba(0,0,0,.35));
+}
+
+.match3-crest-target span {
+  font-size: 17px;
+  font-weight: 900;
+  line-height: 1;
+}
+
+.match3-board.is-level-3 {
+  margin-top: 58px;
+  margin-bottom: 76px;
+}
+
+.match3-board.is-level-3 .match3-tile {
+  background:
+    linear-gradient(145deg, rgba(17,96,44,.52), rgba(8,70,32,.44));
+}
+
+.match3-tile.is-stone {
+  cursor: default;
+  background:
+    linear-gradient(145deg, rgba(35,93,46,.44), rgba(17,63,34,.46));
+  box-shadow:
+    inset 0 0 0 1px rgba(255,255,255,.05),
+    inset 0 -4px 8px rgba(0,0,0,.22);
+}
+
+.match3-tile.is-stone img {
+  width: calc(var(--match3-cell) - 2px);
+  height: calc(var(--match3-cell) - 2px);
+  filter: drop-shadow(0 4px 4px rgba(0,0,0,.38));
+}
+
+.match3-tile.is-goal-crest {
+  cursor: default;
+  z-index: 6;
+  background:
+    radial-gradient(circle at 50% 45%, rgba(255,255,255,.13), rgba(13,96,48,.33) 68%);
+  box-shadow:
+    inset 0 0 0 2px rgba(192,236,255,.22),
+    0 0 10px rgba(30,171,224,.12);
+}
+
+.match3-tile.is-goal-crest img {
+  width: calc(var(--match3-cell) - 7px);
+  height: calc(var(--match3-cell) - 7px);
+  filter:
+    drop-shadow(0 3px 4px rgba(0,0,0,.38))
+    drop-shadow(0 0 3px rgba(255,255,255,.25));
+}
+
+.match3-crest-holder,
+.match3-crest-catcher {
+  --slot-left: calc(
+    var(--match3-pad) +
+    (var(--slot-col) * (var(--match3-cell) + var(--match3-gap))) +
+    (var(--match3-cell) / 2)
+  );
+  position: absolute;
+  left: var(--slot-left);
+  transform: translateX(-50%);
+  width: calc(var(--match3-cell) + 4px);
+  display: grid;
+  place-items: center;
+  pointer-events: none;
+  z-index: 20;
+}
+
+.match3-crest-holder {
+  top: -51px;
+  height: 47px;
+  border: 1px solid rgba(173,221,255,.48);
+  border-radius: 15px 15px 9px 9px;
+  background:
+    linear-gradient(180deg, rgba(51,89,105,.96), rgba(21,45,53,.96));
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.2),
+    0 5px 10px rgba(0,0,0,.32);
+}
+
+.match3-crest-holder::after {
+  content: "";
+  position: absolute;
+  bottom: -8px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 22px;
+  height: 9px;
+  background: rgba(24,58,56,.96);
+  clip-path: polygon(0 0,100% 0,72% 100%,28% 100%);
+}
+
+.match3-crest-holder img {
+  width: 38px;
+  height: 38px;
+  object-fit: contain;
+  filter: drop-shadow(0 2px 3px rgba(0,0,0,.42));
+}
+
+.match3-crest-holder.is-locked img {
+  filter:
+    brightness(.82)
+    drop-shadow(0 2px 3px rgba(0,0,0,.45));
+}
+
+.match3-crest-holder-lock {
+  position: absolute;
+  right: 1px;
+  bottom: -2px;
+  color: #ffd65a;
+  font-size: 12px;
+  text-shadow: 0 1px 2px rgba(0,0,0,.7);
+}
+
+.match3-holder-check {
+  width: 28px;
+  height: 28px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  color: white;
+  font-weight: 900;
+  background: #2c9f51;
+  box-shadow: 0 0 0 2px rgba(255,255,255,.18);
+}
+
+.match3-finish-line {
+  position: absolute;
+  left: var(--match3-pad);
+  right: var(--match3-pad);
+  top: calc(100% - var(--match3-pad) - 3px);
+  height: 6px;
+  z-index: 11;
+  pointer-events: none;
+}
+
+.match3-finish-segment {
+  position: absolute;
+  top: 0;
+  height: 6px;
+  border-radius: 2px;
+  background:
+    conic-gradient(
+      #fff 0 25%,
+      #202020 0 50%,
+      #fff 0 75%,
+      #202020 0
+    ) 0 0 / 10px 10px;
+  box-shadow:
+    0 0 0 1px rgba(255,255,255,.34),
+    0 2px 6px rgba(0,0,0,.28);
+}
+
+.match3-crest-catcher {
+  top: calc(100% + 10px);
+  height: 38px;
+  border: 2px solid rgba(227,237,229,.48);
+  border-top: 0;
+  border-radius: 5px 5px 17px 17px;
+  background:
+    linear-gradient(180deg, rgba(31,103,55,.68), rgba(11,54,32,.88));
+  box-shadow:
+    inset 0 -5px 8px rgba(0,0,0,.18),
+    0 5px 10px rgba(0,0,0,.3);
+}
+
+.match3-crest-catcher::before {
+  content: "";
+  position: absolute;
+  top: -3px;
+  left: -4px;
+  right: -4px;
+  height: 5px;
+  border-radius: 50%;
+  background: linear-gradient(180deg, #dce7dc, #718277);
+  box-shadow: 0 1px 3px rgba(0,0,0,.45);
+}
+
+.match3-crest-catcher.is-filled {
+  box-shadow:
+    inset 0 0 12px rgba(80,195,107,.28),
+    0 0 12px rgba(80,195,107,.22);
+}
+
+.match3-crest-catcher img {
+  width: 28px;
+  height: 28px;
+  object-fit: contain;
+  z-index: 2;
+  filter: drop-shadow(0 2px 3px rgba(0,0,0,.42));
+}
+
+.match3-delivery-counter {
+  position: absolute;
+  top: calc(100% + 55px);
+  left: 50%;
+  transform: translateX(-50%);
+  white-space: nowrap;
+  color: rgba(255,255,255,.82);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: .02em;
+  pointer-events: none;
+}
+
+.match3-stone-shard {
+  position: absolute;
+  width: 9px;
+  height: 7px;
+  transform: translate(-50%,-50%);
+  border-radius: 38% 55% 43% 62%;
+  background: linear-gradient(145deg, #d6d0c7, #77777c 72%);
+  box-shadow:
+    inset 0 0 0 1px rgba(255,255,255,.22),
+    0 2px 3px rgba(0,0,0,.32);
+  pointer-events: none;
+  z-index: 35;
+}
+
+.match3-tile.is-stone-breaking {
+  z-index: 30;
+}
+
+.match3-tile.is-crest-delivering {
+  z-index: 28;
+}
+
+@media (max-width: 430px) {
+  .match3-board.is-level-3 {
+    margin-top: 55px;
+    margin-bottom: 72px;
+  }
+}
+
+.match3-stone-fragment {
+  position:absolute;
+  display:block;
+  object-fit:contain;
+  pointer-events:none;
+  z-index:36;
+  transform-origin:50% 50%;
+  will-change:transform,opacity,filter;
+}
+
+/* Level 3 Feinjustierung: Wappen im Spielfeld und im Auffangbehälter +10%. */
+.match3-tile.is-goal-crest img {
+  transform: scale(1.10);
+  transform-origin: 50% 50%;
+}
+
+.match3-crest-catcher img {
+  width: 31px;
+  height: 31px;
+}
+
+
+/* Level 3: Teamwappen pulsieren nur solange sie im Spielfeld liegen.
+   Wartebox und Auffangbehälter bleiben statisch. */
+.match3-tile.is-goal-crest img {
+  animation: match3GoalCrestPulse 1.20s ease-in-out infinite;
+  transform-origin: 50% 50%;
+  will-change: transform, filter;
+}
+
+@keyframes match3GoalCrestPulse {
+  0%, 100% {
+    transform: scale(1.10);
+    filter:
+      drop-shadow(0 3px 4px rgba(0,0,0,.38))
+      drop-shadow(0 0 3px rgba(255,255,255,.25));
+  }
+  50% {
+    transform: scale(1.24);
+    filter:
+      drop-shadow(0 4px 5px rgba(0,0,0,.34))
+      drop-shadow(0 0 11px rgba(255,255,255,.52));
+  }
+}
+
+
+/* Match-3 obstacle hint sequence */
+/*
+ * Allgemeiner Hinweis für Hindernisse, die den Weg blockieren oder entfernt
+ * werden müssen. Die Sequenz läuft bewusst nicht permanent: rund alle 5 s
+ * erscheint kurz eine animierte Kontur und lenkt den Blick aufs Hindernis.
+ */
+.match3-tile.is-obstacle {
+  position: relative;
+  overflow: visible;
+  isolation: isolate;
+}
+
+.match3-tile.is-obstacle::before,
+.match3-tile.is-obstacle::after {
+  content: "";
+  position: absolute;
+  pointer-events: none;
+  border-radius: 15px;
+  opacity: 0;
+  z-index: 8;
+}
+
+/* weiche pulsierende Außenkontur */
+.match3-tile.is-obstacle::before {
+  inset: -4px;
+  border: 2px solid rgba(255, 235, 105, 0);
+  box-shadow:
+    0 0 0 0 rgba(255, 226, 72, 0),
+    0 0 0 rgba(255,255,255,0);
+  animation: match3ObstacleHintPulse 5s ease-in-out infinite;
+}
+
+/* umlaufender Lichtimpuls – wirkt wie eine kurze Sequenz um den Stein */
+.match3-tile.is-obstacle::after {
+  inset: -6px;
+  padding: 2px;
+  background: conic-gradient(
+    from 0deg,
+    rgba(255,255,255,0) 0deg,
+    rgba(255,255,255,0) 246deg,
+    rgba(255,235,105,.12) 274deg,
+    rgba(255,250,205,.98) 306deg,
+    rgba(255,206,50,.92) 329deg,
+    rgba(255,255,255,0) 360deg
+  );
+  -webkit-mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  animation: match3ObstacleHintSweep 5s linear infinite;
+}
+
+@keyframes match3ObstacleHintPulse {
+  0%, 72% {
+    opacity: 0;
+    transform: scale(.98);
+    border-color: rgba(255,235,105,0);
+    box-shadow: 0 0 0 0 rgba(255,226,72,0);
+  }
+  76% {
+    opacity: .35;
+    transform: scale(1);
+  }
+  81% {
+    opacity: 1;
+    transform: scale(1.07);
+    border-color: rgba(255,240,135,.96);
+    box-shadow:
+      0 0 0 3px rgba(255,218,52,.22),
+      0 0 13px rgba(255,230,95,.72);
+  }
+  86% {
+    opacity: .62;
+    transform: scale(1.015);
+  }
+  91% {
+    opacity: 1;
+    transform: scale(1.055);
+    border-color: rgba(255,248,185,.9);
+    box-shadow:
+      0 0 0 2px rgba(255,218,52,.18),
+      0 0 10px rgba(255,230,95,.58);
+  }
+  98%, 100% {
+    opacity: 0;
+    transform: scale(1.01);
+    border-color: rgba(255,235,105,0);
+    box-shadow: 0 0 0 7px rgba(255,226,72,0);
+  }
+}
+
+@keyframes match3ObstacleHintSweep {
+  0%, 72% {
+    opacity: 0;
+    transform: rotate(0deg) scale(.99);
+  }
+  75% {
+    opacity: 0;
+    transform: rotate(0deg) scale(1);
+  }
+  79% {
+    opacity: 1;
+  }
+  96% {
+    opacity: .9;
+    transform: rotate(360deg) scale(1.04);
+  }
+  100% {
+    opacity: 0;
+    transform: rotate(410deg) scale(1.04);
+  }
+}
+
+/* Beim tatsächlichen Zerspringen darf der Hinweis nicht weiterlaufen. */
+.match3-tile.is-obstacle.is-stone-breaking::before,
+.match3-tile.is-obstacle.is-stone-breaking::after {
+  animation: none;
+  opacity: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .match3-tile.is-obstacle::before,
+  .match3-tile.is-obstacle::after {
+    animation: none;
+  }
+}
+
+/* Candy-artiger Bombenburst: Zündstern -> Goldkern -> rosa/weißer Energieknall -> Splitter */
+.match3-bomb-star,
+.match3-bomb-ignition,
+.match3-bomb-bloom,
+.match3-bomb-shock-ring,
+.match3-bomb-orbit-spark,
+.match3-bomb-energy-fragment {
+  position: absolute;
+  pointer-events: none;
+  transform-origin: 50% 50%;
+  will-change: transform, opacity, filter;
+}
+
+.match3-bomb-star {
+  width: 120px;
+  height: 120px;
+  background:
+    linear-gradient(90deg, transparent 46%, #fff 48%, #fff 52%, transparent 54%),
+    linear-gradient(0deg, transparent 46%, #fff 48%, #fff 52%, transparent 54%),
+    linear-gradient(45deg, transparent 48%, rgba(255,255,255,.9) 49%, rgba(255,255,255,.9) 51%, transparent 52%),
+    linear-gradient(-45deg, transparent 48%, rgba(255,255,255,.9) 49%, rgba(255,255,255,.9) 51%, transparent 52%);
+  filter: drop-shadow(0 0 5px #fff) drop-shadow(0 0 12px #ffd776);
+  border-radius: 50%;
+}
+
+.match3-bomb-orbit-spark {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: radial-gradient(circle, #fff 0 24%, #ffe28c 25% 52%, #ff8f2a 53% 72%, transparent 73%);
+  box-shadow: 0 0 7px rgba(255,208,95,.95);
+}
+
+.match3-bomb-ignition {
+  width: 145px;
+  height: 145px;
+  border-radius: 50%;
+  background:
+    radial-gradient(circle, #fff 0 18%, #fffad6 19% 31%, #ffd44f 32% 45%, #ff8d26 46% 57%, rgba(255,89,55,.6) 58% 68%, transparent 69%);
+  filter: drop-shadow(0 0 9px #fff6ad) drop-shadow(0 0 20px rgba(255,129,38,.95));
+}
+
+.match3-bomb-bloom {
+  width: 185px;
+  height: 185px;
+  border-radius: 50%;
+  background:
+    radial-gradient(circle, #fff 0 17%, rgba(255,245,255,.98) 18% 28%, rgba(255,174,230,.95) 29% 43%, rgba(245,87,197,.73) 44% 57%, rgba(169,76,220,.42) 58% 70%, transparent 71%);
+  filter: drop-shadow(0 0 12px #fff) drop-shadow(0 0 28px rgba(255,93,208,.78));
+}
+
+.match3-bomb-shock-ring {
+  width: 110px;
+  height: 110px;
+  border-radius: 50%;
+  border: 7px solid rgba(255,222,247,.92);
+  box-shadow:
+    0 0 10px rgba(255,255,255,.95),
+    0 0 24px rgba(255,92,208,.78),
+    inset 0 0 12px rgba(255,190,236,.72);
+}
+
+.match3-bomb-shard-candy {
+  position: absolute;
+  object-fit: contain;
+  pointer-events: none;
+  z-index: 94;
+  transform-origin: 50% 50%;
+  will-change: transform, opacity, filter;
+}
+
+.match3-bomb-energy-fragment {
+  width: 11px;
+  height: 19px;
+  border-radius: 70% 30% 65% 35%;
+  background: var(--energy-color, #fff);
+  box-shadow: 0 0 6px color-mix(in srgb, var(--energy-color, #fff) 75%, white);
+}
+
+
+/* Level 3: dünner, ungefüllter Leuchtring um Wappen im Spielfeld.
+   Keine Hintergrundfläche: auch bei Lags bleibt nur die Kontur sichtbar. */
+.match3-tile.is-goal-crest::after {
+  content: "";
+  position: absolute;
+  width: calc(var(--match3-cell) - 4px);
+  height: calc(var(--match3-cell) - 4px);
+  border: 1.25px solid rgba(255,255,255,.82);
+  border-radius: 50%;
+  background: transparent !important;
+  box-shadow:
+    0 0 4px rgba(255,255,255,.42),
+    0 0 8px rgba(255,255,255,.20);
+  pointer-events: none;
+  z-index: 1;
+  transform: scale(.94);
+  opacity: .72;
+  animation: match3GoalCrestRingPulse 1.20s ease-in-out infinite;
+  will-change: transform, opacity, box-shadow;
+}
+
+.match3-tile.is-goal-crest img {
+  z-index: 2;
+}
+
+@keyframes match3GoalCrestRingPulse {
+  0%, 100% {
+    transform: scale(.94);
+    opacity: .68;
+    box-shadow:
+      0 0 4px rgba(255,255,255,.38),
+      0 0 8px rgba(255,255,255,.16);
+  }
+  50% {
+    transform: scale(1.06);
+    opacity: 1;
+    box-shadow:
+      0 0 6px rgba(255,255,255,.72),
+      0 0 12px rgba(255,255,255,.34);
+  }
+}
+
+
+/* Match-3 Level 1 Starttutorial – Victory-Look */
+.match3-game-card { position: relative; }
+
+.match3-level1-tutorial {
+  position: absolute;
+  inset: 0;
+  z-index: 120;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  background: rgba(5, 8, 13, .48);
+  backdrop-filter: blur(2px);
+  -webkit-backdrop-filter: blur(2px);
+  border-radius: inherit;
+  animation: match3TutorialBackdropIn .28s ease-out both;
+}
+.match3-level1-tutorial.hidden { display: none; }
+
+.match3-tutorial-card {
+  position: relative;
+  width: min(100%, 390px);
+  overflow: hidden;
+  padding: 22px 18px 20px;
+  border: 2px solid rgba(255, 219, 91, .72);
+  border-radius: 24px;
+  background: linear-gradient(180deg, rgba(35,112,57,.98), rgba(13,69,36,.98));
+  box-shadow: 0 18px 46px rgba(0,0,0,.42), inset 0 1px 0 rgba(255,255,255,.16), 0 0 24px rgba(255,220,91,.16);
+  text-align: center;
+  transform-origin: 50% 52%;
+  animation: match3TutorialCardIn .42s cubic-bezier(.18,.8,.24,1.15) both;
+}
+.match3-tutorial-glow {
+  position: absolute; width: 190px; height: 190px; left: 50%; top: -110px;
+  transform: translateX(-50%); border-radius: 50%;
+  background: radial-gradient(circle, rgba(255,239,157,.38), rgba(255,214,73,.08) 46%, transparent 72%);
+  pointer-events: none;
+}
+.match3-tutorial-kicker { position: relative; color: #ffe067; letter-spacing: .14em; }
+.match3-tutorial-medal {
+  position: relative; width: 52px; height: 52px; margin: 10px auto 7px; display: grid; place-items: center;
+  border-radius: 50%; color: #5e4300; font-size: 27px; font-weight: 900;
+  background: radial-gradient(circle at 35% 28%, #fff5a7, #ffd84d 52%, #d99b17 100%);
+  border: 3px solid rgba(255,255,255,.62);
+  box-shadow: 0 5px 14px rgba(0,0,0,.28), 0 0 14px rgba(255,220,83,.35);
+}
+.match3-tutorial-card h3 { position: relative; margin: 7px 0 5px; color: #fff; font-size: clamp(22px, 6vw, 29px); line-height: 1.05; }
+.match3-tutorial-text { position: relative; min-height: 42px; margin: 0 auto 13px; max-width: 310px; color: rgba(255,255,255,.88); font-size: 14px; line-height: 1.45; }
+.match3-tutorial-demo {
+  --demo-cell: 62px; --demo-gap: 7px; position: relative;
+  width: calc(var(--demo-cell) * 3 + var(--demo-gap) * 2);
+  height: calc(var(--demo-cell) * 2 + var(--demo-gap));
+  margin: 4px auto 13px; display: grid; grid-template-columns: repeat(3, var(--demo-cell));
+  grid-template-rows: repeat(2, var(--demo-cell)); gap: var(--demo-gap);
+}
+.match3-tutorial-cell { position: relative; display: grid; place-items: center; border-radius: 15px; background: rgba(8,56,29,.58); border: 1px solid rgba(255,255,255,.12); box-shadow: inset 0 2px 6px rgba(0,0,0,.28); }
+.match3-tutorial-cell img { width: 55px; height: 55px; object-fit: contain; pointer-events: none; filter: drop-shadow(0 4px 4px rgba(0,0,0,.28)); will-change: transform, opacity, filter; }
+.match3-tutorial-swipe { position: absolute; left: 50%; top: 50%; z-index: 8; transform: translate(-50%,-50%); color: #fff4a0; font-size: 34px; font-weight: 900; line-height: 1; text-shadow: 0 0 9px rgba(255,221,68,.8); animation: match3TutorialArrow 1s ease-in-out infinite; }
+.match3-level1-tutorial.is-swapping .demo-swap-a img { animation: match3TutorialSwapDown .76s cubic-bezier(.2,.78,.24,1) forwards; }
+.match3-level1-tutorial.is-swapping .demo-swap-b img { animation: match3TutorialSwapUp .76s cubic-bezier(.2,.78,.24,1) forwards; }
+.match3-level1-tutorial.is-swapping .match3-tutorial-swipe { opacity: 0; transition: opacity .18s ease; }
+.match3-level1-tutorial.is-matched .demo-r1c1 img,
+.match3-level1-tutorial.is-matched .demo-r1c2 img,
+.match3-level1-tutorial.is-matched .demo-r1c3 img { animation: match3TutorialMatchPop .9s cubic-bezier(.22,.76,.24,1) both; }
+.match3-level1-tutorial.is-matched .demo-r1c2 img { content: url("../assets/balls/bk-arena-balls/red.png"); }
+.match3-level1-tutorial.is-dropping .demo-r1c1 img,
+.match3-level1-tutorial.is-dropping .demo-r1c2 img,
+.match3-level1-tutorial.is-dropping .demo-r1c3 img { opacity: 0; }
+.match3-level1-tutorial.is-dropping .demo-r2c1 img,
+.match3-level1-tutorial.is-dropping .demo-r2c2 img,
+.match3-level1-tutorial.is-dropping .demo-r2c3 img { animation: match3TutorialDrop .65s cubic-bezier(.17,.72,.22,1) both; }
+.match3-tutorial-step { display: flex; justify-content: center; gap: 7px; margin: 2px 0 9px; }
+.match3-tutorial-dot { width: 7px; height: 7px; border-radius: 50%; background: rgba(255,255,255,.26); transition: transform .2s ease, background .2s ease, box-shadow .2s ease; }
+.match3-tutorial-dot.is-active { transform: scale(1.35); background: #ffe067; box-shadow: 0 0 8px rgba(255,224,103,.75); }
+.match3-tutorial-caption { display: block; min-height: 24px; color: #ffe97f; font-size: 14px; line-height: 1.35; }
+.match3-level1-tutorial.is-leaving { animation: match3TutorialBackdropOut .36s ease-in both; }
+.match3-level1-tutorial.is-leaving .match3-tutorial-card { animation: match3TutorialCardOut .36s ease-in both; }
+@keyframes match3TutorialBackdropIn { from { opacity: 0; } to { opacity: 1; } }
+@keyframes match3TutorialBackdropOut { from { opacity: 1; } to { opacity: 0; } }
+@keyframes match3TutorialCardIn { 0% { opacity: 0; transform: translateY(18px) scale(.92); } 70% { opacity: 1; transform: translateY(-2px) scale(1.015); } 100% { opacity: 1; transform: translateY(0) scale(1); } }
+@keyframes match3TutorialCardOut { to { opacity: 0; transform: translateY(-10px) scale(.96); } }
+@keyframes match3TutorialArrow { 0%,100% { transform: translate(-50%,-50%) scale(.92); opacity: .72; } 50% { transform: translate(-50%,-50%) scale(1.12); opacity: 1; } }
+@keyframes match3TutorialSwapDown { from { transform: translateY(0); } to { transform: translateY(calc(var(--demo-cell) + var(--demo-gap))); } }
+@keyframes match3TutorialSwapUp { from { transform: translateY(0); } to { transform: translateY(calc((var(--demo-cell) + var(--demo-gap)) * -1)); } }
+@keyframes match3TutorialMatchPop { 0% { transform: scale(1); filter: brightness(1) drop-shadow(0 4px 4px rgba(0,0,0,.28)); opacity: 1; } 28% { transform: scale(1.18); filter: brightness(1.7) drop-shadow(0 0 12px rgba(255,235,118,.9)); opacity: 1; } 52% { transform: scale(.9); opacity: .92; } 100% { transform: scale(.25); opacity: 0; } }
+@keyframes match3TutorialDrop { 0% { transform: translateY(-18px); opacity: 0; } 100% { transform: translateY(0); opacity: 1; } }
+@media (max-width: 420px) {
+  .match3-level1-tutorial { padding: 10px; }
+  .match3-tutorial-card { padding: 19px 12px 17px; border-radius: 20px; }
+  .match3-tutorial-demo { --demo-cell: 55px; --demo-gap: 6px; }
+  .match3-tutorial-cell img { width: 49px; height: 49px; }
+}
+
+
+/* Match-3 Level 4 – Korb, freie Flugbahn und Wasserröhre */
+.match3-board.is-level-4{margin-top:58px;margin-bottom:100px;transform:translateX(-34px);overflow:visible}
+.match3-board.is-level-4 .match3-tile{background:linear-gradient(145deg,rgba(17,96,44,.52),rgba(8,70,32,.44))}
+.match3-crest-holder.is-transport-source .match3-transport-ready{width:10px;height:10px;display:block;border-radius:50%;background:#7fd8ff;box-shadow:0 0 8px rgba(127,216,255,.82);font-size:0;animation:match3TransportReadyPulse 1.4s ease-in-out infinite}
+.match3-transport-catcher{height:58px;border:3px solid rgba(215,225,219,.88);border-top:7px solid #d8e1dc;border-radius:8px 8px 24px 24px;background:linear-gradient(90deg,rgba(255,255,255,.12),transparent 22% 78%,rgba(255,255,255,.12)),linear-gradient(180deg,#17673b,#0c4c2b 72%,#08351f);box-shadow:inset 0 6px 10px rgba(255,255,255,.08),inset 0 -9px 12px rgba(0,0,0,.24),0 5px 10px rgba(0,0,0,.28)}
+.match3-transport-catcher::before{content:"";position:absolute;left:-8px;right:-8px;top:-9px;height:10px;border-radius:50%;background:linear-gradient(180deg,#eef4f0,#8da49a);box-shadow:0 2px 4px rgba(0,0,0,.35)}
+.match3-transport-system{position:absolute;left:calc(100% + 12px);top:0;width:72px;height:170px;pointer-events:none;z-index:16}
+.match3-transport-tube{position:absolute;left:0;top:-12px;width:66px;height:164px}
+.match3-transport-tube-cap{position:absolute;left:5px;top:-4px;width:56px;height:16px;z-index:4;border:2px solid rgba(255,226,135,.9);border-radius:8px;background:linear-gradient(180deg,#e6b84d,#8f5d16);box-shadow:0 3px 6px rgba(0,0,0,.35),inset 0 2px 2px rgba(255,255,255,.32)}
+.match3-transport-tube-mouth{position:absolute;left:4px;top:7px;width:58px;height:22px;z-index:3;border:3px solid rgba(222,237,232,.9);border-radius:50%;background:radial-gradient(ellipse at center,rgba(18,69,78,.75) 0 55%,#a9bbb5 58% 72%,#e5eeea 74%);box-shadow:0 3px 8px rgba(0,0,0,.35),0 0 10px rgba(115,226,255,.22)}
+.match3-transport-tube-glass{position:absolute;left:9px;top:17px;width:48px;height:132px;overflow:hidden;border:3px solid rgba(190,229,238,.72);border-top:0;border-radius:5px 5px 20px 20px;background:linear-gradient(90deg,rgba(255,255,255,.24),rgba(121,218,239,.09) 28%,rgba(21,91,110,.20) 68%,rgba(255,255,255,.20));box-shadow:inset 0 0 13px rgba(143,229,246,.18),0 5px 10px rgba(0,0,0,.28)}
+.match3-transport-water{position:absolute;left:0;right:0;bottom:0;height:78%;background:linear-gradient(180deg,rgba(91,219,244,.28),rgba(20,151,198,.48) 48%,rgba(8,95,145,.58));border-radius:0 0 16px 16px}
+.match3-transport-water::before{content:"";position:absolute;left:-10%;top:-5px;width:120%;height:10px;border-radius:50%;background:rgba(169,239,251,.56);animation:match3WaterBob 1.7s ease-in-out infinite}
+.match3-transport-crests{position:absolute;inset:8px 3px 5px;display:flex;flex-direction:column-reverse;align-items:center;justify-content:flex-start;gap:1px;z-index:2}
+.match3-transport-crests img{width:34px;height:34px;object-fit:contain;margin-top:-10px;filter:drop-shadow(0 2px 2px rgba(0,0,0,.35)) drop-shadow(0 0 3px rgba(255,255,255,.45))}.match3-transport-crests img:first-child{margin-top:0}
+.match3-transport-tube strong{position:absolute;top:150px;left:0;width:66px;color:#e8fbff;font-size:11px;text-align:center;text-shadow:0 1px 3px rgba(0,0,0,.8)}
+.match3-transport-tube.is-receiving .match3-transport-tube-mouth{animation:match3TubeReceive .5s ease-out}
+.match3-transport-flying-crest{object-fit:contain;filter:drop-shadow(0 4px 5px rgba(0,0,0,.4)) drop-shadow(0 0 8px rgba(255,255,255,.62));will-change:transform,opacity}
+.match3-transport-flash{width:18px;height:18px;z-index:10000;pointer-events:none;transform:translate(-50%,-50%);border-radius:50%;background:rgba(255,255,255,.95);box-shadow:0 0 9px #fff,0 0 19px rgba(105,225,255,.95),0 0 34px rgba(74,190,255,.7);animation:match3TransportFlash .5s ease-out forwards}.match3-transport-flash.is-basket{width:22px;height:22px}.match3-transport-flash.is-tube{width:25px;height:25px}
+.match3-board.is-level-4 .match3-delivery-counter{top:calc(100% + 70px);transform:translateX(34px)}
+@keyframes match3TransportReadyPulse{0%,100%{transform:scale(.82);opacity:.42}50%{transform:scale(1.18);opacity:1}}@keyframes match3TransportFlash{0%{transform:translate(-50%,-50%) scale(.35);opacity:0}35%{transform:translate(-50%,-50%) scale(1.7);opacity:1}100%{transform:translate(-50%,-50%) scale(2.5);opacity:0}}@keyframes match3TubeReceive{0%,100%{filter:none}45%{filter:drop-shadow(0 0 12px rgba(119,229,255,.95));transform:scale(1.04)}}@keyframes match3WaterBob{0%,100%{transform:translateY(0) scaleX(1)}50%{transform:translateY(2px) scaleX(.94)}}
+@media(max-width:430px){.match3-board.is-level-4{margin-top:55px;margin-bottom:100px;transform:translateX(-31px)}.match3-transport-system{left:calc(100% + 8px);width:66px}.match3-transport-tube{transform:scale(.92);transform-origin:top left}.match3-board.is-level-4 .match3-delivery-counter{transform:translateX(31px)}}
+
+
+
+/* =========================================================
+   Match-3 Level 5 – vier 3×4 Karten im sauberen 2×2-Raster
+   ========================================================= */
+.match3-board.is-level-5 {
+  width: 100%;
+  max-width: 680px;
+  margin: 68px auto 92px;
+  padding: 0 6px;
+  overflow: visible;
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+  transform: none;
+  box-sizing: border-box;
+}
+
+.match3-quad-grid {
+  width: 100%;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  column-gap: clamp(14px, 4vw, 28px);
+  row-gap: clamp(82px, 12vw, 104px);
+  align-items: start;
+  box-sizing: border-box;
+}
+
+.match3-mini-card {
+  position: relative;
+  width: 100%;
+  min-width: 0;
+  max-width: 190px;
+  justify-self: center;
+  padding: 7px;
+  border-radius: 20px;
+  box-sizing: border-box;
+  background:
+    linear-gradient(180deg, rgba(53,173,84,.96), rgba(17,112,54,.98));
+  border: 2px solid rgba(112,226,128,.5);
+  box-shadow:
+    inset 0 2px 0 rgba(255,255,255,.15),
+    inset 0 -8px 15px rgba(0,0,0,.13),
+    0 8px 18px rgba(0,0,0,.25);
+}
+
+.match3-mini-card.is-complete {
+  filter: saturate(.72);
+  box-shadow:
+    inset 0 2px 0 rgba(255,255,255,.15),
+    0 0 18px rgba(79,219,117,.33);
+}
+
+.match3-mini-board {
+  width: 100%;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 4px;
+}
+
+.match3-mini-tile {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  min-width: 0;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: 0;
+  border-radius: 12px;
+  background: rgba(7,91,39,.38);
+  box-shadow:
+    inset 0 1px 2px rgba(255,255,255,.12),
+    inset 0 -3px 5px rgba(0,0,0,.2),
+    0 2px 4px rgba(0,0,0,.18);
+  overflow: visible;
+  touch-action: manipulation;
+  box-sizing: border-box;
+}
+
+.match3-mini-tile img {
+  width: 88%;
+  height: 88%;
+  object-fit: contain;
+  position: relative;
+  z-index: 2;
+  filter: drop-shadow(0 3px 3px rgba(0,0,0,.26));
+}
+
+.match3-mini-tile.is-obstacle::before {
+  content: "";
+  position: absolute;
+  inset: -3px;
+  border: 2px solid rgba(255,225,105,0);
+  border-radius: 14px;
+  animation: match3ObstacleHintPulse 5s ease-in-out infinite;
+  pointer-events: none;
+}
+
+.match3-mini-tile.is-selected {
+  outline: 2px solid rgba(255,233,108,.95);
+  outline-offset: 2px;
+  box-shadow:
+    0 0 10px rgba(255,224,87,.55),
+    inset 0 -3px 5px rgba(0,0,0,.2);
+}
+
+.match3-mini-holder {
+  position: absolute;
+  left: 50%;
+  top: -54px;
+  width: clamp(46px, 11.5vw, 60px);
+  height: clamp(50px, 12.5vw, 64px);
+  transform: translateX(-50%);
+  z-index: 7;
+  display: grid;
+  place-items: center;
+  border-radius: 16px 16px 12px 12px;
+  background: linear-gradient(180deg,#365d6c,#173944);
+  border: 2px solid rgba(180,218,231,.45);
+  box-shadow: 0 5px 10px rgba(0,0,0,.28), inset 0 1px 3px rgba(255,255,255,.15);
+}
+
+.match3-mini-holder::after {
+  content: "";
+  position: absolute;
+  bottom: -9px;
+  width: 0;
+  height: 0;
+  border-left: 9px solid transparent;
+  border-right: 9px solid transparent;
+  border-top: 10px solid #173944;
+}
+
+.match3-mini-holder img {
+  width: 88%;
+  height: 88%;
+  object-fit: contain;
+  filter: drop-shadow(0 2px 3px rgba(0,0,0,.32));
+}
+
+.match3-mini-holder .match3-crest-holder-lock {
+  position: absolute;
+  right: -1px;
+  bottom: -2px;
+  color: #ffd44e;
+  font-size: 14px;
+  text-shadow: 0 2px 3px rgba(0,0,0,.55);
+}
+
+.match3-mini-holder .match3-holder-check {
+  width: 34px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: #2db05c;
+  color: #fff;
+  font-size: 24px;
+  font-weight: 900;
+  box-shadow: 0 0 10px rgba(65,226,112,.4);
+}
+
+.match3-mini-catcher {
+  position: absolute;
+  left: 50%;
+  bottom: -53px;
+  width: clamp(48px, 12vw, 62px);
+  height: clamp(46px, 11.5vw, 58px);
+  transform: translateX(-50%);
+  z-index: 6;
+  border: 3px solid rgba(188,215,201,.85);
+  border-top: 7px solid #dfe8e3;
+  border-radius: 8px 8px 23px 23px;
+  background:
+    linear-gradient(90deg,rgba(255,255,255,.1),transparent 25% 75%,rgba(255,255,255,.1)),
+    linear-gradient(180deg,#17673b,#0b492a 75%,#07371f);
+  box-shadow:
+    inset 0 -8px 12px rgba(0,0,0,.22),
+    0 5px 10px rgba(0,0,0,.27);
+}
+
+.match3-mini-catcher::before {
+  content: "";
+  position: absolute;
+  left: -6px;
+  right: -6px;
+  top: -10px;
+  height: 10px;
+  border-radius: 50%;
+  background: linear-gradient(180deg,#f1f6f3,#8ea39a);
+  box-shadow: 0 2px 4px rgba(0,0,0,.32);
+}
+
+.match3-mini-catcher img {
+  position: absolute;
+  width: 82%;
+  height: 82%;
+  left: 9%;
+  top: 7%;
+  object-fit: contain;
+  z-index: 2;
+  filter: drop-shadow(0 2px 3px rgba(0,0,0,.35));
+}
+
+.match3-mini-crest-ring {
+  position: absolute;
+  width: 94%;
+  height: 94%;
+  border: 1.5px solid rgba(255,255,255,.95);
+  border-radius: 50%;
+  box-shadow: 0 0 6px rgba(255,255,255,.6);
+  z-index: 1;
+  animation: match3MiniCrestPulse 1.2s ease-in-out infinite;
+  pointer-events: none;
+}
+
+.match3-mini-tile.is-goal-crest img {
+  width: 94%;
+  height: 94%;
+  animation: match3MiniCrestImagePulse 1.2s ease-in-out infinite;
+}
+
+.match3-level5-counter {
+  margin-top: clamp(78px, 12vw, 98px);
+  text-align: center;
+  color: #fff;
+  font-size: clamp(16px, 4vw, 22px);
+  font-weight: 800;
+  text-shadow: 0 2px 4px rgba(0,0,0,.45);
+}
+
+@keyframes match3MiniCrestPulse {
+  0%,100% { transform: scale(.96); opacity: .62; }
+  50% { transform: scale(1.10); opacity: 1; box-shadow: 0 0 11px rgba(255,255,255,.85); }
+}
+
+@keyframes match3MiniCrestImagePulse {
+  0%,100% { transform: scale(1); }
+  50% { transform: scale(1.11); }
+}
+
+@media (max-width: 430px) {
+  .match3-board.is-level-5 {
+    padding: 0 4px;
+    margin-top: 64px;
+    margin-bottom: 88px;
+  }
+
+  .match3-quad-grid {
+    column-gap: 12px;
+    row-gap: 76px;
+  }
+
+  .match3-mini-card {
+    max-width: none;
+    padding: 6px;
+    border-radius: 17px;
+  }
+
+  .match3-mini-board {
+    gap: 3px;
+  }
+
+  .match3-mini-tile {
+    border-radius: 10px;
+  }
+
+  .match3-mini-holder {
+    top: -49px;
+    width: 45px;
+    height: 49px;
+  }
+
+  .match3-mini-catcher {
+    bottom: -48px;
+    width: 47px;
+    height: 44px;
+  }
+}
+
+@media (max-width: 360px) {
+  .match3-quad-grid {
+    column-gap: 8px;
+  }
+
+  .match3-mini-card {
+    padding: 5px;
+  }
+
+  .match3-mini-board {
+    gap: 2px;
+  }
+}
+
+
+
+/* Level 5 – rote Hintergrundkarte umfasst das komplette 2×2-Level */
+#match3Play:has(.match3-board.is-level-5) .match3-game-card,
+#match3Play:has(.match3-board.is-level-5) .match3-play-card,
+#match3Play:has(.match3-board.is-level-5) .match3-level-card {
+  height: auto !important;
+  min-height: 0 !important;
+  overflow: visible;
+  padding-bottom: clamp(105px, 18vw, 145px) !important;
+}
+
+/* Falls der rote Hauptcontainer direkt der Screen-Inhalt ist */
+#match3Play:has(.match3-board.is-level-5) .match3-game-panel {
+  height: auto !important;
+  min-height: max-content;
+  overflow: visible;
+  padding-bottom: clamp(105px, 18vw, 145px);
+}
+
+#match3Play:has(.match3-board.is-level-5) .match3-level5-counter {
+  position: relative;
+  z-index: 2;
+  margin-bottom: 0;
+}
+
+@media (max-width: 430px) {
+  #match3Play:has(.match3-board.is-level-5) .match3-game-card,
+  #match3Play:has(.match3-board.is-level-5) .match3-play-card,
+  #match3Play:has(.match3-board.is-level-5) .match3-level-card,
+  #match3Play:has(.match3-board.is-level-5) .match3-game-panel {
+    padding-bottom: 118px !important;
+  }
+}
+
+
+/* =========================================================
+   Level 5 HARD-FIX:
+   normale .match3-board Grid-Regeln vollständig deaktivieren
+   ========================================================= */
+.match3-board.is-level-5 {
+  display: block !important;
+  grid-template-columns: none !important;
+  grid-template-rows: none !important;
+  gap: 0 !important;
+  align-items: initial !important;
+  justify-items: initial !important;
+  place-items: initial !important;
+
+  width: 100% !important;
+  max-width: 680px !important;
+  min-width: 0 !important;
+  height: auto !important;
+  aspect-ratio: auto !important;
+
+  margin: 68px auto 92px !important;
+  padding: 0 8px !important;
+  box-sizing: border-box !important;
+
+  overflow: visible !important;
+  background: transparent !important;
+  border: 0 !important;
+  box-shadow: none !important;
+  transform: none !important;
+}
+
+/* 2×2-Hauptraster nutzt wirklich die gesamte Board-Breite */
+.match3-board.is-level-5 > .match3-quad-grid {
+  display: grid !important;
+  width: 100% !important;
+  min-width: 0 !important;
+  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  grid-auto-rows: auto !important;
+  column-gap: clamp(18px, 4.5vw, 30px) !important;
+  row-gap: clamp(86px, 13vw, 108px) !important;
+  align-items: start !important;
+  justify-items: stretch !important;
+  box-sizing: border-box !important;
+}
+
+/* Jede Mini-Karte bleibt innerhalb ihrer eigenen Hälfte */
+.match3-board.is-level-5 .match3-mini-card {
+  width: 100% !important;
+  max-width: 190px !important;
+  min-width: 0 !important;
+  justify-self: center !important;
+  box-sizing: border-box !important;
+}
+
+/* Das 3×4-Spielfeld selbst ist ein eigenes Grid */
+.match3-board.is-level-5 .match3-mini-board {
+  display: grid !important;
+  width: 100% !important;
+  min-width: 0 !important;
+  grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+  grid-template-rows: repeat(4, auto) !important;
+  gap: 4px !important;
+  box-sizing: border-box !important;
+}
+
+.match3-board.is-level-5 .match3-mini-tile {
+  width: 100% !important;
+  min-width: 0 !important;
+  height: auto !important;
+  aspect-ratio: 1 / 1 !important;
+  box-sizing: border-box !important;
+}
+
+/* Zähler immer unter BEIDEN Kartenreihen */
+.match3-board.is-level-5 > .match3-level5-counter {
+  display: block !important;
+  width: 100% !important;
+  margin: clamp(80px, 13vw, 102px) 0 0 !important;
+  position: relative !important;
+  inset: auto !important;
+  transform: none !important;
+  text-align: center !important;
+}
+
+/* Die rote Karte soll das komplette 2×2-Level umfassen */
+#match3Play:has(.match3-board.is-level-5) .match3-game-card {
+  height: auto !important;
+  min-height: 0 !important;
+  overflow: visible !important;
+  padding-bottom: clamp(110px, 18vw, 150px) !important;
+}
+
+/* Sicherstellen, dass keine feste Höhe aus älteren Match3-Regeln greift */
+#match3Play:has(.match3-board.is-level-5) .match3-game-card,
+#match3Play:has(.match3-board.is-level-5) .match3-game-panel,
+#match3Play:has(.match3-board.is-level-5) .match3-play-card,
+#match3Play:has(.match3-board.is-level-5) .match3-level-card {
+  max-height: none !important;
+}
+
+@media (max-width: 430px) {
+  .match3-board.is-level-5 {
+    margin-top: 64px !important;
+    margin-bottom: 88px !important;
+    padding-inline: 5px !important;
+  }
+
+  .match3-board.is-level-5 > .match3-quad-grid {
+    column-gap: 12px !important;
+    row-gap: 80px !important;
+  }
+
+  .match3-board.is-level-5 .match3-mini-card {
+    max-width: none !important;
+  }
+
+  .match3-board.is-level-5 .match3-mini-board {
+    gap: 3px !important;
+  }
+
+  #match3Play:has(.match3-board.is-level-5) .match3-game-card {
+    padding-bottom: 125px !important;
+  }
+}
+
+@media (max-width: 360px) {
+  .match3-board.is-level-5 > .match3-quad-grid {
+    column-gap: 8px !important;
+  }
+
+  .match3-board.is-level-5 .match3-mini-board {
+    gap: 2px !important;
+  }
+}
+
+
+/* Level 5 – Touchsteuerung + mehr Abstand zwischen den Kartenreihen */
+.match3-board.is-level-5 .match3-mini-tile {
+  touch-action: none !important;
+  -webkit-user-select: none;
+  user-select: none;
+  cursor: pointer;
+}
+
+.match3-board.is-level-5 .match3-mini-tile img,
+.match3-board.is-level-5 .match3-mini-crest-ring {
+  pointer-events: none !important;
+}
+
+/* Auffangkorb oben und Wappenhalter unten bekommen klar sichtbaren Freiraum. */
+.match3-board.is-level-5 > .match3-quad-grid {
+  row-gap: clamp(116px, 17vw, 142px) !important;
+}
+
+@media (max-width: 430px) {
+  .match3-board.is-level-5 > .match3-quad-grid {
+    row-gap: 112px !important;
+  }
+}
+
+@media (max-width: 360px) {
+  .match3-board.is-level-5 > .match3-quad-grid {
+    row-gap: 106px !important;
+  }
+}
+
+
+/* Level 5 – sichtbare Deadlock-/Shuffle-Sequenz */
+.match3-board.is-level-5 {
+  position: relative;
+}
+
+.match3-level5-shuffle-overlay {
+  position: absolute;
+  inset: -8px;
+  z-index: 90;
+  display: grid;
+  place-items: center;
+  padding: 18px;
+  border-radius: 24px;
+  background: rgba(5, 10, 12, .44);
+  backdrop-filter: blur(2px);
+  -webkit-backdrop-filter: blur(2px);
+  pointer-events: all;
+  animation: match3Level5ShuffleFade .2s ease-out both;
+}
+
+.match3-level5-shuffle-card {
+  width: min(86%, 300px);
+  padding: 16px 20px 15px;
+  border: 2px solid rgba(255,220,91,.78);
+  border-radius: 20px;
+  background: linear-gradient(180deg, rgba(38,112,57,.98), rgba(12,67,34,.98));
+  box-shadow: 0 12px 30px rgba(0,0,0,.38), inset 0 1px 0 rgba(255,255,255,.15);
+  text-align: center;
+}
+
+.match3-level5-shuffle-card strong {
+  display: block;
+  color: #ffe06a;
+  font-size: clamp(18px, 4.8vw, 24px);
+}
+
+.match3-level5-shuffle-card span {
+  display: block;
+  margin-top: 5px;
+  color: #fff;
+  font-size: clamp(13px, 3.6vw, 17px);
+  font-weight: 700;
+}
+
+.match3-level5-shuffle-dots {
+  display: flex;
+  justify-content: center;
+  gap: 7px;
+  margin-top: 11px;
+}
+
+.match3-level5-shuffle-dots i {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #fff2a3;
+  animation: match3Level5ShuffleDot .7s ease-in-out infinite alternate;
+}
+.match3-level5-shuffle-dots i:nth-child(2){animation-delay:.12s}
+.match3-level5-shuffle-dots i:nth-child(3){animation-delay:.24s}
+
+@keyframes match3Level5ShuffleFade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes match3Level5ShuffleDot {
+  from { transform: translateY(0) scale(.85); opacity: .45; }
+  to { transform: translateY(-4px) scale(1.15); opacity: 1; }
+}
